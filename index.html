@@ -161,6 +161,7 @@
             <div class="account">
                 <div class="account-who">👤 Angemeldet als <b id="userEmail"></b></div>
                 <div class="account-actions">
+                    <button class="btn-ghost" id="backupBtn" type="button" hidden>💾 Backup herunterladen</button>
                     <button class="btn-ghost" id="togglePw" type="button">🔑 Passwort ändern</button>
                     <button class="btn-ghost" id="logoutBtn" type="button">🚪 Abmelden</button>
                 </div>
@@ -170,6 +171,7 @@
                 <button class="btn" type="submit">Passwort speichern</button>
             </form>
             <div id="pwMsg" class="msg" hidden></div>
+            <div id="backupMsg" class="msg" hidden></div>
         </div>
     </section>
 </div>
@@ -222,6 +224,7 @@
         let res;
         try { res = await TB.myTrips(); } catch (e) { $('#tripList').innerHTML = `<div class="box">${esc(TB.errorText(e))}</div>`; return; }
         show($('#offlineHint'), res.offline);
+        show($('#backupBtn'), res.list.some(t => t.role === 'admin'));
         const list = res.list.map(t => ({ ...t, st: tripStatus(t) }))
             .sort((a, b) => (a.st.past - b.st.past) || (a.st.past ? (b.start_date || '').localeCompare(a.start_date || '') : (a.start_date || '9').localeCompare(b.start_date || '9')) || a.sort_order - b.sort_order);
         $('#tripList').innerHTML = list.length ? list.map(t => `
@@ -265,6 +268,19 @@
 
     /* Konto */
     $('#logoutBtn').onclick = async () => { await TB.signOut(); history.replaceState(null, '', location.pathname); route(); };
+    $('#backupBtn').onclick = async () => {
+        const btn = $('#backupBtn'); btn.disabled = true; msg($('#backupMsg'), '');
+        try {
+            const b = await TB.exportBackup();
+            const url = URL.createObjectURL(new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' }));
+            const a = Object.assign(document.createElement('a'), { href: url, download: `travelbase-backup-${todayISO}.json` });
+            document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+            const n = Object.entries(b.tables).map(([t, r]) => `${t}: ${r.length}`).join(', ');
+            const fail = Object.keys(b.errors);
+            msg($('#backupMsg'), fail.length ? `⚠️ Backup gespeichert (${n}), aber nicht lesbar: ${fail.join(', ')}` : `✅ Backup gespeichert (${n}).`, !fail.length);
+        } catch (err) { msg($('#backupMsg'), TB.errorText(err)); }
+        finally { btn.disabled = false; }
+    };
     $('#togglePw').onclick = () => { show($('#pwForm'), $('#pwForm').hidden); msg($('#pwMsg'), ''); };
     $('#pwForm').onsubmit = async e => {
         e.preventDefault();
