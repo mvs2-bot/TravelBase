@@ -6,7 +6,11 @@
    Diese beiden Werte dürfen öffentlich im Repo stehen – sie sind dafür gedacht.
    Den Schutz übernehmen Login + Zugriffsregeln in der Datenbank.
    NIEMALS den "secret" bzw. "service_role" Key hier eintragen! */
+
+
+
+
 window.TB_CONFIG = {
-    url: 'https://DEIN-PROJEKT.supabase.co',
-    key: 'DEIN-PUBLISHABLE-KEY'
+    url: 'https://syaonnedmidaipwjjmio.supabase.co',
+    key: 'sb_publishable_a3tggKZJmotlFtIqKKdSYg_cNsazRkX'
 };
