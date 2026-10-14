@@ -84,7 +84,7 @@
         document.querySelectorAll('.pop-btn').forEach(x => x.classList.toggle('on', x.dataset.t === id));
         if (location.hash !== '#' + id) history.replaceState(null, '', location.pathname + location.search + '#' + id);
         window.scrollTo(0, 0);
-        if (id === 'mapview' && map) setTimeout(() => map.invalidateSize(), 100);
+        if (id === 'mapview' && map) setTimeout(() => { map.invalidateSize(); fitStartView(); }, 50);
     }
     function tabFromHash() { switchTab(location.hash.replace('#', '') || SECTIONS[0].id); }
 
@@ -138,9 +138,20 @@
             };
             lg.addTo(map);
         }
-        if (DATA.bounds) map.fitBounds(DATA.bounds, { padding: [20, 20] });
-        else if (all.length) map.fitBounds(all, { padding: [30, 30] });
+        ALL_POINTS = all;
+    }
+    /* Start-Ausschnitt erst setzen, wenn die Karte sichtbar ist – sonst rechnet Leaflet
+       mit 0 Pixeln Größe und zoomt viel zu weit hinein.
+       Eigener Ausschnitt pro Reise möglich über "bounds" oder "view": { center: [lat, lng], zoom } */
+    let ALL_POINTS = [], fitted = false;
+    function fitStartView() {
+        if (!map || fitted || !$('#map').offsetWidth) return;
+        map.invalidateSize();
+        if (DATA.view) map.setView(DATA.view.center, DATA.view.zoom);
+        else if (DATA.bounds) map.fitBounds(DATA.bounds, { padding: [20, 20] });
+        else if (ALL_POINTS.length) map.fitBounds(ALL_POINTS, { padding: [30, 30] });
         else map.setView([20, 0], 2);
+        fitted = true;
     }
     function focusPlaces(keys) {
         const ms = (keys || []).map(k => markers[k]).filter(Boolean);
@@ -148,6 +159,7 @@
         switchTab('mapview');
         setTimeout(() => {
             map.invalidateSize();
+            fitted = true;
             if (ms.length === 1) { map.flyTo(ms[0].getLatLng(), 9, { duration: 1 }); ms[0].openPopup(); }
             else map.flyToBounds(L.latLngBounds(ms.map(m => m.getLatLng())), { padding: [40, 40], duration: 1 });
             $('#mapBox').scrollIntoView({ behavior: 'smooth' });
