@@ -1,0 +1,9 @@
+/* Flaggen-Emojis: Windows (Chrome/Edge) zeigt statt Flaggen nur Buchstaben wie "TH".
+   Diese Schrift enthält NUR die Flaggen (unicode-range) – alle anderen Zeichen
+   kommen weiter aus der normalen Schrift. Einbinden: font-family: 'Twemoji Country Flags', … */
+@font-face {
+    font-family: 'Twemoji Country Flags';
+    src: url('https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1/dist/TwemojiCountryFlags.woff2') format('woff2');
+    unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E007F;
+    font-display: swap;
+}

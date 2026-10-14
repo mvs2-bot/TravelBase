@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="de"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#15803d">
+    <script>(function(){try{if(localStorage.getItem('tb_theme_v1')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
+    <title>TravelBase</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="TravelBase">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shared/flags.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="shared/config.js"></script>
+    <script src="shared/travelbase.js"></script>
+<style>
+    :root {
+        --bg: #f4f7f4; --card: #fff; --hover: #f0fdf4; --line: #cbd5e1; --ink: #0f172a; --text: #334155; --mute: #64748b;
+        --p1: #15803d; --p1-soft: #dcfce7; --p1-line: #86efac; --accent: #0d9488; --danger: #dc2626; --danger-soft: #fee2e2;
+        --radius: 14px; --shadow: 0 4px 12px rgba(15, 23, 42, .05);
+    }
+    :root[data-theme="dark"] {
+        color-scheme: dark; --bg: #0f1512; --card: #17201b; --hover: #1e2b23; --line: #2e3d35; --ink: #e8f0ec; --text: #c3cfc8; --mute: #92a39a;
+        --p1: #22c55e; --p1-soft: #14361f; --p1-line: #1f5a35; --accent: #2dd4bf; --danger: #f87171; --danger-soft: #3b1717; --shadow: 0 4px 12px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Twemoji Country Flags', 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding: 0 24px 48px; min-height: 100vh; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .wrap { max-width: 1080px; margin: 0 auto; }
+    [hidden] { display: none !important; }
+
+    .sticky-header { position: sticky; top: 0; z-index: 100; background: var(--bg); padding: 14px 0 12px; margin-bottom: 24px; border-bottom: 3px solid var(--p1); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h1 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); font-weight: 800; letter-spacing: -.025em; color: var(--ink); line-height: 1.15; }
+    .sub { font-size: .9rem; font-weight: 600; color: var(--mute); }
+    .icon-btn { background: var(--card); border: 2px solid var(--line); border-radius: 10px; font-size: 1.3rem; padding: 7px 11px; line-height: 1; color: var(--ink); box-shadow: var(--shadow); }
+    .icon-btn:hover { background: var(--hover); border-color: var(--p1); }
+
+    .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; box-shadow: var(--shadow); }
+    .box h2 { font-size: 1.1rem; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+    .note { font-size: .84rem; color: var(--mute); margin-bottom: 14px; }
+    .msg { font-size: .84rem; font-weight: 600; border-radius: 8px; padding: 8px 12px; margin-top: 12px; }
+    .msg.err { background: var(--danger-soft); color: var(--danger); }
+    .msg.ok { background: var(--p1-soft); color: var(--p1); }
+    .banner { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 10px; padding: 9px 14px; font-size: .84rem; font-weight: 600; margin-bottom: 16px; }
+    :root[data-theme="dark"] .banner { background: #3a2f10; color: #fcd34d; border-color: #5c4a14; }
+
+    /* Login */
+    .login-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    form { display: flex; flex-direction: column; gap: 10px; }
+    label { font-size: .78rem; font-weight: 700; color: var(--mute); display: flex; flex-direction: column; gap: 4px; }
+    input[type=email], input[type=password] { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; font-size: 16px; color: var(--ink); }
+    input:focus { border-color: var(--p1-line); outline: 3px solid rgba(13,148,136,.15); }
+    .btn { background: var(--p1); color: #fff; border: 2px solid var(--p1); border-radius: 10px; padding: 11px 18px; font-weight: 800; font-size: .95rem; }
+    .btn:hover { filter: brightness(.95); }
+    .btn:disabled { opacity: .6; cursor: wait; }
+    :root[data-theme="dark"] .btn { color: #052e16; }
+    .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: .85rem; }
+    .btn-ghost:hover { background: var(--hover); border-color: var(--p1); }
+    .link-btn { background: none; border: 0; color: var(--p1); font-weight: 700; font-size: .84rem; padding: 2px 0; align-self: flex-start; }
+    .link-btn:hover { text-decoration: underline; }
+
+    /* Flaggen ohne Login */
+    .flag-row { display: flex; flex-wrap: wrap; gap: 12px; }
+    .flag-chip { display: flex; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: 2.2rem; line-height: 1; }
+    .flag-empty { font-size: .84rem; color: var(--mute); }
+
+    /* Reise-Karten */
+    .trips { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .trip-card { display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit; background: var(--card); border: 1px solid var(--line); border-top: 5px solid var(--p1); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s, border-color .15s; }
+    .trip-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(15,23,42,.1); border-color: var(--p1-line); }
+    .trip-card.past { border-top-color: var(--line); opacity: .8; }
+    .trip-flags { font-size: 2.1rem; line-height: 1; display: flex; gap: 4px; }
+    .trip-title { font-size: 1.1rem; font-weight: 800; color: var(--ink); line-height: 1.25; }
+    .trip-dates { font-size: .85rem; font-weight: 600; color: var(--mute); }
+    .trip-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
+    .chip { font-size: .72rem; font-weight: 800; border-radius: 999px; padding: 3px 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+    .chip.status { background: var(--p1-soft); border-color: var(--p1-line); color: var(--p1); }
+    .chip.now { background: var(--p1); border-color: var(--p1); color: #fff; }
+    :root[data-theme="dark"] .chip.now { color: #052e16; }
+
+    .account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+    .account-who { font-size: .88rem; font-weight: 600; }
+    .account-who b { color: var(--ink); }
+    .account-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pw-form { margin-top: 14px; max-width: 360px; }
+
+    @media (max-width: 760px) {
+        body { padding: 0 10px 28px; }
+        .sticky-header { padding: 10px 0 8px; margin-bottom: 14px; }
+        .login-grid { grid-template-columns: 1fr; }
+        .box { padding: 16px; border-radius: 10px; }
+        .flag-chip { font-size: 1.8rem; padding: 8px 11px; }
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header class="sticky-header">
+        <div>
+            <h1>🧭 TravelBase</h1>
+            <div class="sub">Unsere Reiseplanungen an einem Ort</div>
+        </div>
+        <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
+    </header>
+
+    <div id="setupHint" class="banner" hidden>⚙️ Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</div>
+    <div id="offlineHint" class="banner" hidden>📴 Offline – du siehst den zuletzt geladenen Stand.</div>
+
+    <!-- Nicht angemeldet -->
+    <section id="viewLoggedOut" hidden>
+        <div class="login-grid">
+            <div class="box">
+                <h2>🔐 Anmelden</h2>
+                <p class="note">Melde dich mit deiner E-Mail und deinem Passwort an, um die Reisen zu sehen.</p>
+                <form id="loginForm">
+                    <label>E-Mail<input type="email" id="loginEmail" autocomplete="username" required></label>
+                    <label>Passwort<input type="password" id="loginPassword" autocomplete="current-password" required></label>
+                    <button class="btn" type="submit" id="loginBtn">Anmelden</button>
+                    <button class="link-btn" type="button" id="showReset">Passwort vergessen?</button>
+                </form>
+                <form id="resetForm" hidden>
+                    <label>E-Mail für den Link zum Zurücksetzen<input type="email" id="resetEmail" autocomplete="username" required></label>
+                    <button class="btn" type="submit">Link senden</button>
+                    <button class="link-btn" type="button" id="hideReset">← Zurück zur Anmeldung</button>
+                </form>
+                <div id="loginMsg" class="msg" hidden></div>
+            </div>
+            <div class="box">
+                <h2>🌍 Unsere Reisen</h2>
+                <p class="note">Details sind nur nach dem Anmelden sichtbar.</p>
+                <div class="flag-row" id="publicFlags"><span class="flag-empty">Lade …</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Neues Passwort nach Klick auf den E-Mail-Link -->
+    <section id="viewRecovery" hidden>
+        <div class="box">
+            <h2>🔑 Neues Passwort festlegen</h2>
+            <p class="note">Bitte gib dein neues Passwort ein (mind. 8 Zeichen).</p>
+            <form id="recoveryForm" class="pw-form">
+                <label>Neues Passwort<input type="password" id="recoveryPw" autocomplete="new-password" minlength="8" required></label>
+                <button class="btn" type="submit">Passwort speichern</button>
+            </form>
+            <div id="recoveryMsg" class="msg" hidden></div>
+        </div>
+    </section>
+
+    <!-- Angemeldet -->
+    <section id="viewLoggedIn" hidden>
+        <div class="trips" id="tripList"></div>
+        <div class="box">
+            <div class="account">
+                <div class="account-who">👤 Angemeldet als <b id="userEmail"></b></div>
+                <div class="account-actions">
+                    <button class="btn-ghost" id="togglePw" type="button">🔑 Passwort ändern</button>
+                    <button class="btn-ghost" id="logoutBtn" type="button">🚪 Abmelden</button>
+                </div>
+            </div>
+            <form id="pwForm" class="pw-form" hidden>
+                <label>Neues Passwort<input type="password" id="newPw" autocomplete="new-password" minlength="8" required></label>
+                <button class="btn" type="submit">Passwort speichern</button>
+            </form>
+            <div id="pwMsg" class="msg" hidden></div>
+        </div>
+    </section>
+</div>
+
+<script>
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const show = (el, on = true) => { el.hidden = !on; };
+    function msg(el, text, ok) { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); show(el, !!text); }
+
+    /* Hell/Dunkel */
+    function applyTheme(dark, save) {
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        $('#themeToggle').textContent = dark ? '☀️' : '🌙';
+        $('#themeToggle').setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
+        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#0f1512' : '#15803d';
+        if (save) { try { localStorage.setItem('tb_theme_v1', dark ? 'dark' : 'light'); } catch (e) {} }
+    }
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
+    $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);
+
+    /* Datums-Helfer */
+    const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+    const dayNum = iso => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5);
+    const fmtDate = iso => iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : '';
+    function tripStatus(t) {
+        if (!t.start_date) return { text: 'Datum offen', cls: 'status', past: false };
+        const now = dayNum(todayISO), s = dayNum(t.start_date), e = t.end_date ? dayNum(t.end_date) : s;
+        if (now < s) { const n = s - now; return { text: n === 1 ? 'Morgen geht’s los' : `In ${n} Tagen`, cls: 'status', past: false }; }
+        if (now <= e) return { text: `Unterwegs · Tag ${now - s + 1} von ${e - s + 1}`, cls: 'now', past: false };
+        return { text: 'Abgeschlossen', cls: '', past: true };
+    }
+    const ROLE_LABEL = { admin: '👑 Admin', member: '🧳 Mitreisend', guest: '👀 Gast' };
+
+    /* Ansicht: nicht angemeldet */
+    async function renderLoggedOut() {
+        show($('#viewLoggedIn'), false); show($('#viewRecovery'), false); show($('#viewLoggedOut'));
+        const flags = await TB.publicFlags();
+        $('#publicFlags').innerHTML = flags.length
+            ? flags.map(f => `<span class="flag-chip">${f.map(esc).join('')}</span>`).join('')
+            : '<span class="flag-empty">Noch keine Reisen eingetragen.</span>';
+    }
+
+    /* Ansicht: angemeldet */
+    async function renderLoggedIn(session) {
+        show($('#viewLoggedOut'), false); show($('#viewRecovery'), false); show($('#viewLoggedIn'));
+        $('#userEmail').textContent = session.user.email;
+        const next = new URLSearchParams(location.search).get('next');
+        if (next && /^[a-z0-9-]+\/?$/i.test(next)) { location.replace(next.replace(/\/?$/, '/')); return; }
+        let res;
+        try { res = await TB.myTrips(); } catch (e) { $('#tripList').innerHTML = `<div class="box">${esc(TB.errorText(e))}</div>`; return; }
+        show($('#offlineHint'), res.offline);
+        const list = res.list.map(t => ({ ...t, st: tripStatus(t) }))
+            .sort((a, b) => (a.st.past - b.st.past) || (a.st.past ? (b.start_date || '').localeCompare(a.start_date || '') : (a.start_date || '9').localeCompare(b.start_date || '9')) || a.sort_order - b.sort_order);
+        $('#tripList').innerHTML = list.length ? list.map(t => `
+            <a class="trip-card${t.st.past ? ' past' : ''}" href="${encodeURIComponent(t.slug)}/">
+                <div class="trip-flags">${(t.flags || []).map(esc).join('')}</div>
+                <div class="trip-title">${esc(t.title)}</div>
+                <div class="trip-dates">📅 ${fmtDate(t.start_date)}${t.end_date ? ' – ' + fmtDate(t.end_date) : ''}</div>
+                <div class="trip-meta">
+                    <span class="chip ${t.st.cls}">${esc(t.st.text)}</span>
+                    <span class="chip">${ROLE_LABEL[t.role] || esc(t.role)}</span>
+                </div>
+            </a>`).join('')
+            : '<div class="box"><h2>Noch keine Reisen</h2><p class="note" style="margin:0">Du bist noch keiner Reise zugeordnet. Bitte den Admin, dich freizuschalten.</p></div>';
+    }
+
+    let recovering = /type=recovery/.test(location.hash);
+    function renderRecovery() { show($('#viewLoggedOut'), false); show($('#viewLoggedIn'), false); show($('#viewRecovery')); }
+
+    async function route() {
+        if (recovering) return renderRecovery();
+        if (!TB.configured) { show($('#setupHint')); return renderLoggedOut(); }
+        const session = await TB.getSession();
+        return session ? renderLoggedIn(session) : renderLoggedOut();
+    }
+
+    /* Login */
+    $('#loginForm').onsubmit = async e => {
+        e.preventDefault();
+        const btn = $('#loginBtn'); btn.disabled = true; msg($('#loginMsg'), '');
+        try { await TB.signIn($('#loginEmail').value.trim(), $('#loginPassword').value); $('#loginPassword').value = ''; await route(); }
+        catch (err) { msg($('#loginMsg'), TB.errorText(err)); }
+        finally { btn.disabled = false; }
+    };
+    $('#showReset').onclick = () => { show($('#loginForm'), false); show($('#resetForm')); $('#resetEmail').value = $('#loginEmail').value; msg($('#loginMsg'), ''); };
+    $('#hideReset').onclick = () => { show($('#resetForm'), false); show($('#loginForm')); msg($('#loginMsg'), ''); };
+    $('#resetForm').onsubmit = async e => {
+        e.preventDefault();
+        try { await TB.resetPassword($('#resetEmail').value.trim()); msg($('#loginMsg'), '📧 Falls die Adresse bekannt ist, kommt gleich eine E-Mail mit einem Link.', true); }
+        catch (err) { msg($('#loginMsg'), TB.errorText(err)); }
+    };
+
+    /* Konto */
+    $('#logoutBtn').onclick = async () => { await TB.signOut(); history.replaceState(null, '', location.pathname); route(); };
+    $('#togglePw').onclick = () => { show($('#pwForm'), $('#pwForm').hidden); msg($('#pwMsg'), ''); };
+    $('#pwForm').onsubmit = async e => {
+        e.preventDefault();
+        try { await TB.updatePassword($('#newPw').value); $('#newPw').value = ''; show($('#pwForm'), false); msg($('#pwMsg'), '✅ Passwort geändert.', true); }
+        catch (err) { msg($('#pwMsg'), TB.errorText(err)); }
+    };
+    $('#recoveryForm').onsubmit = async e => {
+        e.preventDefault();
+        try { await TB.updatePassword($('#recoveryPw').value); recovering = false; history.replaceState(null, '', location.pathname); route(); }
+        catch (err) { msg($('#recoveryMsg'), TB.errorText(err)); }
+    };
+
+    /* Klick auf Passwort-Link aus der E-Mail */
+    TB.onAuth((ev) => {
+        if (ev === 'PASSWORD_RECOVERY') { recovering = true; renderRecovery(); }
+    });
+
+    route();
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+</script>
+</body></html>
