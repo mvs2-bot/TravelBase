@@ -106,6 +106,30 @@
         if (error) throw error;
     }
 
+    /* Backup (nur Admins): alle Tabellen der Reisen, in denen der Benutzer Admin ist, als ein JSON-Objekt.
+       Läuft mit dem Login des Admins – die Zugriffsregeln der Datenbank gelten also wie sonst auch. */
+    const BACKUP_TABLES = ['trips', 'trip_sections', 'trip_members', 'todos', 'packlist_items'];
+    async function exportBackup() {
+        const session = await getSession();
+        if (!session) throw new Error('Bitte zuerst anmelden.');
+        const mine = check(await sb.from('trip_members').select('trip_id, role').eq('user_id', session.user.id));
+        const ids = mine.filter(r => r.role === 'admin').map(r => r.trip_id);
+        if (!ids.length) throw new Error('Du bist bei keiner Reise Admin.');
+        const tables = {}, errors = {};
+        for (const t of BACKUP_TABLES) {
+            try {
+                const rows = [];
+                for (let from = 0; ; from += 1000) {
+                    const page = check(await sb.from(t).select('*').in(t === 'trips' ? 'id' : 'trip_id', ids).range(from, from + 999));
+                    rows.push(...page);
+                    if (page.length < 1000) break;
+                }
+                tables[t] = rows;
+            } catch (e) { errors[t] = String(e && (e.message || e)); }
+        }
+        return { app: 'TravelBase', version: 1, exportedAt: new Date().toISOString(), exportedBy: session.user.email, tables, errors };
+    }
+
     /* Deutsche Fehlermeldungen für die häufigsten Fälle */
     function errorText(e) {
         const m = String(e && (e.message || e));
@@ -117,6 +141,6 @@
         return m;
     }
 
-    window.TB = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText,
+    window.TB = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();
