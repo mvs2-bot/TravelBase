@@ -30,7 +30,7 @@
         if (!res) { location.replace('../?next=' + encodeURIComponent(TRIP_SLUG)); return false; }
         if (res.denied) { gate('<h2>🔒 Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>'); return false; }
         DATA = res.data; ROLE = res.role; TRIP_ID = res.trip.id;
-        $('#tbWho').textContent = '👤 ' + res.user.email;
+        $('#tbWho').textContent = '👤 ' + (res.user.name || res.user.email);
         $('#tbOffline').hidden = !res.offline;
         return true;
     }

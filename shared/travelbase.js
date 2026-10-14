@@ -23,6 +23,20 @@
         try { return (await sb.auth.getSession()).data.session; } catch (e) { return null; }
     }
 
+    /* Anzeigename aus der Tabelle profiles (display_name); ohne Eintrag oder offline → E-Mail */
+    async function displayName(session) {
+        if (!session) return '';
+        const key = 'name_' + session.user.id;
+        try {
+            const row = check(await sb.from('profiles').select('display_name').eq('id', session.user.id).maybeSingle());
+            const name = (row && row.display_name || '').trim();
+            cacheSet(key, name);
+            return name || session.user.email;
+        } catch (e) {
+            return cacheGet(key) || session.user.email;
+        }
+    }
+
     /* Flaggen aller Reisen – auch ohne Login sichtbar (nur Flaggen, keine Details) */
     async function publicFlags() {
         if (!sb) return cacheGet('flags') || [];
@@ -67,13 +81,14 @@
             const trip = check(await sb.from('trips').select('id, slug, title, flags, start_date, end_date').eq('slug', slug).maybeSingle());
             if (!trip) return { denied: true };
             const mem = check(await sb.from('trip_members').select('role').eq('trip_id', trip.id).eq('user_id', session.user.id).maybeSingle());
-            const secs = check(await sb.from('trip_sections').select('key, data').eq('trip_id', trip.id));
+            const [secsRes, name] = await Promise.all([sb.from('trip_sections').select('key, data').eq('trip_id', trip.id), displayName(session)]);
+            const secs = check(secsRes);
             const order = { guest: 0, member: 1, admin: 2 };
             secs.sort((a, b) => (order[a.key] ?? 9) - (order[b.key] ?? 9));
             const result = {
                 trip, role: mem ? mem.role : 'guest',
                 data: Object.assign({}, ...secs.map(s => s.data)),
-                user: { email: session.user.email }, userId: session.user.id, savedAt: Date.now()
+                user: { email: session.user.email, name }, userId: session.user.id, savedAt: Date.now()
             };
             cacheSet('trip_' + slug, result);
             return { ...result, offline: false };
@@ -141,6 +156,6 @@
         return m;
     }
 
-    window.TB = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
+    window.TB = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();

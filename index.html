@@ -218,7 +218,8 @@
     /* Ansicht: angemeldet */
     async function renderLoggedIn(session) {
         show($('#viewLoggedOut'), false); show($('#viewRecovery'), false); show($('#viewLoggedIn'));
-        $('#userEmail').textContent = session.user.email;
+        $('#userEmail').textContent = TB.cacheGet('name_' + session.user.id) || session.user.email;
+        TB.displayName(session).then(n => { $('#userEmail').textContent = n; });
         const next = new URLSearchParams(location.search).get('next');
         if (next && /^[a-z0-9-]+\/?$/i.test(next)) { location.replace(next.replace(/\/?$/, '/')); return; }
         let res;
