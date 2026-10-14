@@ -219,7 +219,8 @@
     async function renderLoggedIn(session) {
         show($('#viewLoggedOut'), false); show($('#viewRecovery'), false); show($('#viewLoggedIn'));
         $('#userEmail').textContent = TB.cacheGet('name_' + session.user.id) || session.user.email;
-        TB.displayName(session).then(n => { $('#userEmail').textContent = n; });
+        /* Schutz: falls der Browser noch eine ältere travelbase.js ohne displayName hat */
+        if (TB.displayName) TB.displayName(session).then(n => { $('#userEmail').textContent = n; }).catch(() => {});
         const next = new URLSearchParams(location.search).get('next');
         if (next && /^[a-z0-9-]+\/?$/i.test(next)) { location.replace(next.replace(/\/?$/, '/')); return; }
         let res;
