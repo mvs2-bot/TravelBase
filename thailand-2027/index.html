@@ -620,7 +620,8 @@
                     <h2>✅ Reise To-Do &amp; Vorbereitungen</h2>
                     <span id="todoProgress" style="font-size:.8rem;font-weight:700;color:var(--p1)">0/0 erledigt</span>
                 </div>
-                <p class="note">Wichtige Erledigungen für Einreise, Gesundheit &amp; Dokumente.</p>
+                <p class="note">Wichtige Erledigungen für Einreise, Gesundheit &amp; Dokumente – gemeinsame Liste für alle Mitreisenden (Änderungen der anderen nach dem Neuladen sichtbar).</p>
+                <div class="lists-offline tb-banner" hidden>📴 Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</div>
                 <ul class="todo-list" id="todoList"></ul>
                 <div class="pack-add-form" style="margin-top:16px">
                     <input type="text" id="newTodoText" placeholder="Neuer To-Do Punkt...">
@@ -642,7 +643,7 @@
                         <h2>🚨 Infos &amp; Notfall</h2>
                         <p class="note">Wichtige Notrufnummern, Botschaften, SIM-Karten und nützliche Apps findest du ab sofort zentral auf unserer separaten QuickTools-Seite:</p>
                         <div style="text-align: center; margin: 24px 0;">
-                            <a href="https://mvs2-bot.github.io/QuickTools/Thailand/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🔗 Zu den Infos &amp; Notfall-Tools ↗</a>
+                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🔗 Zu den Infos &amp; Notfall-Tools ↗</a>
                         </div>
                     </div>
         </div>
@@ -672,6 +673,7 @@
                         <button class="btn-action" style="color:var(--danger)" onclick="resetPacklist()">🔄 Reset</button>
                     </div>
                 </div>
+                <div class="lists-offline tb-banner" hidden>📴 Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</div>
                 <div class="pack-summary">
                     <div>
                         <span class="pack-stat-val" id="packWeightKg">0.00 kg</span>
@@ -774,7 +776,7 @@
                         <h2>💰 Geld &amp; Währung</h2>
                         <p class="note">Der Währungsrechner und alle Details zu Bargeld und Zahlung sind nun direkt über unsere zentrale QuickTools-Seite erreichbar:</p>
                         <div style="text-align: center; margin: 32px 0;">
-                            <a href="https://mvs2-bot.github.io/QuickTools/Thailand/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🧮 Zum Währungsrechner ↗</a>
+                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/#currency" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🧮 Zum Währungsrechner ↗</a>
                         </div>
                     </div>
                 </div>
@@ -856,6 +858,7 @@
             if (!res) { location.replace('../?next=' + encodeURIComponent(TRIP_SLUG)); return null; }
             if (res.denied) { gate('<h2>🔒 Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>'); return null; }
             ROLE = res.role;
+            TRIP_ID = res.trip.id;
             $('#tbWho').textContent = '👤 ' + res.user.email;
             $('#tbOffline').hidden = !res.offline;
             return res.data;
@@ -1196,36 +1199,61 @@
             $('#workDaysWien').innerText = `${countWien} Tage`;
         }
 
-        /* 7. To-Do Liste Verwaltung */
+        /* 7. Gemeinsame Listen (To-Dos & Packlisten) über Supabase
+           - Laden beim Öffnen der Seite; Änderungen anderer sieht man nach dem Neuladen
+           - Beim allerersten Öffnen wird der bisherige Stand dieses Geräts einmalig übernommen
+           - Offline: letzter Stand lesbar, Bearbeiten gesperrt */
+        let TRIP_ID = null, LISTS_ONLINE = false;
+        const LIST_CACHE = k => `lists_${TRIP_SLUG}_${k}`;
+        const q = async p => { const { data, error } = await p; if (error) throw error; return data; };
+        function listsEditable() {
+            if (LISTS_ONLINE && navigator.onLine) return true;
+            alert('📴 Offline – Änderungen an To-Dos und Packliste sind gerade nicht möglich. Bitte später erneut versuchen.');
+            return false;
+        }
+        /* Schreibt in Supabase; bei Fehler Meldung + frischen Stand laden */
+        async function dbWrite(fn, reload) {
+            try { await fn(); }
+            catch (e) { alert('⚠️ Speichern fehlgeschlagen: ' + TB.errorText(e)); await reload(); }
+        }
+        function setListsOffline(on) {
+            LISTS_ONLINE = !on;
+            document.querySelectorAll('.lists-offline').forEach(el => el.hidden = !on);
+        }
+
+        /* --- To-Dos --- */
         const TODO_KEY = 'thailand_todos_v1', TODO_ADDED_KEY = 'thailand_todos_added_v1';
         let todoList = [];
 
-        function loadTodos() {
-            const t = DATA.todos;
-            const saved = store.get(TODO_KEY);
-            todoList = saved || t.defaults.map(x => ({ ...x }));
-            let changed = !saved;
-            // Umbenannte Standard-To-Dos auch in gespeicherten Listen aktualisieren
-            todoList.forEach(x => {
-                if (t.renames[x.text]) { x.text = t.renames[x.text]; changed = true; }
-            });
-            // Neue Standard-To-Dos einmalig ergänzen (auch wenn bereits Daten gespeichert sind)
+        /* Bisheriger Stand dieses Geräts (alte Seite) bzw. Vorlage – nur für die einmalige Übernahme */
+        function localTodoSeed() {
+            const t = DATA.todos || { defaults: [], extras: [], renames: {} };
+            const list = (store.get(TODO_KEY) || t.defaults).map(x => ({ ...x }));
+            list.forEach(x => { if (t.renames && t.renames[x.text]) x.text = t.renames[x.text]; });
             const added = store.get(TODO_ADDED_KEY, []);
-            t.extras.forEach(td => {
-                if (added.includes(td.text)) return;
-                if (!todoList.some(x => x.text === td.text)) todoList.push({ ...td });
-                added.push(td.text);
-                changed = true;
-            });
-            if (changed) {
-                store.set(TODO_ADDED_KEY, added);
-                store.set(TODO_KEY, todoList);
-            }
-            renderTodos();
+            (t.extras || []).forEach(td => { if (!added.includes(td.text) && !list.some(x => x.text === td.text)) list.push({ ...td }); });
+            return list.map(({ text, tag, done }) => ({ text, tag, done: !!done }));
         }
 
-        function saveTodos() {
-            store.set(TODO_KEY, todoList);
+        async function fetchTodos() {
+            return q(TB.sb.from('todos').select('id, text, tag, done, sort_order').eq('trip_id', TRIP_ID).order('sort_order').order('created_at'));
+        }
+
+        async function loadTodos() {
+            try {
+                let rows = await fetchTodos();
+                if (!rows.length) {
+                    const n = await q(TB.sb.rpc('seed_todos', { p_trip: TRIP_ID, p_items: localTodoSeed() }));
+                    if (n) rows = await fetchTodos();
+                }
+                todoList = rows;
+                TB.cacheSet(LIST_CACHE('todos'), rows);
+                setListsOffline(false);
+            } catch (e) {
+                todoList = TB.cacheGet(LIST_CACHE('todos')) || [];
+                setListsOffline(true);
+                if (!TB.isNetErr(e)) console.error('To-Dos laden', e);
+            }
             renderTodos();
         }
 
@@ -1246,9 +1274,10 @@
                         <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTodo(${idx})">
                         <span></span>
                     </label>
-                    <span class="todo-tag ${tagClass}">${item.tag}</span>
+                    <span class="todo-tag ${tagClass}"></span>
                     <button style="border:none;background:none;margin-left:8px;cursor:pointer" onclick="deleteTodo(${idx})">🗑️</button>`;
                 li.querySelector('label span').textContent = item.text;
+                li.querySelector('.todo-tag').textContent = item.tag;
                 ul.appendChild(li);
             });
             const pct = todoList.length > 0 ? Math.round((doneCount / todoList.length) * 100) : 0;
@@ -1256,31 +1285,46 @@
         }
 
         function toggleTodo(idx) {
-            todoList[idx].done = !todoList[idx].done;
-            saveTodos();
+            const item = todoList[idx];
+            if (!listsEditable()) { renderTodos(); return; }
+            item.done = !item.done;
+            renderTodos();
+            dbWrite(() => q(TB.sb.from('todos').update({ done: item.done }).eq('id', item.id)), loadTodos);
         }
 
         function addTodoItem() {
             const text = $('#newTodoText').value.trim();
             if (!text) return alert("Bitte Text eingeben!");
+            if (!listsEditable()) return;
             const tag = $('#newTodoTag').value;
-            todoList.push({ text, tag, done: false });
+            const sort_order = todoList.reduce((m, x) => Math.max(m, x.sort_order || 0), -1) + 1;
             $('#newTodoText').value = '';
-            saveTodos();
+            dbWrite(async () => {
+                const row = await q(TB.sb.from('todos').insert({ trip_id: TRIP_ID, text, tag, done: false, sort_order }).select('id, text, tag, done, sort_order').single());
+                todoList.push(row);
+                TB.cacheSet(LIST_CACHE('todos'), todoList);
+                renderTodos();
+            }, loadTodos);
         }
 
         function deleteTodo(idx) {
+            const item = todoList[idx];
+            if (!listsEditable()) return;
+            if (!confirm(`„${item.text}“ löschen?`)) return;
             todoList.splice(idx, 1);
-            saveTodos();
+            renderTodos();
+            dbWrite(() => q(TB.sb.from('todos').delete().eq('id', item.id)), loadTodos);
         }
 
-        /* 8. Interaktive Packliste */
+        /* --- Packlisten --- */
         const PACK_KEY = p => `thailand_packlist_${p}_v9`;
+        const PACK_FIELDS = 'id, person, cat, name, qty, weight, type, loc, packed, sort_order';
         const personName = () => (DATA.packNames || {})[currentPerson] || currentPerson;
-        const clone = o => JSON.parse(JSON.stringify(o));
         const toItems = raw => raw.map(i => ({ cat: i[0], name: i[1], qty: i[2], weight: i[3], type: i[4], loc: i[5], packed: true }));
+        const packPersons = () => Object.keys(DATA.packlists || {});
         let packlists = { stefan: [], ines: [] };
-        const defaultPack = p => toItems(DATA.packlists[p]);
+        const defaultPack = p => toItems((DATA.packlists || {})[p] || []);
+        const seedItem = ({ cat, name, qty, weight, type, loc, packed }) => ({ cat, name, qty, weight, type, loc, packed });
 
         function switchPerson(person) {
             currentPerson = person;
@@ -1290,22 +1334,51 @@
             renderPacklist();
         }
 
-        function loadPacklist() {
-            packlists.stefan = store.get(PACK_KEY('stefan')) || defaultPack('stefan');
-            packlists.ines = store.get(PACK_KEY('ines')) || defaultPack('ines');
+        async function fetchPack() {
+            return q(TB.sb.from('packlist_items').select(PACK_FIELDS).eq('trip_id', TRIP_ID).order('sort_order').order('name'));
+        }
+
+        async function loadPacklist() {
+            try {
+                let rows = await fetchPack();
+                let seeded = 0;
+                for (const p of packPersons()) {
+                    if (rows.some(r => r.person === p)) continue;
+                    const local = (store.get(PACK_KEY(p)) || defaultPack(p)).map(seedItem);
+                    seeded += await q(TB.sb.rpc('seed_packlist', { p_trip: TRIP_ID, p_person: p, p_items: local }));
+                }
+                if (seeded) rows = await fetchPack();
+                packlists = {};
+                packPersons().forEach(p => packlists[p] = rows.filter(r => r.person === p));
+                TB.cacheSet(LIST_CACHE('pack'), packlists);
+                setListsOffline(false);
+            } catch (e) {
+                packlists = TB.cacheGet(LIST_CACHE('pack')) || { stefan: [], ines: [] };
+                setListsOffline(true);
+                if (!TB.isNetErr(e)) console.error('Packliste laden', e);
+            }
             renderPacklist();
             renderAnalysis();
         }
 
-        function savePacklist() {
-            store.set(PACK_KEY(currentPerson), packlists[currentPerson]);
+        /* Nach lokaler Änderung: neu zeichnen + Zwischenspeicher aktualisieren */
+        function packChanged() {
+            TB.cacheSet(LIST_CACHE('pack'), packlists);
             renderPacklist();
             renderAnalysis();
+        }
+        function updateItem(item, fields) {
+            if (!listsEditable()) { renderPacklist(); return; }
+            Object.assign(item, fields);
+            packChanged();
+            dbWrite(() => q(TB.sb.from('packlist_items').update(fields).eq('id', item.id)), loadPacklist);
         }
 
         function setAllPacked(status) {
+            if (!listsEditable()) return;
             packlists[currentPerson].forEach(i => i.packed = status);
-            savePacklist();
+            packChanged();
+            dbWrite(() => q(TB.sb.from('packlist_items').update({ packed: status }).eq('trip_id', TRIP_ID).eq('person', currentPerson)), loadPacklist);
         }
 
         function exportPacklistCSV() {
@@ -1315,22 +1388,27 @@
             });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: 'text/csv;charset=utf-8;' }));
-            a.download = `packliste_${currentPerson}_2027.csv`;
+            a.download = `packliste_${currentPerson}_${TRIP_SLUG}.csv`;
             a.click();
         }
 
         function resetPacklist() {
-            if (confirm(`Packliste von ${personName()} zurücksetzen?`)) {
-                packlists[currentPerson] = defaultPack(currentPerson);
-                savePacklist();
-            }
+            if (!listsEditable()) return;
+            if (!confirm(`Packliste von ${personName()} auf die Vorlage zurücksetzen? Eigene Änderungen gehen für alle verloren.`)) return;
+            const person = currentPerson;
+            dbWrite(async () => {
+                await q(TB.sb.from('packlist_items').delete().eq('trip_id', TRIP_ID).eq('person', person));
+                const rows = defaultPack(person).map((it, i) => ({ ...seedItem(it), trip_id: TRIP_ID, person, sort_order: i }));
+                if (rows.length) await q(TB.sb.from('packlist_items').insert(rows));
+                await loadPacklist();
+            }, loadPacklist);
         }
 
         function renderPacklist() {
             const tbody = $('#packTableBody');
             if (!tbody) return;
             tbody.innerHTML = '';
-            const list = packlists[currentPerson], categories = {};
+            const list = packlists[currentPerson] || [], categories = {};
             let packG = 0, wornG = 0, packedCount = 0;
             list.forEach((item, index) => {
                 item._origIndex = index;
@@ -1350,7 +1428,8 @@
             const sel = (val, opts) => opts.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o}</option>`).join('');
             Object.keys(categories).forEach(cat => {
                 const catRow = document.createElement('tr');
-                catRow.innerHTML = `<td colspan="8" class="pack-table-cat">${cat}</td>`;
+                catRow.innerHTML = `<td colspan="8" class="pack-table-cat"></td>`;
+                catRow.firstChild.textContent = cat;
                 tbody.appendChild(catRow);
                 categories[cat].forEach(item => {
                     const idx = item._origIndex, total = (item.weight || 0) * (item.qty || 1), tr = document.createElement('tr');
@@ -1358,7 +1437,7 @@
                         <td style="text-align:center">
                             <input type="checkbox" ${item.packed ? 'checked' : ''} onchange="togglePacked(${idx})" style="accent-color:var(--p1);width:14px;height:14px;cursor:pointer">
                         </td>
-                        <td><strong style="color:${item.packed ? 'var(--mute)' : 'var(--ink)'};${item.packed ? 'text-decoration:line-through;' : ''}">${item.name}</strong></td>
+                        <td><strong style="color:${item.packed ? 'var(--mute)' : 'var(--ink)'};${item.packed ? 'text-decoration:line-through;' : ''}"></strong></td>
                         <td><select class="table-select ${item.type === 'Am Körper' ? 'select-am-koerper' : ''}" onchange="changeType(${idx}, this.value)">${sel(item.type, ['Basis', 'Am Körper', 'Verbrauch'])}</select></td>
                         <td><select class="table-select" onchange="changeLoc(${idx}, this.value)">${sel(item.loc, ['Aufgabegepäck', 'Handgepäck', 'Umhängetasche', 'Am Körper'])}</select></td>
                         <td style="text-align:center">
@@ -1372,65 +1451,66 @@
                             <button style="border:none;background:none" onclick="editPackItem(${idx})">✏</button>
                             <button style="border:none;background:none" onclick="deletePackItem(${idx})">🗑️</button>
                         </td>`;
+                    tr.querySelector('td:nth-child(2) strong').textContent = item.name;
                     tbody.appendChild(tr);
                 });
             });
         }
 
         function togglePacked(idx) {
-            packlists[currentPerson][idx].packed = !packlists[currentPerson][idx].packed;
-            savePacklist();
+            const i = packlists[currentPerson][idx];
+            updateItem(i, { packed: !i.packed });
         }
 
         function changeQty(idx, d) {
             const i = packlists[currentPerson][idx];
-            i.qty = Math.max(1, (i.qty || 1) + d);
-            savePacklist();
+            updateItem(i, { qty: Math.max(1, (i.qty || 1) + d) });
         }
 
-        function changeType(idx, v) {
-            packlists[currentPerson][idx].type = v;
-            savePacklist();
-        }
-
-        function changeLoc(idx, v) {
-            packlists[currentPerson][idx].loc = v;
-            savePacklist();
-        }
+        function changeType(idx, v) { updateItem(packlists[currentPerson][idx], { type: v }); }
+        function changeLoc(idx, v) { updateItem(packlists[currentPerson][idx], { loc: v }); }
 
         function addPackItem() {
             const name = $('#newItemName').value.trim();
             if (!name) return alert("Bitte Name eingeben!");
-            packlists[currentPerson].push({
-                name,
+            if (!listsEditable()) return;
+            const person = currentPerson, list = packlists[person];
+            const row = {
+                trip_id: TRIP_ID, person, name,
                 cat: $('#newItemCat').value,
                 weight: parseInt($('#newItemWeight').value) || 0,
                 qty: 1,
                 type: $('#newItemType').value,
                 loc: $('#newItemLoc').value,
-                packed: true
-            });
+                packed: true,
+                sort_order: list.reduce((m, x) => Math.max(m, x.sort_order || 0), -1) + 1
+            };
             $('#newItemName').value = '';
             $('#newItemWeight').value = '';
-            savePacklist();
+            dbWrite(async () => {
+                const saved = await q(TB.sb.from('packlist_items').insert(row).select(PACK_FIELDS).single());
+                packlists[person].push(saved);
+                packChanged();
+            }, loadPacklist);
         }
 
         function deletePackItem(idx) {
-            if (confirm(`"${packlists[currentPerson][idx].name}" löschen?`)) {
-                packlists[currentPerson].splice(idx, 1);
-                savePacklist();
-            }
+            const item = packlists[currentPerson][idx];
+            if (!listsEditable()) return;
+            if (!confirm(`"${item.name}" löschen?`)) return;
+            packlists[currentPerson].splice(idx, 1);
+            packChanged();
+            dbWrite(() => q(TB.sb.from('packlist_items').delete().eq('id', item.id)), loadPacklist);
         }
 
         function editPackItem(idx) {
             const item = packlists[currentPerson][idx];
+            if (!listsEditable()) return;
             const name = prompt("Name des Gegenstands:", item.name);
             if (name === null) return;
             const w = prompt("Gewicht in Gramm (Stück):", item.weight);
             if (w === null) return;
-            item.name = name.trim() || item.name;
-            item.weight = parseInt(w) || 0;
-            savePacklist();
+            updateItem(item, { name: name.trim() || item.name, weight: parseInt(w) || 0 });
         }
 
         /* 9. Gewichtsanalyse & Chart.js Diagramme (nur eingepackte Gegenstände, wie oben in der Zusammenfassung) */

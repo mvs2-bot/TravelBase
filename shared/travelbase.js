@@ -117,6 +117,6 @@
         return m;
     }
 
-    window.TB = { sb, configured, getSession, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText,
+    window.TB = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();
