@@ -19,6 +19,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
     <script src="shared/config.js"></script>
     <script src="shared/travelbase.js"></script>
+    <script src="shared/profile.js"></script>
 <style>
     :root {
         --bg: #f4f7f4; --card: #fff; --hover: #f0fdf4; --line: #cbd5e1; --ink: #0f172a; --text: #334155; --mute: #64748b;
@@ -41,6 +42,7 @@
     h1 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); font-weight: 800; letter-spacing: -.025em; color: var(--ink); line-height: 1.15; }
     .sub { font-size: .9rem; font-weight: 600; color: var(--mute); }
     .icon-btn { background: var(--card); border: 2px solid var(--line); border-radius: 10px; font-size: 1.3rem; padding: 7px 11px; line-height: 1; color: var(--ink); box-shadow: var(--shadow); }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
     .icon-btn:hover { background: var(--hover); border-color: var(--p1); }
 
     .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; box-shadow: var(--shadow); }
@@ -108,7 +110,10 @@
             <h1>🧭 TravelBase</h1>
             <div class="sub">Unsere Reiseplanungen an einem Ort</div>
         </div>
-        <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
+        <div class="header-actions">
+            <button id="tbProfileBtn" class="icon-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
+            <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
+        </div>
     </header>
 
     <div id="setupHint" class="banner" hidden>⚙️ Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</div>
@@ -159,18 +164,11 @@
         <div class="trips" id="tripList"></div>
         <div class="box">
             <div class="account">
-                <div class="account-who">👤 Angemeldet als <b id="userEmail"></b></div>
+                <div class="account-who">Angemeldet als <b id="userEmail"></b></div>
                 <div class="account-actions">
                     <button class="btn-ghost" id="backupBtn" type="button" hidden>💾 Backup herunterladen</button>
-                    <button class="btn-ghost" id="togglePw" type="button">🔑 Passwort ändern</button>
-                    <button class="btn-ghost" id="logoutBtn" type="button">🚪 Abmelden</button>
                 </div>
             </div>
-            <form id="pwForm" class="pw-form" hidden>
-                <label>Neues Passwort<input type="password" id="newPw" autocomplete="new-password" minlength="8" required></label>
-                <button class="btn" type="submit">Passwort speichern</button>
-            </form>
-            <div id="pwMsg" class="msg" hidden></div>
             <div id="backupMsg" class="msg" hidden></div>
         </div>
     </section>
@@ -269,7 +267,6 @@
     };
 
     /* Konto */
-    $('#logoutBtn').onclick = async () => { await TB.signOut(); history.replaceState(null, '', location.pathname); route(); };
     $('#backupBtn').onclick = async () => {
         const btn = $('#backupBtn'); btn.disabled = true; msg($('#backupMsg'), '');
         try {
@@ -282,12 +279,6 @@
             msg($('#backupMsg'), fail.length ? `⚠️ Backup gespeichert (${n}), aber nicht lesbar: ${fail.join(', ')}` : `✅ Backup gespeichert (${n}).`, !fail.length);
         } catch (err) { msg($('#backupMsg'), TB.errorText(err)); }
         finally { btn.disabled = false; }
-    };
-    $('#togglePw').onclick = () => { show($('#pwForm'), $('#pwForm').hidden); msg($('#pwMsg'), ''); };
-    $('#pwForm').onsubmit = async e => {
-        e.preventDefault();
-        try { await TB.updatePassword($('#newPw').value); $('#newPw').value = ''; show($('#pwForm'), false); msg($('#pwMsg'), '✅ Passwort geändert.', true); }
-        catch (err) { msg($('#pwMsg'), TB.errorText(err)); }
     };
     $('#recoveryForm').onsubmit = async e => {
         e.preventDefault();
