@@ -413,10 +413,13 @@
     .tb-actions { display: flex; gap: 8px; }
     .tb-act { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-weight: 700; font-size: .82rem; color: var(--text); text-decoration: none; }
     .tb-act:hover { background: var(--hover); border-color: var(--p1); }
-    body.tb-guest .tabs .tab:not([data-t="mapview"]), body.tb-guest .pop-btn:not([data-t="mapview"]):not([data-t="imprint"]) { display: none; }
+    body.tb-guest .tabs .tab:not([data-t="mapview"]):not(.tab-menu), body.tb-guest .pop-btn:not([data-t="mapview"]):not([data-t="imprint"]) { display: none; }
     body.tb-guest .tabs { grid-template-columns: 1fr; }
     /* Buttons oben rechts (Profil, Hell/Dunkel, Menü): auf allen Seiten gleich groß wie auf der Übersicht */
     .header-actions > .burger-btn { width: 48px; height: 42px; padding: 0; font-size: 1.3rem; border-width: 2px; display: inline-flex; align-items: center; justify-content: center; }
+        /* Menü-Button in der Schnellauswahl (ersetzt dort „Infos & mehr“) */
+    .tab.tab-menu span { font-size: 1.6rem; line-height: 1; }
+    body.tb-guest .tabs { grid-template-columns: 1fr 1fr; }
     </style>
 
 <!-- PATCH: PWA -->
@@ -438,9 +441,8 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <button id="tbProfileBtn" class="burger-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
                     <button id="themeToggleHdr" class="burger-btn theme-toggle" type="button" aria-label="Zum dunklen Modus wechseln" title="Dunklen Modus aktivieren">🌙</button>
-                    <button id="menuBurger" class="burger-btn" aria-label="Menü öffnen">☰</button>
+                    <button id="tbProfileBtn" class="burger-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
                 </div>
             </header>
             
@@ -450,7 +452,7 @@
                 <button class="tab" data-t="thailand"><span>🇹🇭</span>Tagesplan<br>Thailand</button>
                 <button class="tab" data-t="srilanka"><span>🇱🇰</span>Tagesplan<br>Sri Lanka</button>
                 <button class="tab" data-t="acc"><span>🏨</span>Unterkünfte</button>
-                <button class="tab" data-t="misc"><span>📌</span>Infos &amp; mehr</button>
+                <button class="tab tab-menu" id="menuBurger" type="button" aria-label="Menü öffnen"><span>☰</span>Menü</button>
             </div>
         </div>
 
@@ -1606,7 +1608,7 @@
             if (targetId === 'pack' && DATA) renderAnalysis();
             if (targetId === 'mapview' && map) setTimeout(() => map.invalidateSize(), 100);
         }
-        document.querySelectorAll('.tabs .tab').forEach(b => {
+        document.querySelectorAll('.tabs .tab[data-t]').forEach(b => {
             b.onclick = () => switchTab(b.dataset.t);
         });
         document.querySelectorAll('.pop-btn').forEach(b => {
