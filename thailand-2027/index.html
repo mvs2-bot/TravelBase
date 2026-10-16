@@ -471,6 +471,7 @@
                     <button data-t="thailand" class="pop-btn"><span>🇹🇭</span>Tagesplan Thailand</button>
                     <button data-t="srilanka" class="pop-btn"><span>🇱🇰</span>Tagesplan Sri Lanka</button>
                     <button data-t="acc" class="pop-btn"><span>🏨</span>Unterkünfte</button>
+                    <button data-t="todos" class="pop-btn"><span>✅</span>To-Dos</button>
                     <button data-t="misc" class="pop-btn"><span>📌</span>Infos &amp; mehr</button>
                     <button data-t="flights" class="pop-btn"><span>✈️</span>Gebuchte Flüge</button>
                     <button data-t="pack" class="pop-btn"><span>🎒</span>Packliste &amp; Gewicht</button>
@@ -598,7 +599,7 @@
             </div>
         </div>
 
-        <!-- Sektion 5: Sonstiges, To-Dos & Statistiken -->
+        <!-- Sektion 5: Sonstiges & Statistiken -->
         <div id="misc" class="pane">
             <div class="box">
                 <h2>👥 Reisezeiträume &amp; Dauer</h2>
@@ -623,6 +624,22 @@
             </div>
             
             <div class="box">
+                <h2>💡 Wichtige Infos &amp; Hinweise</h2>
+                <ul id="infoList" style="padding-left:18px;font-size:.85rem;line-height:1.7"></ul>
+            </div>
+        
+            <div class="box">
+                        <h2>🚨 Infos &amp; Notfall</h2>
+                        <p class="note">Wichtige Notrufnummern, Botschaften, SIM-Karten und nützliche Apps findest du ab sofort zentral auf unserer separaten QuickTools-Seite:</p>
+                        <div style="text-align: center; margin: 24px 0;">
+                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🔗 Zu den Infos &amp; Notfall-Tools ↗</a>
+                        </div>
+                    </div>
+        </div>
+
+        <!-- Popover-Ansicht: To-Dos -->
+        <div id="todos" class="pane">
+            <div class="box">
                 <div class="mh">
                     <h2>✅ Reise To-Do &amp; Vorbereitungen</h2>
                     <span id="todoProgress" style="font-size:.8rem;font-weight:700;color:var(--p1)">0/0 erledigt</span>
@@ -640,19 +657,6 @@
                     <button class="f on" onclick="addTodoItem()">+ Hinzufügen</button>
                 </div>
             </div>
-            
-            <div class="box">
-                <h2>💡 Wichtige Infos &amp; Hinweise</h2>
-                <ul id="infoList" style="padding-left:18px;font-size:.85rem;line-height:1.7"></ul>
-            </div>
-        
-            <div class="box">
-                        <h2>🚨 Infos &amp; Notfall</h2>
-                        <p class="note">Wichtige Notrufnummern, Botschaften, SIM-Karten und nützliche Apps findest du ab sofort zentral auf unserer separaten QuickTools-Seite:</p>
-                        <div style="text-align: center; margin: 24px 0;">
-                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🔗 Zu den Infos &amp; Notfall-Tools ↗</a>
-                        </div>
-                    </div>
         </div>
 
         <!-- Popover-Ansichten: Gebuchte Flüge -->
