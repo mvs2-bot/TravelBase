@@ -432,7 +432,7 @@
     /* ---------- Hell/Dunkel ---------- */
     function applyTheme(dark, save) {
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#0f1512' : '#15803d';
+        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#15803d';
         document.querySelectorAll('.theme-toggle').forEach(b => { b.textContent = dark ? '☀️' : '🌙'; b.setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln'); });
         if (save) { try { localStorage.setItem('tb_theme_v1', dark ? 'dark' : 'light'); } catch (e) {} }
     }

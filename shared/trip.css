@@ -313,23 +313,23 @@
     
     /* PATCH: Dark Mode */
     .popover-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    :root[data-theme="dark"] { color-scheme: dark; --bg: #0f1512; --card: #17201b; --hover: #1e2b23; --line: #2e3d35; --ink: #e8f0ec; --text: #c3cfc8; --mute: #92a39a; --p1: #22c55e; --accent: #2dd4bf; --danger: #f87171; --shadow: 0 4px 12px rgba(0,0,0,.35); }
+    :root[data-theme="dark"] { color-scheme: dark; --bg: #000; --card: #0a0d0b; --hover: #121915; --line: #1f2823; --ink: #e8f0ec; --text: #c3cfc8; --mute: #92a39a; --p1: #22c55e; --accent: #2dd4bf; --danger: #f87171; --shadow: none; }
     :root[data-theme="dark"] .f.on, :root[data-theme="dark"] .f:hover, :root[data-theme="dark"] .tab.on, :root[data-theme="dark"] .tab:hover, :root[data-theme="dark"] .dn, :root[data-theme="dark"] .popover-links button.on, :root[data-theme="dark"] .popover-links button:hover { color: #052e16; }
     :root[data-theme="dark"] #countdown, :root[data-theme="dark"] .stay-badge, :root[data-theme="dark"] .status-booked, :root[data-theme="dark"] .fl-price { background: #14361f; border-color: #1f5a35; color: #86efac; }
     :root[data-theme="dark"] .status-open { background: #3b1717; border-color: #7f1d1d; color: #fca5a5; }
-    :root[data-theme="dark"] th { background: #223028; }
+    :root[data-theme="dark"] th { background: #111814; }
     :root[data-theme="dark"] td { border-bottom-color: var(--line); }
     :root[data-theme="dark"] tr.today-row td, :root[data-theme="dark"] .card.today-card { background: #14361f !important; }
-    :root[data-theme="dark"] .pill, :root[data-theme="dark"] .todo-item, :root[data-theme="dark"] ul.fl-list li, :root[data-theme="dark"] .pack-add-form, :root[data-theme="dark"] .pack-table-cat { background: #1d2823; }
+    :root[data-theme="dark"] .pill, :root[data-theme="dark"] .todo-item, :root[data-theme="dark"] ul.fl-list li, :root[data-theme="dark"] .pack-add-form, :root[data-theme="dark"] .pack-table-cat { background: #0f1512; }
     :root[data-theme="dark"] .hotel-pill { background: #14301f; border-color: #1f5a35; color: #86efac; }
     :root[data-theme="dark"] .hotel-pill.hotel-open { background: #3a3210; border-color: #854d0e; color: #fde68a; }
     :root[data-theme="dark"] .group-ines-stefan, :root[data-theme="dark"] .tag-norden, :root[data-theme="dark"] .tag-sl-hochland, :root[data-theme="dark"] .todo-tag.tag-th { background: #14361f; color: #86efac; border-color: #1f5a35; }
     :root[data-theme="dark"] .group-ines-alleine, :root[data-theme="dark"] .tag-bangkok, :root[data-theme="dark"] .tag-sl-colombo { background: #2e1f45; color: #d8b4fe; border-color: #4c2f73; }
     :root[data-theme="dark"] .group-ines-anna, :root[data-theme="dark"] .tag-inseln, :root[data-theme="dark"] .tag-sl-suedkueste { background: #103a38; color: #5eead4; border-color: #1b5e5a; }
-    :root[data-theme="dark"] .tag-default { background: #232e28; color: var(--mute); }
+    :root[data-theme="dark"] .tag-default { background: #121915; color: var(--mute); }
     :root[data-theme="dark"] .tag-sl-westkueste { background: #0f3b2c; color: #6ee7b7; }
     :root[data-theme="dark"] .tag-sl-kulturdreieck, :root[data-theme="dark"] .todo-tag.tag-sl, :root[data-theme="dark"] .travel-time-pill { background: #3a2f10; color: #fcd34d; border-color: #5c4a14; }
-    :root[data-theme="dark"] .todo-tag { background: #26332b; color: var(--text); }
+    :root[data-theme="dark"] .todo-tag { background: #141b17; color: var(--text); }
     :root[data-theme="dark"] .pack-summary, :root[data-theme="dark"] .work-summary { background: #14261c; border-color: #1f5a35; }
     :root[data-theme="dark"] .table-select.select-am-koerper { background: #3a2f10; color: #fcd34d; border-color: #5c4a14; }
     :root[data-theme="dark"] .climate-card-desc { border-top-color: var(--line); }
@@ -341,7 +341,7 @@
     @media (max-width: 860px) {
         :root[data-theme="dark"] #acc td:nth-child(5) { background: #3a2f10; border-color: #5c4a14; }
         :root[data-theme="dark"] #acc td:nth-child(5)::before { color: #fcd34d; }
-        :root[data-theme="dark"] #pack tr:has(.pack-table-cat) { background: #1d2823; }
+        :root[data-theme="dark"] #pack tr:has(.pack-table-cat) { background: #0f1512; }
     }
 
     /* PATCH: Dark Mode v2 */
@@ -410,7 +410,7 @@ a.btn.ql:hover { background: #166534; }
 .cr { display: grid; grid-template-columns: 70px repeat(var(--pc, 4), 1fr); border-bottom: 1px solid var(--line); align-items: center; }
 .cr.we { background: var(--bg); }
 .cr.hd { position: sticky; top: 0; z-index: 2; background: #e2e8f0; font-weight: 800; text-align: center; }
-:root[data-theme="dark"] .cr.hd { background: #223028; }
+:root[data-theme="dark"] .cr.hd { background: #111814; }
 .cr.hd div { padding: 10px 4px; font-size: .76rem; }
 .cr.today { outline: 2px solid var(--p1); outline-offset: -2px; }
 .cd { padding: 4px 6px; font-weight: 800; font-size: .7rem; border-right: 2px solid var(--line); color: var(--ink); }
