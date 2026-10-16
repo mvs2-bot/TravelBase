@@ -61,7 +61,7 @@
         if (DATA.places) s.push({ id: 'mapview', icon: '🗺️', label: 'Karte', tab: true });
         (DATA.plans || []).forEach(p => s.push({ id: p.id, icon: p.icon || '📅', label: p.tabLabel || 'Tagesplan', tab: true }));
         if (DATA.calendar && (DATA.persons || []).length) s.push({ id: 'cal', icon: '🗓️', label: 'Anwesenheit', tab: true });
-        if (DATA.persons || DATA.workdays || DATA.todos || DATA.infos || DATA.links) s.push({ id: 'misc', icon: '📌', label: 'Infos & mehr', tab: true });
+        if (DATA.persons || DATA.workdays || DATA.todos || DATA.infos || DATA.links) s.push({ id: 'misc', icon: '📌', label: 'Infos & mehr' });
         if ((DATA.flights || []).length) s.push({ id: 'flights', icon: '✈️', label: 'Flüge' });
         if (DATA.climate) s.push({ id: 'climate', icon: '🌤️', label: 'Klima & Wetter' });
         s.push({ id: 'imprint', icon: '📄', label: 'Impressum' });
@@ -71,10 +71,12 @@
     function renderNav() {
         SECTIONS = sections();
         const tabs = SECTIONS.filter(s => s.tab);
-        $('#tabs').style.setProperty('--tab-count', tabs.length);
-        $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${s.id}"><span>${s.icon}</span>${esc(s.label).replace(/^Tagesplan /, 'Tagesplan<br>')}</button>`).join('');
+        $('#tabs').style.setProperty('--tab-count', tabs.length + 1);
+        $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${s.id}"><span>${s.icon}</span>${esc(s.label).replace(/^Tagesplan /, 'Tagesplan<br>')}</button>`).join('')
+            + '<button class="tab tab-menu" id="menuTab" type="button" aria-label="Menü öffnen"><span>☰</span>Menü</button>';
         $('#popLinks').innerHTML = SECTIONS.map(s => `<button data-t="${s.id}" class="pop-btn"><span>${s.icon}</span>${esc(s.label)}</button>`).join('');
-        document.querySelectorAll('.tabs .tab').forEach(b => b.onclick = () => switchTab(b.dataset.t));
+        document.querySelectorAll('.tabs .tab[data-t]').forEach(b => b.onclick = () => switchTab(b.dataset.t));
+        $('#menuTab').onclick = () => $('#navPopover').classList.add('open');
         document.querySelectorAll('.pop-btn').forEach(b => b.onclick = () => { switchTab(b.dataset.t); $('#navPopover').classList.remove('open'); });
     }
     function switchTab(id) {
@@ -442,7 +444,6 @@
     window.addEventListener('DOMContentLoaded', async () => {
         applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
         document.querySelectorAll('.theme-toggle').forEach(b => b.onclick = e => { e.stopPropagation(); applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true); });
-        $('#menuBurger').onclick = () => $('#navPopover').classList.add('open');
         $('#closePopover').onclick = () => $('#navPopover').classList.remove('open');
         $('#navPopover').onclick = e => { if (e.target === $('#navPopover')) $('#navPopover').classList.remove('open'); };
         $('#fs').onclick = () => { const f = $('#mapBox').classList.toggle('full'); $('#fs').textContent = f ? '❌ Verkleinern' : '🔍 Vollbild'; setTimeout(() => map && map.invalidateSize(), 200); };

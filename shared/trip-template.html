@@ -39,10 +39,11 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button id="tbProfileBtn" class="burger-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
                 <button id="themeToggleHdr" class="burger-btn theme-toggle" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
-                <button id="menuBurger" class="burger-btn" aria-label="Menü öffnen">☰</button>
+                <button id="tbProfileBtn" class="burger-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
             </div>
+            <!-- Platzhalter: hält eine ältere trip.js aus dem Browser-Cache lauffähig; das Menü sitzt jetzt in der Schnellauswahl -->
+            <button id="menuBurger" type="button" hidden aria-hidden="true" tabindex="-1"></button>
         </header>
         <div class="tabs" role="tablist" id="tabs"></div>
     </div>
