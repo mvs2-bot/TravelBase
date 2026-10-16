@@ -415,7 +415,9 @@
     .tb-act:hover { background: var(--hover); border-color: var(--p1); }
     body.tb-guest .tabs .tab:not([data-t="mapview"]), body.tb-guest .pop-btn:not([data-t="mapview"]):not([data-t="imprint"]) { display: none; }
     body.tb-guest .tabs { grid-template-columns: 1fr; }
-</style>
+    /* Buttons oben rechts (Profil, Hell/Dunkel, Menü): auf allen Seiten gleich groß wie auf der Übersicht */
+    .header-actions > .burger-btn { width: 48px; height: 42px; padding: 0; font-size: 1.3rem; border-width: 2px; display: inline-flex; align-items: center; justify-content: center; }
+    </style>
 
 <!-- PATCH: PWA -->
 <link rel="manifest" href="../manifest.json">

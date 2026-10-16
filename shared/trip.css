@@ -423,3 +423,6 @@ a.btn.ql:hover { background: #166534; }
     .cr { grid-template-columns: 48px repeat(var(--pc, 4), minmax(0, 1fr)); }
     .tab { font-size: .6rem; }
 }
+
+    /* Buttons oben rechts (Profil, Hell/Dunkel, Menü): auf allen Seiten gleich groß wie auf der Übersicht */
+    .header-actions > .burger-btn { width: 48px; height: 42px; padding: 0; font-size: 1.3rem; border-width: 2px; display: inline-flex; align-items: center; justify-content: center; }

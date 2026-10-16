@@ -288,7 +288,6 @@
     const css = document.createElement('style');
     css.textContent = `
         .tb-profile-btn { display: inline-flex; align-items: center; justify-content: center; }
-        @media (max-width: 860px) { .burger-btn.tb-profile-btn { padding: 5px 5px; font-size: 1.2rem; border-width: 1.5px; } }
         .tb-profile-btn.has-photo { padding: 0 !important; overflow: hidden; }
         .tb-profile-btn img, .tbp-ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .tbp-menu { position: fixed; z-index: 20000; min-width: 250px; max-width: calc(100vw - 20px); background: var(--card, #fff); color: var(--text, #334155); border: 1px solid var(--line, #cbd5e1); border-radius: 14px; box-shadow: 0 12px 32px rgba(15,23,42,.2); padding: 8px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; line-height: 1.4; }
