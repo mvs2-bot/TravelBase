@@ -1037,7 +1037,7 @@
             const q = $(cfg.search) ? $(cfg.search).value.toLowerCase() : '';
             document.querySelectorAll(cfg.body + ' tr').forEach(row => {
                 const okSearch = row.textContent.toLowerCase().includes(q);
-                const okFilter = reg === 'all' || (row.getAttribute('data-region') || '').includes(reg) || (row.getAttribute('data-group') || '').includes(reg);
+                const okFilter = reg === 'all' || ['data-location', 'data-region', 'data-group'].some(a => (row.getAttribute(a) || '').includes(reg));
                 row.style.display = (okSearch && okFilter) ? '' : 'none';
             });
             renderMobileCards(k);

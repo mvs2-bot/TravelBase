@@ -3,7 +3,7 @@
    - Bibliotheken/Schriften: aus dem Speicher
    - Kartenkacheln: gespeichert (max. 500)
    - Supabase-Anfragen werden NICHT gespeichert (die App merkt sich die Daten selbst, pro Benutzer) */
-const P="travelbase-",V=P+"v6";
+const P="travelbase-",V=P+"v7";
 const CORE=['./','index.html','manifest.json','shared/config.js','shared/travelbase.js','shared/profile.js','shared/flags.css','shared/trip.css','shared/trip.js','icons/icon-192.png','icons/icon-512.png','icons/icon-maskable-512.png','icons/apple-touch-icon.png','icons/favicon-32.png'];
 const EXTRA=["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js","https://unpkg.com/leaflet@1.9.4/dist/leaflet.css","https://unpkg.com/leaflet@1.9.4/dist/leaflet.js","https://unpkg.com/leaflet@1.9.4/dist/images/layers.png","https://unpkg.com/leaflet@1.9.4/dist/images/layers-2x.png","https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap","https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js","https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1/dist/TwemojiCountryFlags.woff2"];
 const RULES=[["unpkg.com|fonts.googleapis.com|fonts.gstatic.com|cdn.jsdelivr.net","cf"],["openstreetmap|opentopomap|arcgisonline","tile"]];
