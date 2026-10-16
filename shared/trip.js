@@ -61,7 +61,10 @@
         if (DATA.places) s.push({ id: 'mapview', icon: '🗺️', label: 'Karte', tab: true });
         (DATA.plans || []).forEach(p => s.push({ id: p.id, icon: p.icon || '📅', label: p.tabLabel || 'Tagesplan', tab: true }));
         if (DATA.calendar && (DATA.persons || []).length) s.push({ id: 'cal', icon: '🗓️', label: 'Anwesenheit', tab: true });
-        if (DATA.persons || DATA.workdays || DATA.todos || DATA.infos || DATA.links) s.push({ id: 'misc', icon: '📌', label: 'Infos & mehr' });
+        // To-Dos als eigener Bereich; eine ältere Seite aus dem Cache ohne #todos zeigt sie weiter unter „Infos & mehr“
+        const todoPane = DATA.todos && !!$('#todos');
+        if (todoPane) s.push({ id: 'todos', icon: '✅', label: 'To-Dos' });
+        if (DATA.persons || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links) s.push({ id: 'misc', icon: '📌', label: 'Infos & mehr' });
         if ((DATA.flights || []).length) s.push({ id: 'flights', icon: '✈️', label: 'Flüge' });
         if (DATA.climate) s.push({ id: 'climate', icon: '🌤️', label: 'Klima & Wetter' });
         s.push({ id: 'imprint', icon: '📄', label: 'Impressum' });
