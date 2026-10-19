@@ -2,7 +2,7 @@
    - zeigt 👤 bzw. das eigene Profilbild, sobald eins hochgeladen ist
    - Menü: Kontoeinstellungen (Name, Geburtsdatum, Foto), Passwort ändern / vergessen, Ausloggen
    Benötigt vorher: shared/travelbase.js. Die Seite braucht einen <button id="tbProfileBtn" hidden>.
-   Fotos liegen im privaten Storage-Bucket "avatars" unter <user-id>/…, der Pfad steht in profiles.avatar_url. */
+   Fotos liegen im privaten Storage-Bucket "avatars" unter <user-id>/…, der Pfad steht in overall_profiles.avatar_path. */
 (function () {
     const ROOT = new URL('../', document.currentScript.src).href;   /* Übersicht = Ziel für Logout und Passwort-Link */
     const BUCKET = 'avatars';
@@ -11,9 +11,9 @@
 
     let btn = null, menu = null, modal = null;
     let user = null;            /* { id, email } */
-    let profile = {};           /* { display_name, birthday, avatar_url } */
+    let profile = {};           /* { display_name, birthday, avatar_path } */
     let photo = null;           /* data:-URL des Profilbilds oder null */
-    let extended = true;        /* false = Spalten birthday/avatar_url fehlen noch in der Datenbank */
+    let extended = true;        /* false = Spalten birthday/avatar_path fehlen noch in der Datenbank */
 
     function errText(e) {
         const m = String(e && (e.message || e));
@@ -30,13 +30,13 @@
     async function loadProfile() {
         let row;
         try {
-            row = check(await TB.sb.from('profiles').select('display_name, birthday, avatar_url').eq('id', user.id).maybeSingle());
+            row = check(await TB.sb.from('overall_profiles').select('display_name, birthday, avatar_path').eq('id', user.id).maybeSingle());
             extended = true;
         } catch (e) {
             if (!/column|does not exist|schema cache/i.test(String(e && e.message))) throw e;
             /* SQL für Geburtsdatum/Foto noch nicht ausgeführt → nur den Namen laden */
             extended = false;
-            row = check(await TB.sb.from('profiles').select('display_name').eq('id', user.id).maybeSingle());
+            row = check(await TB.sb.from('overall_profiles').select('display_name').eq('id', user.id).maybeSingle());
         }
         profile = row || {};
         TB.cacheSet('profile_' + user.id, profile);
@@ -44,7 +44,7 @@
     }
 
     async function loadPhoto() {
-        const path = profile.avatar_url;
+        const path = profile.avatar_path;
         if (!path) { photo = null; TB.cacheSet('avatar_' + user.id, null); return; }
         const cached = TB.cacheGet('avatar_' + user.id);
         if (cached && cached.path === path) { photo = cached.data; return; }
@@ -56,8 +56,8 @@
     /* Zeile in profiles ändern; gibt es noch keine, wird sie angelegt */
     async function saveProfile(fields) {
         if (extended) fields = { ...fields, updated_at: new Date().toISOString() };
-        const rows = check(await TB.sb.from('profiles').update(fields).eq('id', user.id).select('id'));
-        if (!rows.length) check(await TB.sb.from('profiles').insert({ id: user.id, ...fields }));
+        const rows = check(await TB.sb.from('overall_profiles').update(fields).eq('id', user.id).select('id'));
+        if (!rows.length) check(await TB.sb.from('overall_profiles').insert({ id: user.id, ...fields }));
         Object.assign(profile, fields);
         TB.cacheSet('profile_' + user.id, profile);
         TB.cacheSet('name_' + user.id, (profile.display_name || '').trim());
@@ -77,18 +77,18 @@
 
     async function uploadPhoto(file) {
         const blob = await shrink(file);
-        const old = profile.avatar_url;
+        const old = profile.avatar_path;
         const path = `${user.id}/avatar-${Date.now()}.jpg`;
         check(await TB.sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: true }));
-        try { await saveProfile({ avatar_url: path }); }
+        try { await saveProfile({ avatar_path: path }); }
         catch (e) { TB.sb.storage.from(BUCKET).remove([path]).catch(() => {}); throw e; }
         if (old) TB.sb.storage.from(BUCKET).remove([old]).catch(() => {});
         await loadPhoto();
     }
 
     async function removePhoto() {
-        const old = profile.avatar_url;
-        await saveProfile({ avatar_url: null });
+        const old = profile.avatar_path;
+        await saveProfile({ avatar_path: null });
         if (old) TB.sb.storage.from(BUCKET).remove([old]).catch(() => {});
         await loadPhoto();
     }
@@ -173,7 +173,7 @@
                 <span class="tbp-ava tbp-ava-lg" id="tbpAva">${avatarHtml()}</span>
                 <div class="tbp-photo-actions">
                     <button class="tbp-ghost" type="button" id="tbpPick">📷 Foto wählen</button>
-                    <button class="tbp-link" type="button" id="tbpRemove"${profile.avatar_url ? '' : ' hidden'}>Foto entfernen</button>
+                    <button class="tbp-link" type="button" id="tbpRemove"${profile.avatar_path ? '' : ' hidden'}>Foto entfernen</button>
                     <input type="file" id="tbpFile" accept="image/*" hidden>
                 </div>
             </div>
@@ -189,7 +189,7 @@
             $('#tbpPick').disabled = $('#tbpBirthday').disabled = true;
             msg(out, 'Foto und Geburtsdatum sind noch nicht freigeschaltet: In Supabase fehlt noch die Einrichtung (SQL).');
         }
-        const refreshPhoto = () => { $('#tbpAva').innerHTML = avatarHtml(); $('#tbpRemove').hidden = !profile.avatar_url; render(); };
+        const refreshPhoto = () => { $('#tbpAva').innerHTML = avatarHtml(); $('#tbpRemove').hidden = !profile.avatar_path; render(); };
         $('#tbpPick').onclick = () => $('#tbpFile').click();
         $('#tbpFile').onchange = async () => {
             const f = $('#tbpFile').files[0]; $('#tbpFile').value = '';
@@ -259,7 +259,7 @@
         /* sofort mit dem gespeicherten Stand anzeigen, dann aus der Datenbank nachladen */
         profile = TB.cacheGet('profile_' + user.id) || {};
         const cached = TB.cacheGet('avatar_' + user.id);
-        photo = cached && cached.path === profile.avatar_url ? cached.data : null;
+        photo = cached && cached.path === profile.avatar_path ? cached.data : null;
         render();
         try { await loadProfile(); await loadPhoto(); }
         catch (e) { if (!TB.isNetErr(e)) console.warn('Profil laden', e); }
