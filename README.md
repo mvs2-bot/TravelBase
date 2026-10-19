@@ -9,6 +9,9 @@ alle Inhalte liegen in Supabase und werden erst nach dem Login geladen.
 index.html            Login + Übersicht (ohne Login: nur Flaggen)
 shared/config.js      Supabase-URL + Publishable Key (dürfen öffentlich sein)
 shared/travelbase.js  Login, Datenzugriff, Offline-Zwischenspeicher
+shared/overall-account.js  gemeinsames Konto-Modul aller Apps (Name, Bild, Geburtsdatum, Geschlecht, Größe, Gewicht, Passwort);
+                      Original im Repo supabase-core, hier nur eine Kopie
+shared/profile.js     Profil-Button oben rechts mit Menü (nutzt overall-account.js)
 shared/flags.css      Flaggen-Schrift (Fix für Windows)
 shared/trip.*         Reise-Vorlage (trip.js/trip.css/trip-template.html) für alle Reisen außer Thailand
 sw.js, manifest.json  App/Offline für alle Reisen
