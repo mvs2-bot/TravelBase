@@ -1,6 +1,6 @@
 /* TravelBase – Profil-Button oben rechts neben dem Mond
    - zeigt 👤 bzw. das eigene Profilbild, sobald eins hochgeladen ist
-   - Menü: Kontoeinstellungen, Passwort ändern / vergessen, Ausloggen
+   - Menü: Kontoeinstellungen, Passwort ändern / vergessen, Verwaltung (nur globale Admins), Ausloggen
    Die Dialoge kommen aus dem gemeinsamen Konto-Modul shared/overall-account.js (gilt für alle Apps).
    Benötigt vorher: shared/travelbase.js und shared/overall-account.js. Die Seite braucht einen <button id="tbProfileBtn" hidden>.
    Fotos liegen im privaten Storage-Bucket "avatars" unter <user-id>/…, der Pfad steht in overall_profiles.avatar_path. */
@@ -11,7 +11,7 @@
 
     let btn = null, menu = null;
     let user = null;            /* { id, email } */
-    let profile = {};           /* { display_name, birthday, avatar_path } */
+    let profile = {};           /* { display_name, birthday, avatar_path, role } */
     let photo = null;           /* data:-URL des Profilbilds oder null */
 
 
@@ -20,7 +20,7 @@
 
     /* ---------- Daten ---------- */
     async function loadProfile() {
-        const row = check(await TB.sb.from('overall_profiles').select('display_name, birthday, avatar_path').eq('id', user.id).maybeSingle());
+        const row = check(await TB.sb.from('overall_profiles').select('display_name, birthday, avatar_path, role').eq('id', user.id).maybeSingle());
         profile = row || {};
         TB.cacheSet('profile_' + user.id, profile);
         TB.cacheSet('name_' + user.id, (profile.display_name || '').trim());
@@ -68,6 +68,7 @@
             </div>
             <button class="tbp-item" type="button" role="menuitem" data-act="settings">⚙️ Kontoeinstellungen</button>
             <button class="tbp-item" type="button" role="menuitem" data-act="password">🔑 Passwort ändern / vergessen</button>
+            ${profile.role === 'admin' ? '<button class="tbp-item" type="button" role="menuitem" data-act="admin">🛡️ Verwaltung</button>' : ''}
             <button class="tbp-item danger" type="button" role="menuitem" data-act="logout">🚪 Ausloggen</button>`;
     }
 
@@ -80,6 +81,7 @@
                 closeMenu();
                 if (b.dataset.act === 'settings') openSettings();
                 else if (b.dataset.act === 'password') openPassword();
+                else if (b.dataset.act === 'admin') location.href = ROOT + 'verwaltung.html';
                 else if (b.dataset.act === 'logout') logout();
             };
             document.body.appendChild(menu);
