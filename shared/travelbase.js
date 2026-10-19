@@ -23,12 +23,12 @@
         try { return (await sb.auth.getSession()).data.session; } catch (e) { return null; }
     }
 
-    /* Anzeigename aus der Tabelle profiles (display_name); ohne Eintrag oder offline → E-Mail */
+    /* Anzeigename aus overall_profiles (display_name); ohne Eintrag oder offline → E-Mail */
     async function displayName(session) {
         if (!session) return '';
         const key = 'name_' + session.user.id;
         try {
-            const row = check(await sb.from('profiles').select('display_name').eq('id', session.user.id).maybeSingle());
+            const row = check(await sb.from('overall_profiles').select('display_name').eq('id', session.user.id).maybeSingle());
             const name = (row && row.display_name || '').trim();
             cacheSet(key, name);
             return name || session.user.email;
@@ -41,7 +41,7 @@
     async function publicFlags() {
         if (!sb) return cacheGet('flags') || [];
         try {
-            const rows = check(await sb.rpc('get_public_flags'));
+            const rows = check(await sb.rpc('travelbase_get_public_flags'));
             const flags = rows.map(r => r.flags || []);
             cacheSet('flags', flags);
             return flags;
@@ -50,15 +50,12 @@
         }
     }
 
-    /* Reisen des angemeldeten Benutzers inkl. Rolle */
+    /* Reisen des angemeldeten Benutzers inkl. Rolle (Admins von TravelBase sehen alle Reisen als admin) */
     async function myTrips() {
         const session = await getSession();
         if (!session) return null;
         try {
-            const rows = check(await sb.from('trip_members')
-                .select('role, trips(slug, title, flags, start_date, end_date, sort_order)')
-                .eq('user_id', session.user.id));
-            const list = rows.filter(r => r.trips).map(r => ({ role: r.role, ...r.trips }));
+            const list = check(await sb.rpc('travelbase_my_trips'));
             cacheSet('trips_' + session.user.id, list);
             return { list, offline: false };
         } catch (e) {
@@ -78,15 +75,15 @@
         if (!session) return (cached && !navigator.onLine) ? { ...cached, offline: true } : null;
         if (cached && cached.userId !== session.user.id) clearCache();
         try {
-            const trip = check(await sb.from('trips').select('id, slug, title, flags, start_date, end_date').eq('slug', slug).maybeSingle());
+            const trip = check(await sb.from('travelbase_trips').select('id, slug, title, flags, start_date, end_date').eq('slug', slug).maybeSingle());
             if (!trip) return { denied: true };
-            const mem = check(await sb.from('trip_members').select('role').eq('trip_id', trip.id).eq('user_id', session.user.id).maybeSingle());
-            const [secsRes, name] = await Promise.all([sb.from('trip_sections').select('key, data').eq('trip_id', trip.id), displayName(session)]);
+            const myRole = check(await sb.rpc('travelbase_trip_role', { p_trip: trip.id }));
+            const [secsRes, name] = await Promise.all([sb.from('travelbase_trip_sections').select('key, data').eq('trip_id', trip.id), displayName(session)]);
             const secs = check(secsRes);
             const order = { guest: 0, member: 1, admin: 2 };
             secs.sort((a, b) => (order[a.key] ?? 9) - (order[b.key] ?? 9));
             const result = {
-                trip, role: mem ? mem.role : 'guest',
+                trip, role: myRole || 'guest',
                 data: Object.assign({}, ...secs.map(s => s.data)),
                 user: { email: session.user.email, name }, userId: session.user.id, savedAt: Date.now()
             };
@@ -123,26 +120,26 @@
 
     /* Backup (nur Admins): alle Tabellen der Reisen, in denen der Benutzer Admin ist, als ein JSON-Objekt.
        Läuft mit dem Login des Admins – die Zugriffsregeln der Datenbank gelten also wie sonst auch. */
-    const BACKUP_TABLES = ['trips', 'trip_sections', 'trip_members', 'todos', 'packlist_items'];
+    const BACKUP_TABLES = ['travelbase_trips', 'travelbase_trip_sections', 'travelbase_trip_members', 'travelbase_todos', 'travelbase_packlist_items'];
     async function exportBackup() {
         const session = await getSession();
         if (!session) throw new Error('Bitte zuerst anmelden.');
-        const mine = check(await sb.from('trip_members').select('trip_id, role').eq('user_id', session.user.id));
-        const ids = mine.filter(r => r.role === 'admin').map(r => r.trip_id);
+        const mine = check(await sb.rpc('travelbase_my_trips'));
+        const ids = mine.filter(r => r.role === 'admin').map(r => r.id);
         if (!ids.length) throw new Error('Du bist bei keiner Reise Admin.');
         const tables = {}, errors = {};
         for (const t of BACKUP_TABLES) {
             try {
                 const rows = [];
                 for (let from = 0; ; from += 1000) {
-                    const page = check(await sb.from(t).select('*').in(t === 'trips' ? 'id' : 'trip_id', ids).range(from, from + 999));
+                    const page = check(await sb.from(t).select('*').in(t === 'travelbase_trips' ? 'id' : 'trip_id', ids).range(from, from + 999));
                     rows.push(...page);
                     if (page.length < 1000) break;
                 }
                 tables[t] = rows;
             } catch (e) { errors[t] = String(e && (e.message || e)); }
         }
-        return { app: 'TravelBase', version: 1, exportedAt: new Date().toISOString(), exportedBy: session.user.email, tables, errors };
+        return { app: 'TravelBase', version: 2, exportedAt: new Date().toISOString(), exportedBy: session.user.email, tables, errors };
     }
 
     /* Deutsche Fehlermeldungen für die häufigsten Fälle */
