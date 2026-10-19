@@ -359,10 +359,10 @@
         return (list || t.defaults || []).map(({ text, tag, done }) => ({ text, tag, done: !!done }));
     }
     async function loadTodos() {
-        const fetchAll = () => q(TB.sb.from('travelbase_todos').select('id, text, tag, done, sort_order').eq('trip_id', TRIP_ID).order('sort_order').order('created_at'));
+        const fetchAll = () => q(TB.sb.from('todos').select('id, text, tag, done, sort_order').eq('trip_id', TRIP_ID).order('sort_order').order('created_at'));
         try {
             let rows = await fetchAll();
-            if (!rows.length && await q(TB.sb.rpc('travelbase_seed_todos', { p_trip: TRIP_ID, p_items: localTodoSeed() }))) rows = await fetchAll();
+            if (!rows.length && await q(TB.sb.rpc('seed_todos', { p_trip: TRIP_ID, p_items: localTodoSeed() }))) rows = await fetchAll();
             todoList = rows;
             TB.cacheSet(LIST_CACHE, rows);
             LISTS_ONLINE = true;
@@ -400,7 +400,7 @@
         if (!editable()) { renderTodos(); return; }
         item.done = !item.done;
         renderTodos();
-        dbWrite(() => q(TB.sb.from('travelbase_todos').update({ done: item.done }).eq('id', item.id)));
+        dbWrite(() => q(TB.sb.from('todos').update({ done: item.done }).eq('id', item.id)));
     }
     function addTodo() {
         const text = $('#newTodoText').value.trim();
@@ -410,7 +410,7 @@
         const sort_order = todoList.reduce((m, x) => Math.max(m, x.sort_order || 0), -1) + 1;
         $('#newTodoText').value = '';
         dbWrite(async () => {
-            const row = await q(TB.sb.from('travelbase_todos').insert({ trip_id: TRIP_ID, text, tag, done: false, sort_order }).select('id, text, tag, done, sort_order').single());
+            const row = await q(TB.sb.from('todos').insert({ trip_id: TRIP_ID, text, tag, done: false, sort_order }).select('id, text, tag, done, sort_order').single());
             todoList.push(row);
             TB.cacheSet(LIST_CACHE, todoList);
             renderTodos();
@@ -422,7 +422,7 @@
         if (!confirm(`„${item.text}“ löschen?`)) return;
         todoList.splice(idx, 1);
         renderTodos();
-        dbWrite(() => q(TB.sb.from('travelbase_todos').delete().eq('id', item.id)));
+        dbWrite(() => q(TB.sb.from('todos').delete().eq('id', item.id)));
     }
     function initTodos() {
         if (!DATA.todos) return;

@@ -17,20 +17,13 @@ sw.js, manifest.json  App/Offline für alle Reisen
 
 ## Neue Reise hinzufügen
 
-1. In Supabase eine Zeile in `travelbase_trips` + Inhalte in `travelbase_trip_sections` anlegen (Import-Skript).
+1. In Supabase eine Zeile in `trips` + Inhalte in `trip_sections` anlegen (Import-Skript).
    Abschnitt `guest` = Karte & Zeitraum; Abschnitt `details` mit `min_role` `member` oder `admin`.
 2. Hier einen Ordner mit genau dem `slug` als Namen anlegen und `shared/trip-template.html`
    als `index.html` hineinkopieren – fertig, die Seite baut sich aus den Daten auf.
-3. Mitglieder per `select travelbase_add_trip_member('<slug>', '<email>', '<rolle>');` freischalten.
+3. Mitglieder per `select add_trip_member('<slug>', '<email>', '<rolle>');` freischalten.
 
 ## Wichtig
 
 - Niemals den `secret`/`service_role` Key in dieses Repo legen.
 - Import-Skripte mit Reisedaten gehören **nicht** in dieses Repo.
-
-## Datenbank
-
-TravelBase nutzt das zentrale Supabase-Projekt. Das Schema liegt im Repo
-[`supabase-core`](https://github.com/mvs2-bot/supabase-core): Tabellen mit Präfix `travelbase_`,
-Profile in `overall_profiles`, Zugang zur App über `overall_app_access`.
-Admins von TravelBase sehen jede Reise als Admin.

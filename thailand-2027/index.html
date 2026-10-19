@@ -1248,14 +1248,14 @@
         }
 
         async function fetchTodos() {
-            return q(TB.sb.from('travelbase_todos').select('id, text, tag, done, sort_order').eq('trip_id', TRIP_ID).order('sort_order').order('created_at'));
+            return q(TB.sb.from('todos').select('id, text, tag, done, sort_order').eq('trip_id', TRIP_ID).order('sort_order').order('created_at'));
         }
 
         async function loadTodos() {
             try {
                 let rows = await fetchTodos();
                 if (!rows.length) {
-                    const n = await q(TB.sb.rpc('travelbase_seed_todos', { p_trip: TRIP_ID, p_items: localTodoSeed() }));
+                    const n = await q(TB.sb.rpc('seed_todos', { p_trip: TRIP_ID, p_items: localTodoSeed() }));
                     if (n) rows = await fetchTodos();
                 }
                 todoList = rows;
@@ -1301,7 +1301,7 @@
             if (!listsEditable()) { renderTodos(); return; }
             item.done = !item.done;
             renderTodos();
-            dbWrite(() => q(TB.sb.from('travelbase_todos').update({ done: item.done }).eq('id', item.id)), loadTodos);
+            dbWrite(() => q(TB.sb.from('todos').update({ done: item.done }).eq('id', item.id)), loadTodos);
         }
 
         function addTodoItem() {
@@ -1312,7 +1312,7 @@
             const sort_order = todoList.reduce((m, x) => Math.max(m, x.sort_order || 0), -1) + 1;
             $('#newTodoText').value = '';
             dbWrite(async () => {
-                const row = await q(TB.sb.from('travelbase_todos').insert({ trip_id: TRIP_ID, text, tag, done: false, sort_order }).select('id, text, tag, done, sort_order').single());
+                const row = await q(TB.sb.from('todos').insert({ trip_id: TRIP_ID, text, tag, done: false, sort_order }).select('id, text, tag, done, sort_order').single());
                 todoList.push(row);
                 TB.cacheSet(LIST_CACHE('todos'), todoList);
                 renderTodos();
@@ -1325,7 +1325,7 @@
             if (!confirm(`„${item.text}“ löschen?`)) return;
             todoList.splice(idx, 1);
             renderTodos();
-            dbWrite(() => q(TB.sb.from('travelbase_todos').delete().eq('id', item.id)), loadTodos);
+            dbWrite(() => q(TB.sb.from('todos').delete().eq('id', item.id)), loadTodos);
         }
 
         /* --- Packlisten --- */
@@ -1347,7 +1347,7 @@
         }
 
         async function fetchPack() {
-            return q(TB.sb.from('travelbase_packlist_items').select(PACK_FIELDS).eq('trip_id', TRIP_ID).order('sort_order').order('name'));
+            return q(TB.sb.from('packlist_items').select(PACK_FIELDS).eq('trip_id', TRIP_ID).order('sort_order').order('name'));
         }
 
         async function loadPacklist() {
@@ -1357,7 +1357,7 @@
                 for (const p of packPersons()) {
                     if (rows.some(r => r.person === p)) continue;
                     const local = (store.get(PACK_KEY(p)) || defaultPack(p)).map(seedItem);
-                    seeded += await q(TB.sb.rpc('travelbase_seed_packlist', { p_trip: TRIP_ID, p_person: p, p_items: local }));
+                    seeded += await q(TB.sb.rpc('seed_packlist', { p_trip: TRIP_ID, p_person: p, p_items: local }));
                 }
                 if (seeded) rows = await fetchPack();
                 packlists = {};
@@ -1383,14 +1383,14 @@
             if (!listsEditable()) { renderPacklist(); return; }
             Object.assign(item, fields);
             packChanged();
-            dbWrite(() => q(TB.sb.from('travelbase_packlist_items').update(fields).eq('id', item.id)), loadPacklist);
+            dbWrite(() => q(TB.sb.from('packlist_items').update(fields).eq('id', item.id)), loadPacklist);
         }
 
         function setAllPacked(status) {
             if (!listsEditable()) return;
             packlists[currentPerson].forEach(i => i.packed = status);
             packChanged();
-            dbWrite(() => q(TB.sb.from('travelbase_packlist_items').update({ packed: status }).eq('trip_id', TRIP_ID).eq('person', currentPerson)), loadPacklist);
+            dbWrite(() => q(TB.sb.from('packlist_items').update({ packed: status }).eq('trip_id', TRIP_ID).eq('person', currentPerson)), loadPacklist);
         }
 
         function exportPacklistCSV() {
@@ -1409,9 +1409,9 @@
             if (!confirm(`Packliste von ${personName()} auf die Vorlage zurücksetzen? Eigene Änderungen gehen für alle verloren.`)) return;
             const person = currentPerson;
             dbWrite(async () => {
-                await q(TB.sb.from('travelbase_packlist_items').delete().eq('trip_id', TRIP_ID).eq('person', person));
+                await q(TB.sb.from('packlist_items').delete().eq('trip_id', TRIP_ID).eq('person', person));
                 const rows = defaultPack(person).map((it, i) => ({ ...seedItem(it), trip_id: TRIP_ID, person, sort_order: i }));
-                if (rows.length) await q(TB.sb.from('travelbase_packlist_items').insert(rows));
+                if (rows.length) await q(TB.sb.from('packlist_items').insert(rows));
                 await loadPacklist();
             }, loadPacklist);
         }
@@ -1500,7 +1500,7 @@
             $('#newItemName').value = '';
             $('#newItemWeight').value = '';
             dbWrite(async () => {
-                const saved = await q(TB.sb.from('travelbase_packlist_items').insert(row).select(PACK_FIELDS).single());
+                const saved = await q(TB.sb.from('packlist_items').insert(row).select(PACK_FIELDS).single());
                 packlists[person].push(saved);
                 packChanged();
             }, loadPacklist);
@@ -1512,7 +1512,7 @@
             if (!confirm(`"${item.name}" löschen?`)) return;
             packlists[currentPerson].splice(idx, 1);
             packChanged();
-            dbWrite(() => q(TB.sb.from('travelbase_packlist_items').delete().eq('id', item.id)), loadPacklist);
+            dbWrite(() => q(TB.sb.from('packlist_items').delete().eq('id', item.id)), loadPacklist);
         }
 
         function editPackItem(idx) {
