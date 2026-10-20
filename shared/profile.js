@@ -1,6 +1,7 @@
 /* TravelBase – Profil-Button oben rechts neben dem Mond
    - zeigt 👤 bzw. das eigene Profilbild, sobald eins hochgeladen ist
-   - Menü: Kontoeinstellungen, Verwaltung (nur globale Admins), Ausloggen
+   - Menü: Kontoeinstellungen, Admin-Einstellungen (globale und TravelBase-Admins), Ausloggen
+   Admin-Einstellungen sind wie die Kontoeinstellungen eine gemeinsame Seite im Dashboard (/admin.html).
    Kontoeinstellungen sind eine gemeinsame Seite für alle Apps im Dashboard (/konto.html);
    shared/overall-account.js wird hier nur noch für das Profilbild gebraucht.
    Benötigt vorher: shared/travelbase.js und shared/overall-account.js. Die Seite braucht einen <button id="tbProfileBtn" hidden>.
@@ -12,7 +13,7 @@
 
     let btn = null, menu = null;
     let user = null;            /* { id, email } */
-    let profile = {};           /* { display_name, birthday, avatar_path, role } */
+    let profile = {};           /* { display_name, birthday, avatar_path, role, app_role } */
     let photo = null;           /* data:-URL des Profilbilds oder null */
 
 
@@ -23,6 +24,7 @@
     async function loadProfile() {
         const row = check(await TB.sb.from('overall_profiles').select('display_name, birthday, avatar_path, role').eq('id', user.id).maybeSingle());
         profile = row || {};
+        profile.app_role = await TB.sb.rpc('overall_app_role', { p_app: 'travelbase' }).then(check).catch(() => null);
         TB.cacheSet('profile_' + user.id, profile);
         TB.cacheSet('name_' + user.id, (profile.display_name || '').trim());
     }
@@ -68,7 +70,7 @@
                 <div><b>${esc(shownName())}</b><small>${esc(user.email)}</small></div>
             </div>
             <button class="tbp-item" type="button" role="menuitem" data-act="settings">⚙️ Kontoeinstellungen</button>
-            ${profile.role === 'admin' ? '<button class="tbp-item" type="button" role="menuitem" data-act="admin">🛡️ Verwaltung</button>' : ''}
+            ${profile.role === 'admin' || profile.app_role === 'admin' ? '<button class="tbp-item" type="button" role="menuitem" data-act="admin">🛡️ Admin-Einstellungen</button>' : ''}
             <button class="tbp-item danger" type="button" role="menuitem" data-act="logout">🚪 Ausloggen</button>`;
     }
 
@@ -80,7 +82,7 @@
                 const b = e.target.closest('[data-act]'); if (!b) return;
                 closeMenu();
                 if (b.dataset.act === 'settings') location.href = SETTINGS;
-                else if (b.dataset.act === 'admin') location.href = ROOT + 'verwaltung.html';
+                else if (b.dataset.act === 'admin') location.href = ADMIN;
                 else if (b.dataset.act === 'logout') logout();
             };
             document.body.appendChild(menu);
@@ -100,6 +102,7 @@
 
     /* Gemeinsame Kontoeinstellungen aller Apps (Dashboard-Repo), TravelBase-Bereich vorne */
     const SETTINGS = '/konto.html?from=travelbase#app-travelbase';
+    const ADMIN = '/admin.html?from=travelbase#app-travelbase';
 
     async function logout() {
         await TB.signOut();
