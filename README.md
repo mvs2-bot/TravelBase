@@ -7,7 +7,7 @@ alle Inhalte liegen in Supabase und werden erst nach dem Login geladen.
 
 ```
 index.html            Login + Übersicht (ohne Login: nur Flaggen)
-verwaltung.html       Verwaltung für globale Admins: Konten, Rollen, App-Zugänge (über die Edge Function overall-admin)
+verwaltung.html       Weiterleitung auf die gemeinsamen Admin-Einstellungen im Dashboard (/admin.html)
 shared/config.js      Supabase-URL + Publishable Key (dürfen öffentlich sein)
 shared/travelbase.js  Login, Datenzugriff, Offline-Zwischenspeicher
 shared/overall-account.js  gemeinsames Konto-Modul aller Apps (Name, Bild, Geburtsdatum, Geschlecht, Größe, Gewicht, Passwort);
