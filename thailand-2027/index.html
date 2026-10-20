@@ -5,7 +5,7 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#15803d">
     <meta name="color-scheme" content="only light">
-    <script>/* PATCH: Dark Mode (frueh laden, verhindert Aufblitzen) */(function(){try{if(localStorage.getItem('tb_theme_v1')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
+    <script>/* PATCH: Dark Mode (frueh laden, verhindert Aufblitzen) */(function(){try{if((localStorage.getItem('overall-theme')||localStorage.getItem('tb_theme_v1'))==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <title>TravelBase</title>
     
     <!-- PWA Web App Favicon -->
@@ -1660,7 +1660,7 @@
         }
 
         /* PATCH: Dark Mode */
-        const THEME_KEY = 'tb_theme_v1';
+        const THEME_KEY = 'overall-theme';
         function applyTheme(t, save) {
             const dark = t === 'dark';
             document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
