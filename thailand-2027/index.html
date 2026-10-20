@@ -420,8 +420,18 @@
     /* Buttons oben rechts (Profil, Hell/Dunkel, Menü): auf allen Seiten gleich groß wie auf der Übersicht */
     .header-actions > .burger-btn { width: 48px; height: 42px; padding: 0; font-size: 1.3rem; border-width: 2px; display: inline-flex; align-items: center; justify-content: center; }
         /* Menü-Button in der Schnellauswahl (ersetzt dort „Infos & mehr“) */
-    .tab.tab-menu span { font-size: 1.6rem; line-height: 1; }
     body.tb-guest .tabs { grid-template-columns: 1fr 1fr; }
+    /* Schnellauswahl: alle Buttons gleich aufgebaut (Icon + einzeiliges Label) */
+    .tabs .tab { white-space: nowrap; overflow: hidden; }
+    .tabs .tab span { font-size: 1.05rem; line-height: 1.2; }
+    @media (max-width: 860px) { .tabs .tab span { font-size: .9rem; } .tabs .tab { font-size: .62rem; } }
+    @media (max-width: 420px) { .tabs .tab span { font-size: .75rem; } .tabs .tab { font-size: .56rem; } }
+    /* Tagesplan-Kopfzeile: Titel immer einzeilig, Hinweis darunter */
+    .mh.plan-head { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .mh.plan-head h2 { white-space: nowrap; }
+    /* To-Dos: Suche & Eingabe oben */
+    .todo-search { margin-bottom: 10px; }
+    #todos .pack-add-form { margin-bottom: 14px; }
     </style>
 
 <!-- PATCH: PWA -->
@@ -451,8 +461,8 @@
             <!-- Haupt-Tabs für Desktop/Tablet -->
             <div class="tabs" role="tablist">
                 <button class="tab on" data-t="mapview"><span>🗺️</span>Karte</button>
-                <button class="tab" data-t="thailand"><span>🇹🇭</span>Tagesplan<br>Thailand</button>
-                <button class="tab" data-t="srilanka"><span>🇱🇰</span>Tagesplan<br>Sri Lanka</button>
+                <button class="tab" data-t="thailand" title="Tagesplan Thailand"><span>🇹🇭</span>Thailand</button>
+                <button class="tab" data-t="srilanka" title="Tagesplan Sri Lanka"><span>🇱🇰</span>Sri Lanka</button>
                 <button class="tab" data-t="acc"><span>🏨</span>Unterkünfte</button>
                 <button class="tab tab-menu" id="menuBurger" type="button" aria-label="Menü öffnen"><span>☰</span>Menü</button>
             </div>
@@ -510,7 +520,7 @@
         <!-- Sektion 2: Tagesplan Thailand -->
         <div id="thailand" class="pane">
             <div class="box">
-                <div class="mh">
+                <div class="mh plan-head">
                     <h2>🇹🇭 Tagesplan Thailand</h2>
                     <p class="note" style="margin-bottom:0" id="planNoteTh"></p>
                 </div>
@@ -537,7 +547,7 @@
         <!-- Sektion 3: Tagesplan Sri Lanka -->
         <div id="srilanka" class="pane">
             <div class="box">
-                <div class="mh">
+                <div class="mh plan-head">
                     <h2>🇱🇰 Tagesplan Sri Lanka</h2>
                     <p class="note" style="margin-bottom:0" id="planNoteSl"></p>
                 </div>
@@ -648,9 +658,11 @@
                 </div>
                 <p class="note">Wichtige Erledigungen für Einreise, Gesundheit &amp; Dokumente – gemeinsame Liste für alle Mitreisenden (Änderungen der anderen nach dem Neuladen sichtbar).</p>
                 <div class="lists-offline tb-banner" hidden>📴 Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</div>
-                <ul class="todo-list" id="todoList"></ul>
-                <div class="pack-add-form" style="margin-top:16px">
-                    <input type="text" id="newTodoText" placeholder="Neuer To-Do Punkt...">
+                <div class="controls todo-search">
+                    <input type="search" id="todoSearch" class="q-input" placeholder="To-Dos durchsuchen..." oninput="renderTodos()">
+                </div>
+                <div class="pack-add-form">
+                    <input type="text" id="newTodoText" placeholder="Neuer To-Do Punkt..." onkeydown="if (event.key === 'Enter') addTodoItem()">
                     <select id="newTodoTag">
                         <option value="Allgemein">Allgemein</option>
                         <option value="Thailand">Thailand</option>
@@ -658,6 +670,8 @@
                     </select>
                     <button class="f on" onclick="addTodoItem()">+ Hinzufügen</button>
                 </div>
+                <ul class="todo-list" id="todoList"></ul>
+                <p class="note todo-empty" id="todoEmpty" hidden>Keine To-Dos zur Suche gefunden.</p>
             </div>
         </div>
 
@@ -1160,15 +1174,14 @@
         }
 
         function focusMap(name) {
-            let t;
-            if (name === "Bangkok Stadtzentrum") t = markers["bkk_city"];
-            else if (name.includes("Bangkok")) t = markers["Flughafen Bangkok (BKK)"];
-            else if (name === "Colombo Stadtzentrum") t = markers["cmb_city"];
-            else if (name.includes("Colombo")) t = markers["Flughafen Colombo (CMB)"];
-            else if (name.includes("Wien")) t = markers["Flughafen Wien (VIE)"];
-            else if (name.includes("Krabi")) t = markers["Krabi / Railay"];
-            else if (name.includes("Negombo")) t = markers["Negombo"];
-            else t = markers[name];
+            /* Exakter Name zuerst (z. B. "Colombo (Ceylon StayZ)"), sonst grobe Zuordnung */
+            let t = markers[name];
+            if (!t) {
+                if (name.includes("Bangkok")) t = markers["Flughafen Bangkok (BKK)"];
+                else if (name.includes("Colombo")) t = markers["Flughafen Colombo (CMB)"];
+                else if (name.includes("Wien")) t = markers["Flughafen Wien (VIE)"];
+                else if (name.includes("Krabi")) t = markers["Krabi / Railay"];
+            }
             if (t) {
                 switchTab('mapview');
                 setTimeout(() => {
@@ -1274,9 +1287,12 @@
             const ul = $('#todoList');
             if (!ul) return;
             ul.innerHTML = '';
-            let doneCount = 0;
+            let doneCount = 0, shown = 0;
+            const term = ($('#todoSearch') ? $('#todoSearch').value : '').trim().toLowerCase();
             todoList.forEach((item, idx) => {
                 if (item.done) doneCount++;
+                if (term && !`${item.text} ${item.tag}`.toLowerCase().includes(term)) return;
+                shown++;
                 const li = document.createElement('li');
                 li.className = `todo-item ${item.done ? 'done' : ''}`;
                 let tagClass = '';
@@ -1293,6 +1309,7 @@
                 li.querySelector('.todo-tag').textContent = item.tag;
                 ul.appendChild(li);
             });
+            $('#todoEmpty').hidden = !(term && todoList.length && !shown);
             const pct = todoList.length > 0 ? Math.round((doneCount / todoList.length) * 100) : 0;
             $('#todoProgress').innerText = `${doneCount}/${todoList.length} erledigt (${pct}%)`;
         }

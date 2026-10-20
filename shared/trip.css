@@ -429,5 +429,15 @@ a.btn.ql:hover { background: #166534; }
     .header-actions > .burger-btn { width: 48px; height: 42px; padding: 0; font-size: 1.3rem; border-width: 2px; display: inline-flex; align-items: center; justify-content: center; }
 
     /* Menü-Button in der Schnellauswahl (ersetzt dort „Infos & mehr“) */
-    .tab.tab-menu span { font-size: 1.6rem; line-height: 1; }
+    /* Schnellauswahl: alle Buttons gleich aufgebaut (Icon + einzeiliges Label) */
+    .tabs .tab { white-space: nowrap; overflow: hidden; }
+    .tabs .tab span { font-size: 1.05rem; line-height: 1.2; }
+    @media (max-width: 860px) { .tabs .tab span { font-size: .9rem; } .tabs .tab { font-size: .62rem; } }
+    @media (max-width: 420px) { .tabs .tab span { font-size: .75rem; } .tabs .tab { font-size: .56rem; } }
+    /* Tagesplan-Kopfzeile: Titel immer einzeilig, Hinweis darunter */
+    .mh.plan-head { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .mh.plan-head h2 { white-space: nowrap; }
+    /* To-Dos: Suche & Eingabe oben */
+    .todo-search { margin-bottom: 10px; }
+    #todos .pack-add-form { margin-bottom: 14px; }
     body.tb-guest .tabs { grid-template-columns: 1fr 1fr; }

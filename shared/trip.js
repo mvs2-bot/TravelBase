@@ -75,7 +75,8 @@
         SECTIONS = sections();
         const tabs = SECTIONS.filter(s => s.tab);
         $('#tabs').style.setProperty('--tab-count', tabs.length + 1);
-        $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${s.id}"><span>${s.icon}</span>${esc(s.label).replace(/^Tagesplan /, 'Tagesplan<br>')}</button>`).join('')
+        /* Schnellauswahl einzeilig: „Tagesplan Peru“ → „Peru“ (voller Name als Tooltip) */
+        $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${s.id}" title="${esc(s.label)}"><span>${s.icon}</span>${esc(s.label.replace(/^Tagesplan (?=\S)/, ''))}</button>`).join('')
             + '<button class="tab tab-menu" id="menuTab" type="button" aria-label="Menü öffnen"><span>☰</span>Menü</button>';
         $('#popLinks').innerHTML = SECTIONS.map(s => `<button data-t="${s.id}" class="pop-btn"><span>${s.icon}</span>${esc(s.label)}</button>`).join('');
         document.querySelectorAll('.tabs .tab[data-t]').forEach(b => b.onclick = () => switchTab(b.dataset.t));
@@ -191,7 +192,7 @@
         $('#planPanes').innerHTML = (DATA.plans || []).map(p => `
             <div id="${p.id}" class="pane">
                 <div class="box">
-                    <div class="mh">
+                    <div class="mh plan-head">
                         <h2>${esc(p.title)}</h2>
                         ${p.note ? `<p class="note" style="margin-bottom:0">${esc(p.note)}</p>` : ''}
                     </div>
@@ -377,9 +378,12 @@
     function renderTodos() {
         const ul = $('#todoList');
         ul.innerHTML = '';
-        let done = 0;
+        let done = 0, shown = 0;
+        const term = $('#todoSearch').value.trim().toLowerCase();
         todoList.forEach((item, idx) => {
             if (item.done) done++;
+            if (term && !`${item.text} ${item.tag}`.toLowerCase().includes(term)) return;
+            shown++;
             const li = document.createElement('li');
             li.className = 'todo-item' + (item.done ? ' done' : '');
             const c = tagColor(item.tag);
@@ -392,6 +396,7 @@
             li.querySelector('button').onclick = () => deleteTodo(idx);
             ul.appendChild(li);
         });
+        $('#todoEmpty').hidden = !(term && todoList.length && !shown);
         const pct = todoList.length ? Math.round(done / todoList.length * 100) : 0;
         $('#todoProgress').textContent = `${done}/${todoList.length} erledigt (${pct}%)`;
     }
@@ -431,6 +436,7 @@
         $('#newTodoTag').innerHTML = tags.map(t => `<option>${esc(t.label)}</option>`).join('');
         $('#addTodoBtn').onclick = addTodo;
         $('#newTodoText').onkeydown = e => { if (e.key === 'Enter') addTodo(); };
+        $('#todoSearch').oninput = renderTodos;
         loadTodos();
     }
 
