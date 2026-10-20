@@ -1,7 +1,8 @@
 /* TravelBase – Profil-Button oben rechts neben dem Mond
    - zeigt 👤 bzw. das eigene Profilbild, sobald eins hochgeladen ist
-   - Menü: Kontoeinstellungen, Passwort ändern / vergessen, Verwaltung (nur globale Admins), Ausloggen
-   Die Dialoge kommen aus dem gemeinsamen Konto-Modul shared/overall-account.js (gilt für alle Apps).
+   - Menü: Kontoeinstellungen, Verwaltung (nur globale Admins), Ausloggen
+   Kontoeinstellungen sind eine gemeinsame Seite für alle Apps im Dashboard (/konto.html);
+   shared/overall-account.js wird hier nur noch für das Profilbild gebraucht.
    Benötigt vorher: shared/travelbase.js und shared/overall-account.js. Die Seite braucht einen <button id="tbProfileBtn" hidden>.
    Fotos liegen im privaten Storage-Bucket "avatars" unter <user-id>/…, der Pfad steht in overall_profiles.avatar_path. */
 (function () {
@@ -67,7 +68,6 @@
                 <div><b>${esc(shownName())}</b><small>${esc(user.email)}</small></div>
             </div>
             <button class="tbp-item" type="button" role="menuitem" data-act="settings">⚙️ Kontoeinstellungen</button>
-            <button class="tbp-item" type="button" role="menuitem" data-act="password">🔑 Passwort ändern / vergessen</button>
             ${profile.role === 'admin' ? '<button class="tbp-item" type="button" role="menuitem" data-act="admin">🛡️ Verwaltung</button>' : ''}
             <button class="tbp-item danger" type="button" role="menuitem" data-act="logout">🚪 Ausloggen</button>`;
     }
@@ -79,8 +79,7 @@
             menu.onclick = e => {
                 const b = e.target.closest('[data-act]'); if (!b) return;
                 closeMenu();
-                if (b.dataset.act === 'settings') openSettings();
-                else if (b.dataset.act === 'password') openPassword();
+                if (b.dataset.act === 'settings') location.href = SETTINGS;
                 else if (b.dataset.act === 'admin') location.href = ROOT + 'verwaltung.html';
                 else if (b.dataset.act === 'logout') logout();
             };
@@ -99,19 +98,8 @@
         if (btn) btn.setAttribute('aria-expanded', 'false');
     }
 
-    /* Kontoeinstellungen und Passwort kommen aus dem gemeinsamen Modul (shared/overall-account.js) */
-    function openSettings() {
-        OverallAccount.openSettings({ sb: TB.sb, onChange: p => {
-            const { photo: pic, ...row } = p;
-            profile = { ...profile, ...row };
-            photo = pic || null;
-            TB.cacheSet('profile_' + user.id, profile);
-            TB.cacheSet('name_' + user.id, (profile.display_name || '').trim());
-            TB.cacheSet('avatar_' + user.id, photo ? { path: profile.avatar_path, data: photo } : null);
-            render();
-        } });
-    }
-    function openPassword() { OverallAccount.openPassword({ sb: TB.sb, redirectTo: ROOT }); }
+    /* Gemeinsame Kontoeinstellungen aller Apps (Dashboard-Repo), TravelBase-Bereich vorne */
+    const SETTINGS = '/konto.html?from=travelbase#app-travelbase';
 
     async function logout() {
         await TB.signOut();
