@@ -124,12 +124,16 @@
             </div>
             <p class="note">Gemeinsame Liste für alle Mitreisenden (Änderungen der anderen nach dem Neuladen sichtbar).</p>
             <div class="lists-offline tb-banner" hidden>📴 Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</div>
-            <ul class="todo-list" id="todoList"></ul>
-            <div class="pack-add-form" style="margin-top:16px">
+            <div class="controls todo-search">
+                <input type="search" id="todoSearch" class="q-input" placeholder="To-Dos durchsuchen...">
+            </div>
+            <div class="pack-add-form">
                 <input type="text" id="newTodoText" placeholder="Neuer To-Do Punkt...">
                 <select id="newTodoTag"></select>
                 <button class="f on" id="addTodoBtn" type="button">+ Hinzufügen</button>
             </div>
+            <ul class="todo-list" id="todoList"></ul>
+            <p class="note" id="todoEmpty" hidden>Keine To-Dos zur Suche gefunden.</p>
         </div>
     </div>
 
