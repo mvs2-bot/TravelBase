@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="de"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#15803d">
+    <meta name="color-scheme" content="only light">
+    <script>(function(){try{if(localStorage.getItem('tb_theme_v1')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
+    <title>Verwaltung · TravelBase</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="shared/config.js"></script>
+    <script src="shared/travelbase.js"></script>
+    <script src="shared/overall-account.js"></script>
+    <script src="shared/profile.js"></script>
+<style>
+    :root {
+        --bg: #f4f7f4; --card: #fff; --hover: #f0fdf4; --line: #cbd5e1; --ink: #0f172a; --text: #334155; --mute: #64748b;
+        --p1: #15803d; --p1-soft: #dcfce7; --p1-line: #86efac; --accent: #0d9488; --danger: #dc2626; --danger-soft: #fee2e2;
+        --radius: 14px; --shadow: 0 4px 12px rgba(15, 23, 42, .05);
+    }
+    :root[data-theme="dark"] {
+        color-scheme: dark; --bg: #000; --card: #0a0d0b; --hover: #121915; --line: #1f2823; --ink: #e8f0ec; --text: #c3cfc8; --mute: #92a39a;
+        --p1: #22c55e; --p1-soft: #14361f; --p1-line: #1f5a35; --accent: #2dd4bf; --danger: #f87171; --danger-soft: #3b1717; --shadow: none;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding: 0 24px 48px; min-height: 100vh; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .wrap { max-width: 1080px; margin: 0 auto; }
+    [hidden] { display: none !important; }
+
+    .sticky-header { position: sticky; top: 0; z-index: 100; background: var(--bg); padding: 14px 0 12px; margin-bottom: 24px; border-bottom: 3px solid var(--p1); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h1 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); font-weight: 800; letter-spacing: -.025em; color: var(--ink); line-height: 1.15; }
+    .sub { font-size: .9rem; font-weight: 600; color: var(--mute); }
+    .sub a { color: var(--p1); text-decoration: none; }
+    .sub a:hover { text-decoration: underline; }
+    .icon-btn { background: var(--card); border: 2px solid var(--line); border-radius: 10px; font-size: 1.3rem; width: 48px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; color: var(--ink); box-shadow: var(--shadow); }
+    .icon-btn:hover { background: var(--hover); border-color: var(--p1); }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+
+    .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; box-shadow: var(--shadow); }
+    .box h2 { font-size: 1.1rem; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+    .note { font-size: .84rem; color: var(--mute); margin-bottom: 14px; }
+    .msg { font-size: .84rem; font-weight: 600; border-radius: 8px; padding: 8px 12px; margin-top: 12px; }
+    .msg.err { background: var(--danger-soft); color: var(--danger); }
+    .msg.ok { background: var(--p1-soft); color: var(--p1); }
+
+    label { font-size: .78rem; font-weight: 700; color: var(--mute); display: flex; flex-direction: column; gap: 4px; }
+    input, select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 16px; color: var(--ink); min-width: 0; }
+    input:focus, select:focus { border-color: var(--p1-line); outline: 3px solid rgba(13,148,136,.15); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .btn { background: var(--p1); color: #fff; border: 2px solid var(--p1); border-radius: 10px; padding: 10px 18px; font-weight: 800; font-size: .92rem; }
+    .btn:hover { filter: brightness(.95); }
+    .btn:disabled, .btn-ghost:disabled { opacity: .6; cursor: wait; }
+    :root[data-theme="dark"] .btn { color: #052e16; }
+    .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-weight: 700; font-size: .84rem; }
+    .btn-ghost:hover { background: var(--hover); border-color: var(--p1); }
+    .btn-ghost.danger { color: var(--danger); }
+    .btn-ghost.danger:hover { border-color: var(--danger); background: var(--danger-soft); }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+    .search { flex: 1 1 220px; }
+
+    /* Konten */
+    .users { display: flex; flex-direction: column; gap: 12px; }
+    .user { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+    .user.is-admin { border-left: 5px solid var(--p1); }
+    .user-head { display: flex; gap: 12px; align-items: center; }
+    .ava { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; background: var(--p1-soft); color: var(--p1); border: 1px solid var(--p1-line); }
+    .who { flex: 1 1 auto; min-width: 0; }
+    .who b { display: block; color: var(--ink); font-size: 1rem; }
+    .who small { display: block; color: var(--mute); font-size: .8rem; word-break: break-all; }
+    .tag { font-size: .7rem; font-weight: 800; border-radius: 999px; padding: 2px 8px; background: var(--p1-soft); color: var(--p1); margin-left: 6px; vertical-align: middle; }
+    .access { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 14px; }
+    .access label.off select { color: var(--mute); }
+    .edit { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+
+    @media (max-width: 760px) {
+        body { padding: 0 10px 28px; }
+        .sticky-header { padding: 10px 0 8px; margin-bottom: 14px; }
+        .box, .user { padding: 14px; border-radius: 10px; }
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header class="sticky-header">
+        <div>
+            <h1>🛡️ Verwaltung</h1>
+            <div class="sub"><a href="./">← Übersicht</a> · Konten, Rollen und App-Zugänge</div>
+        </div>
+        <div class="header-actions">
+            <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
+            <button id="tbProfileBtn" class="icon-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
+        </div>
+    </header>
+
+    <div id="gate" class="box">
+        <h2 id="gateTitle">Lade …</h2>
+        <p class="note" id="gateText" style="margin:0"></p>
+    </div>
+
+    <section id="main" hidden>
+        <div class="box">
+            <h2>➕ Neues Konto</h2>
+            <p class="note">Gibt es die E-Mail schon (z. B. aus einer anderen App), bekommt das bestehende Konto nur die gewählten Zugänge.
+                Das Passwort teilst du der Person selbst mit; sie kann es danach im Profil-Menü ändern.</p>
+            <form id="createForm">
+                <div class="grid">
+                    <label>E-Mail<input type="email" name="email" autocomplete="off" required></label>
+                    <label>Anzeigename<input type="text" name="display_name" maxlength="80" autocomplete="off"></label>
+                    <label>Passwort (mind. 8 Zeichen)<input type="text" name="password" minlength="8" autocomplete="off"></label>
+                    <label>Globale Rolle<select name="role"></select></label>
+                </div>
+                <div class="access" id="createAccess"></div>
+                <div class="row"><button class="btn" type="submit">Konto anlegen</button></div>
+            </form>
+            <div id="createMsg" class="msg" hidden></div>
+        </div>
+
+        <div class="box">
+            <h2>👥 Konten</h2>
+            <p class="note">Globale Admins dürfen in jeder App alles. Für alle anderen gilt der Zugang pro App; ohne Zugang ist die App gesperrt.
+                Was jemand innerhalb einer App sieht (z. B. welche Reisen), regelt die App selbst.</p>
+            <div class="row" style="margin-top:0"><input class="search" id="search" type="search" placeholder="Suchen (Name oder E-Mail)"></div>
+            <div id="listMsg" class="msg" hidden></div>
+        </div>
+        <div class="users" id="users"></div>
+    </section>
+</div>
+
+<script>
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const show = (el, on = true) => { el.hidden = !on; };
+    function msg(el, text, ok) { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); show(el, !!text); }
+    const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
+    /* Hell/Dunkel */
+    function applyTheme(dark, save) {
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        $('#themeToggle').textContent = dark ? '☀️' : '🌙';
+        $('#themeToggle').setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
+        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#15803d';
+        if (save) { try { localStorage.setItem('tb_theme_v1', dark ? 'dark' : 'light'); } catch (e) {} }
+    }
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
+    $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);
+
+    /* Alle Änderungen laufen über die Edge Function "overall-admin", die selbst prüft, ob man globaler Admin ist */
+    async function call(action, body = {}) {
+        const { data, error } = await TB.sb.functions.invoke('overall-admin', { body: { action, ...body } });
+        if (error) {
+            let text = error.message;
+            try { const j = await error.context.json(); if (j && j.error) text = j.error; } catch (e) {}
+            const err = new Error(text); err.status = error.context && error.context.status; throw err;
+        }
+        return data;
+    }
+
+    let state = null;          /* { me, roles, apps, users } */
+    const openEdit = new Set();
+
+    const roleOptions = (sel, none) =>
+        (none ? `<option value=""${sel ? '' : ' selected'}>${esc(none)}</option>` : '') +
+        state.roles.map(r => `<option value="${esc(r.id)}"${r.id === sel ? ' selected' : ''}>${esc(r.label)}</option>`).join('');
+    const appName = a => a.name + (a.is_active ? '' : ' (deaktiviert)');
+    const initials = u => ((u.display_name || u.email || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || '?').toUpperCase();
+
+    function renderCreate() {
+        $('#createForm').role.innerHTML = roleOptions('guest');
+        $('#createAccess').innerHTML = state.apps.map(a => `
+            <label>${esc(appName(a))}<select data-app="${esc(a.id)}">${roleOptions('', 'kein Zugang')}</select></label>`).join('');
+    }
+
+    function renderUsers() {
+        const q = $('#search').value.trim().toLowerCase();
+        const list = state.users.filter(u => !q || (u.display_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q));
+        $('#users').innerHTML = list.map(u => {
+            const admin = u.role === 'admin', me = u.id === state.me;
+            const access = state.apps.map(a => admin
+                ? `<label>${esc(appName(a))}<select disabled><option>Admin (global)</option></select></label>`
+                : `<label class="${u.access[a.id] ? '' : 'off'}">${esc(appName(a))}<select data-act="access" data-app="${esc(a.id)}">${roleOptions(u.access[a.id] || '', 'kein Zugang')}</select></label>`).join('');
+            return `
+            <article class="user${admin ? ' is-admin' : ''}" data-id="${esc(u.id)}">
+                <div class="user-head">
+                    <span class="ava">${esc(initials(u))}</span>
+                    <div class="who">
+                        <b>${esc(u.display_name || u.email)}${me ? '<span class="tag">Du</span>' : ''}</b>
+                        <small>${esc(u.email)} · angelegt ${fmtDate(u.created_at)} · ${u.last_sign_in_at ? 'zuletzt angemeldet ' + fmtDate(u.last_sign_in_at) : 'noch nie angemeldet'}</small>
+                    </div>
+                </div>
+                <div class="access">
+                    <label>Globale Rolle<select data-act="role"${me ? ' disabled title="Die eigene Rolle kann man nicht ändern."' : ''}>${roleOptions(u.role)}</select></label>
+                    ${access}
+                </div>
+                <div class="row">
+                    <button class="btn-ghost" type="button" data-act="edit">✏️ Name, E-Mail, Passwort</button>
+                    ${me ? '' : '<button class="btn-ghost danger" type="button" data-act="delete">🗑️ Konto löschen</button>'}
+                </div>
+                <form class="edit" data-act="save"${openEdit.has(u.id) ? '' : ' hidden'}>
+                    <div class="grid">
+                        <label>Anzeigename<input type="text" name="display_name" maxlength="80" value="${esc(u.display_name || '')}"></label>
+                        <label>E-Mail<input type="email" name="email" value="${esc(u.email || '')}" required></label>
+                        <label>Neues Passwort (leer = unverändert)<input type="text" name="password" minlength="8" autocomplete="off"></label>
+                    </div>
+                    <div class="row"><button class="btn" type="submit">Speichern</button></div>
+                </form>
+                <div class="msg" hidden></div>
+            </article>`;
+        }).join('') || '<div class="box"><p class="note" style="margin:0">Keine Konten gefunden.</p></div>';
+    }
+
+    async function load() {
+        state = await call('list');
+        renderCreate();
+        renderUsers();
+    }
+
+    /* Änderungen an einem Konto */
+    function userMsg(card, text, ok) { msg(card.querySelector(':scope > .msg'), text, ok); }
+    async function run(card, fn, okText) {
+        card.querySelectorAll('button, select, input').forEach(el => { el.disabled = true; });
+        try {
+            await fn();
+            await load();
+            const fresh = document.querySelector(`.user[data-id="${card.dataset.id}"]`);
+            if (fresh && okText) userMsg(fresh, okText, true);
+            return true;
+        } catch (e) {
+            /* Auswahlfelder auf den gespeicherten Stand zurücksetzen, Fehler am Konto anzeigen */
+            renderUsers();
+            const fresh = document.querySelector(`.user[data-id="${card.dataset.id}"]`);
+            if (fresh) userMsg(fresh, TB.errorText(e));
+            return false;
+        }
+    }
+
+    $('#users').addEventListener('change', e => {
+        const el = e.target.closest('select[data-act]'); if (!el) return;
+        const card = el.closest('.user'), id = card.dataset.id;
+        const u = state.users.find(x => x.id === id);
+        if (el.dataset.act === 'role') {
+            if (el.value === 'admin' && !confirm(`${u.display_name || u.email} zum globalen Admin machen? Admins dürfen in jeder App alles, auch Konten verwalten.`)) { el.value = u.role; return; }
+            run(card, () => call('update', { id, role: el.value }), '✅ Globale Rolle gespeichert.');
+        } else {
+            run(card, () => call('access', { id, app: el.dataset.app, role: el.value || null }), el.value ? '✅ Zugang gespeichert.' : '✅ Zugang entzogen.');
+        }
+    });
+
+    $('#users').addEventListener('click', e => {
+        const b = e.target.closest('button[data-act]'); if (!b) return;
+        const card = b.closest('.user'), id = card.dataset.id;
+        const u = state.users.find(x => x.id === id);
+        if (b.dataset.act === 'edit') {
+            const f = card.querySelector('form.edit');
+            f.hidden = !f.hidden;
+            f.hidden ? openEdit.delete(id) : openEdit.add(id);
+        } else if (b.dataset.act === 'delete') {
+            const answer = prompt(`Konto ${u.email} endgültig löschen? Profil, Profilbild, alle App-Zugänge und App-Daten (z. B. Questlog-Spielstand) gehen verloren. Das lässt sich nicht rückgängig machen.\n\nZum Bestätigen die E-Mail-Adresse eintippen:`);
+            if (answer === null) return;
+            if (answer.trim().toLowerCase() !== (u.email || '').toLowerCase()) { userMsg(card, 'Die E-Mail stimmt nicht überein, nichts gelöscht.'); return; }
+            run(card, () => call('delete', { id }), null).then(ok => ok && msg($('#listMsg'), `🗑️ ${u.email} wurde gelöscht.`, true));
+        }
+    });
+
+    $('#users').addEventListener('submit', e => {
+        const f = e.target.closest('form.edit'); if (!f) return;
+        e.preventDefault();
+        const card = f.closest('.user'), id = card.dataset.id;
+        const u = state.users.find(x => x.id === id);
+        const body = { id };
+        const name = f.display_name.value.trim(), email = f.email.value.trim().toLowerCase(), pw = f.password.value;
+        if (name !== (u.display_name || '')) body.display_name = name;
+        if (email !== (u.email || '').toLowerCase()) body.email = email;
+        if (pw) body.password = pw;
+        if (Object.keys(body).length === 1) { userMsg(card, 'Nichts geändert.', true); return; }
+        run(card, async () => { await call('update', body); openEdit.delete(id); }, pw ? '✅ Gespeichert. Das neue Passwort bitte der Person mitteilen.' : '✅ Gespeichert.');
+    });
+
+    $('#search').addEventListener('input', () => state && renderUsers());
+
+    $('#createForm').onsubmit = async e => {
+        e.preventDefault();
+        const f = e.target, btn = f.querySelector('button[type=submit]');
+        const access = {};
+        f.querySelectorAll('#createAccess select').forEach(s => { if (s.value) access[s.dataset.app] = s.value; });
+        btn.disabled = true; msg($('#createMsg'), '');
+        try {
+            const res = await call('create', { email: f.email.value.trim(), display_name: f.display_name.value.trim(), password: f.password.value, role: f.role.value, access });
+            f.reset();
+            await load();
+            msg($('#createMsg'), res.existed ? '✅ Das Konto gab es schon; die Zugänge sind gesetzt (Name, Passwort und Rolle blieben unverändert).' : '✅ Konto angelegt.', true);
+        } catch (err) { msg($('#createMsg'), TB.errorText(err)); }
+        finally { btn.disabled = false; }
+    };
+
+    function gate(title, text) { $('#gateTitle').textContent = title; $('#gateText').innerHTML = text; show($('#gate')); show($('#main'), false); }
+
+    async function start() {
+        if (!TB.configured) return gate('Nicht eingerichtet', 'Supabase ist noch nicht verbunden (shared/config.js).');
+        const session = await TB.getSession();
+        if (!session) return gate('🔐 Bitte anmelden', 'Melde dich zuerst auf der <a href="./">Übersicht</a> an.');
+        if (!navigator.onLine) return gate('📴 Offline', 'Die Verwaltung braucht eine Verbindung zum Server.');
+        try {
+            await load();
+            show($('#gate'), false); show($('#main'));
+        } catch (e) {
+            if (e.status === 403) gate('⛔ Kein Zugriff', 'Die Verwaltung ist nur für globale Admins. <a href="./">Zur Übersicht</a>');
+            else gate('Fehler', esc(TB.errorText(e)));
+        }
+    }
+
+    TB.onAuth(ev => { if (ev === 'SIGNED_OUT') location.href = './'; });
+    start();
+</script>
+</body></html>
