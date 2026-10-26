@@ -421,6 +421,10 @@
     /* Buttons oben rechts (Profil, Hell/Dunkel, Menü): auf allen Seiten gleich groß wie auf der Übersicht */
     .header-actions > .burger-btn { width: 48px; height: 42px; padding: 0; font-size: 1.3rem; border-width: 2px; display: inline-flex; align-items: center; justify-content: center; }
         /* Menü-Button in der Schnellauswahl (ersetzt dort „Infos & mehr“) */
+        .tabs .tab-menu { background: color-mix(in srgb, var(--p1) 14%, var(--card)); border: 1.5px solid var(--p1); color: var(--p1); }
+        .tabs .tab-menu:hover { background: var(--p1); color: #fff; }
+        :root[data-theme="dark"] .tabs .tab-menu { background: color-mix(in srgb, var(--p1) 18%, var(--card)); }
+        :root[data-theme="dark"] .tabs .tab-menu:hover { color: #052e16; }
     body.tb-guest .tabs { grid-template-columns: 1fr 1fr; }
     /* Schnellauswahl: alle Buttons gleich aufgebaut (Icon + einzeiliges Label) */
     .tabs .tab { white-space: nowrap; overflow: hidden; }
@@ -488,7 +492,6 @@
                     <button data-t="misc" class="pop-btn"><span>📌</span>Infos &amp; mehr</button>
                     <button data-t="flights" class="pop-btn"><span>✈️</span>Gebuchte Flüge</button>
                     <button data-t="pack" class="pop-btn"><span>🎒</span>Packliste &amp; Gewicht</button>
-                    <button data-t="currency" class="pop-btn"><span>💰</span>Geld &amp; Währung</button>
                     <button data-t="climate" class="pop-btn"><span>🌤️</span>Klima &amp; Wetter</button>
                     <button data-t="imprint" class="pop-btn"><span>📄</span>Impressum</button>
                 </div>
@@ -643,9 +646,10 @@
         
             <div class="box">
                         <h2>🚨 Infos &amp; Notfall</h2>
-                        <p class="note">Wichtige Notrufnummern, Botschaften, SIM-Karten und nützliche Apps findest du ab sofort zentral auf unserer separaten QuickTools-Seite:</p>
-                        <div style="text-align: center; margin: 24px 0;">
-                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🔗 Zu den Infos &amp; Notfall-Tools ↗</a>
+                        <p class="note">Auf unserer QuickTools-Seite gibt es für jedes Reiseland einen Währungsrechner mit aktuellem Kurs, wichtige Phrasen mit Audio, GPS-Standort und Taxi-Karte, Sonnenzeiten sowie Notrufnummern, Botschaft, SIM-Karten, nützliche Apps und Verhaltensregeln. Funktioniert auch offline.</p>
+                        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin: 24px 0;">
+                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🧰 Link zu den Quick Tools · 🇹🇭 Thailand ↗</a>
+                            <a href="https://mvs2-bot.github.io/QuickTools/srilanka/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🧰 Link zu den Quick Tools · 🇱🇰 Sri Lanka ↗</a>
                         </div>
                     </div>
         </div>
@@ -798,18 +802,6 @@
             </div>
         </div>
 
-        <!-- Popover-Ansichten: Geld & Währung -->
-        <div id="currency" class="pane">
-                    <div class="box">
-                        <h2>💰 Geld &amp; Währung</h2>
-                        <p class="note">Der Währungsrechner und alle Details zu Bargeld und Zahlung sind nun direkt über unsere zentrale QuickTools-Seite erreichbar:</p>
-                        <div style="text-align: center; margin: 32px 0;">
-                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/#currency" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🧮 Zum Währungsrechner ↗</a>
-                        </div>
-                    </div>
-                </div>
-
-        
 <!-- Popover-Ansichten: Klima & Wetter -->
         <div id="climate" class="pane">
             <div class="box">
