@@ -175,6 +175,7 @@
     /* ---------- Tagespläne ---------- */
     const REG = () => DATA.regions || {};
     const personOf = k => (DATA.persons || []).find(p => p.key === k);
+    const homeOf = p => p.home || p.end;
     function regionBadge(k) {
         const r = REG()[k] || { label: k, color: '#64748b' };
         return `<span class="rg rc" style="--c:${r.color}">${esc(r.label)}</span>`;
@@ -259,20 +260,22 @@
     function renderCal() {
         const ps = DATA.persons || [], m = DATA.meta || {};
         if (!DATA.calendar || !ps.length || !m.start) return;
-        const d0 = dayNum(m.start), n = dayNum(m.end || m.start) - d0 + 1;
+        /* "home" = Ankunft zu Hause; Rückflüge nach Europa gehen über Nacht und belegen zwei Flugtage */
+        const last = ps.reduce((x, p) => p.home && p.home > x ? p.home : x, m.end || m.start);
+        const d0 = dayNum(m.start), n = dayNum(last) - d0 + 1;
         $('#calTitle').textContent = `🗓️ Anwesenheit · ${n} Tage`;
         $('#calBody').style.setProperty('--pc', ps.length);
         let h = `<div class="cr hd"><div>Tag</div>${ps.map(p => `<div style="color:${p.color}">${esc(p.name)}</div>`).join('')}</div>`;
         for (let d = 0; d < n; d++) {
             const dt = new Date((d0 + d) * 864e5), iso = dt.toISOString().slice(0, 10);
             const we = [0, 6].includes(dt.getUTCDay());
-            const lab = dt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', weekday: 'short', timeZone: 'UTC' });
+            const lab = `${'So Mo Di Mi Do Fr Sa'.split(' ')[dt.getUTCDay()]} ${fmtDM(iso)}`;
             h += `<div class="cr${we ? ' we' : ''}${iso === TODAY ? ' today' : ''}"><div class="cd">Tag ${d + 1}<small>${lab}</small></div>`;
             ps.forEach(p => {
-                const a = dayNum(p.start) - d0, b = dayNum(p.end) - d0;
+                const a = dayNum(p.start) - d0, b = dayNum(p.end) - d0, back = dayNum(homeOf(p)) - d0;
                 let c = '';
-                if (d >= a && d <= b) {
-                    const fl = d === a || d === b;
+                if (d >= a && d <= back) {
+                    const fl = d === a || d >= b;
                     c = `<div class="bar${fl ? ' fl' : ''}" style="${fl ? `color:${p.color}` : `background:${p.color}`}" title="${esc(p.name)}: Tag ${d - a + 1}">${fl ? '✈️ ' : ''}${d - a + 1}</div>`;
                 }
                 h += `<div class="cc">${c}</div>`;
@@ -287,7 +290,7 @@
         const ps = DATA.persons || [];
         if (ps.length) {
             $('#statsBox').hidden = false;
-            $('#stats').innerHTML = ps.map(p => `<div class="stat"><span style="color:${p.color}">●</span> ${esc(p.name)}<b>${dayNum(p.end) - dayNum(p.start) + 1} Tage</b>${fmtDM(p.start)} – ${fmtDM(p.end)}</div>`).join('');
+            $('#stats').innerHTML = ps.map(p => `<div class="stat"><span style="color:${p.color}">●</span> ${esc(p.name)}<b>${dayNum(homeOf(p)) - dayNum(p.start) + 1} Tage</b>${fmtDM(p.start)} – ${fmtDM(homeOf(p))}</div>`).join('');
         }
         const w = DATA.workdays;
         if (w && TODAY < w.until) {
@@ -310,13 +313,14 @@
         }
         if ((DATA.links || []).length) {
             $('#linkBox').hidden = false;
-            $('#linkRow').innerHTML = DATA.links.map(l => `<a class="btn ql" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`).join('');
+            $('#linkRow').innerHTML = DATA.links.map(l => `<a class="btn ql" href="${esc(l.url)}" target="_blank" rel="noopener">🧰 Link zu den Quick Tools${l.label ? ` · ${esc(l.label)}` : ''} ↗</a>`).join('');
         }
         if ((DATA.flights || []).length) {
             $('#flightList').innerHTML = DATA.flights.map(f => `
                 <li>
                     <div class="fl-date">${esc(f.date)}</div>
                     <div class="fl-route">${esc(f.route)}</div>
+                    ${f.duration ? `<div class="fl-dur">⏱️ ${esc(f.duration)}</div>` : ''}
                     ${f.details ? `<div class="fl-details">${esc(f.details)}</div>` : ''}
                     ${f.price ? `<div class="fl-price">${esc(f.price)}</div>` : ''}
                 </li>`).join('');

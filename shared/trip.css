@@ -421,14 +421,29 @@ a.btn.ql:hover { background: #166534; }
 .bar.fl { background: transparent !important; border: 1.5px dashed; }
 .fl-who { font-weight: 700; }
 @media (max-width: 860px) {
-    .cr { grid-template-columns: 48px repeat(var(--pc, 4), minmax(0, 1fr)); }
+    /* Handy: Tag-Spalte breit genug für „Tag 12 · Do 25.03.“ in einer Zeile, Personen-Spalten schmal → flache Zeilen */
+    .cr { grid-template-columns: 104px repeat(var(--pc, 4), minmax(0, 1fr)); }
+    .cr.hd div { padding: 6px 2px; font-size: .66rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cd { display: flex; align-items: baseline; gap: 5px; padding: 2px 6px; font-size: .66rem; white-space: nowrap; }
+    .cd small { display: inline; }
+    .cc { height: 24px; padding: 2px; }
+    .bar { font-size: .6rem; }
+    .bar.fl { border-width: 1px; }
+    .link-row { gap: 8px; margin: 14px 0 4px; }
+    a.btn.ql { flex: 1 1 100%; text-align: center; padding: 10px 14px; font-size: .88rem; }
     .tab { font-size: .6rem; }
 }
+/* Flugdauer in der Flugliste */
+.fl-dur { display: inline-block; margin-top: 3px; font-size: .74rem; font-weight: 700; color: var(--text); background: var(--bg); border: 1px solid var(--line); padding: 1px 7px; border-radius: 4px; }
 
     /* Buttons oben rechts (Profil, Hell/Dunkel, Menü): auf allen Seiten gleich groß wie auf der Übersicht */
     .header-actions > .burger-btn { width: 48px; height: 42px; padding: 0; font-size: 1.3rem; border-width: 2px; display: inline-flex; align-items: center; justify-content: center; }
 
     /* Menü-Button in der Schnellauswahl (ersetzt dort „Infos & mehr“) */
+    .tabs .tab-menu { background: color-mix(in srgb, var(--p1) 14%, var(--card)); border: 1.5px solid var(--p1); color: var(--p1); }
+    .tabs .tab-menu:hover { background: var(--p1); color: #fff; }
+    :root[data-theme="dark"] .tabs .tab-menu { background: color-mix(in srgb, var(--p1) 18%, var(--card)); }
+    :root[data-theme="dark"] .tabs .tab-menu:hover { color: #052e16; }
     /* Schnellauswahl: alle Buttons gleich aufgebaut (Icon + einzeiliges Label) */
     .tabs .tab { white-space: nowrap; overflow: hidden; }
     .tabs .tab span { font-size: 1.05rem; line-height: 1.2; }
