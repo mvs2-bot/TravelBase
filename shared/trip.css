@@ -409,7 +409,11 @@ a.btn.ql:hover { background: #166534; }
 /* Anwesenheitskalender */
 .cal { border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; max-height: 560px; background: var(--card); box-shadow: var(--shadow); }
 .cr { display: grid; grid-template-columns: 70px repeat(var(--pc, 4), 1fr); border-bottom: 1px solid var(--line); align-items: center; }
-.cr.we { background: var(--bg); }
+/* Wochenende: warmer Hintergrund, Akzent links und farbiger Wochentag */
+.cr.we { background: color-mix(in srgb, #f59e0b 14%, var(--card)); }
+.cr.we .cd { border-left: 3px solid #f59e0b; }
+.cr.we .cd small { color: #b45309; font-weight: 800; }
+:root[data-theme="dark"] .cr.we .cd small { color: #fbbf24; }
 .cr.hd { position: sticky; top: 0; z-index: 2; background: #e2e8f0; font-weight: 800; text-align: center; }
 :root[data-theme="dark"] .cr.hd { background: #111814; }
 .cr.hd div { padding: 10px 4px; font-size: .76rem; }
