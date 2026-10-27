@@ -12,6 +12,8 @@
     const localISO = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     const dayNum = iso => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5);
     const fmtDM = iso => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
+    /* Linien-Symbol aus shared/icons.js (ältere Seite aus dem Cache ohne icons.js → leer) */
+    const ic = n => window.tbIcon ? tbIcon(n) : '';
     /* "Heute" – zum Testen per URL überschreibbar: ?heute=2027-04-10 */
     const TODAY = (() => { const q = new URLSearchParams(location.search).get('heute'); return /^\d{4}-\d{2}-\d{2}$/.test(q || '') ? q : localISO(new Date()); })();
     const TRIP_SLUG = (() => { const p = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean); return p[p.length - 1]; })();
@@ -23,14 +25,14 @@
     /* ---------- Laden ---------- */
     function gate(html) { const g = $('#tbGate'); g.innerHTML = html; g.hidden = !html; }
     async function load() {
-        if (!window.TB || !TB.configured) { gate('<h2>⚙️ Noch nicht eingerichtet</h2><p class="note">Supabase ist noch nicht verbunden (shared/config.js).</p>'); return false; }
+        if (!window.TB || !TB.configured) { gate(`<h2>${ic('gear')}Noch nicht eingerichtet</h2><p class="note">Supabase ist noch nicht verbunden (shared/config.js).</p>`); return false; }
         let res;
         try { res = await TB.loadTrip(TRIP_SLUG); }
-        catch (e) { gate(`<h2>⚠️ Fehler beim Laden</h2><p class="note">${esc(TB.errorText(e))}</p><a href="../">← Zur Übersicht</a>`); return false; }
+        catch (e) { gate(`<h2>${ic('alert')}Fehler beim Laden</h2><p class="note">${esc(TB.errorText(e))}</p><a href="../">← Zur Übersicht</a>`); return false; }
         if (!res) { location.replace('../?next=' + encodeURIComponent(TRIP_SLUG)); return false; }
-        if (res.denied) { gate('<h2>🔒 Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>'); return false; }
+        if (res.denied) { gate(`<h2>${ic('lock')}Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>`); return false; }
         DATA = res.data; ROLE = res.role; TRIP_ID = res.trip.id;
-        $('#tbWho').textContent = '👤 ' + (res.user.name || res.user.email);
+        $('#tbWho').innerHTML = ic('person') + esc(res.user.name || res.user.email);
         $('#tbOffline').hidden = !res.offline;
         return true;
     }
@@ -48,26 +50,26 @@
         const m = DATA.meta || {}, el = $('#countdown');
         if (!m.start) { el.hidden = true; return; }
         const end = m.end || m.start, now = dayNum(TODAY);
-        if (now > dayNum(end)) { el.textContent = '✅ Reise abgeschlossen'; return; }
-        if (now >= dayNum(m.start)) { el.textContent = `🎉 Unterwegs · Tag ${now - dayNum(m.start) + 1} von ${dayNum(end) - dayNum(m.start) + 1}`; return; }
+        if (now > dayNum(end)) { el.innerHTML = ic('checkCircle') + 'Reise abgeschlossen'; return; }
+        if (now >= dayNum(m.start)) { el.innerHTML = ic('sparkles') + `Unterwegs · Tag ${now - dayNum(m.start) + 1} von ${dayNum(end) - dayNum(m.start) + 1}`; return; }
         const target = m.departureUTC ? new Date(m.departureUTC).getTime() : Date.UTC(+m.start.slice(0, 4), +m.start.slice(5, 7) - 1, +m.start.slice(8, 10));
         const t = Math.max(0, Math.floor((target - Date.now()) / 1000));
-        el.innerHTML = `⏳ Noch <b>${Math.floor(t / 86400)}</b> T., <b>${Math.floor(t / 3600) % 24}</b> Std., <b>${Math.floor(t / 60) % 60}</b> Min.`;
+        el.innerHTML = ic('clock') + `Noch <b>${Math.floor(t / 86400)}</b> T., <b>${Math.floor(t / 3600) % 24}</b> Std., <b>${Math.floor(t / 60) % 60}</b> Min.`;
     }
 
     /* ---------- Navigation (Tabs & Menü werden aus den vorhandenen Daten gebaut) ---------- */
     function sections() {
         const s = [];
-        if (DATA.places) s.push({ id: 'mapview', icon: '🗺️', label: 'Karte', tab: true });
-        (DATA.plans || []).forEach(p => s.push({ id: p.id, icon: p.icon || '📅', label: p.tabLabel || 'Tagesplan', tab: true }));
-        if (DATA.calendar && (DATA.persons || []).length) s.push({ id: 'cal', icon: '🗓️', label: 'Anwesenheit', tab: true });
+        if (DATA.places) s.push({ id: 'mapview', icon: ic('map'), label: 'Karte', tab: true });
+        (DATA.plans || []).forEach(p => s.push({ id: p.id, icon: p.icon ? esc(p.icon) : ic('calendar'), label: p.tabLabel || 'Tagesplan', tab: true }));
+        if (DATA.calendar && (DATA.persons || []).length) s.push({ id: 'cal', icon: ic('users'), label: 'Anwesenheit', tab: true });
         // To-Dos als eigener Bereich; eine ältere Seite aus dem Cache ohne #todos zeigt sie weiter unter „Infos & mehr“
         const todoPane = DATA.todos && !!$('#todos');
-        if (todoPane) s.push({ id: 'todos', icon: '✅', label: 'To-Dos' });
-        if (DATA.persons || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links) s.push({ id: 'misc', icon: '📌', label: 'Infos & mehr' });
-        if ((DATA.flights || []).length) s.push({ id: 'flights', icon: '✈️', label: 'Flüge' });
-        if (DATA.climate) s.push({ id: 'climate', icon: '🌤️', label: 'Klima & Wetter' });
-        s.push({ id: 'imprint', icon: '📄', label: 'Impressum' });
+        if (todoPane) s.push({ id: 'todos', icon: ic('checkCircle'), label: 'To-Dos' });
+        if (DATA.persons || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
+        if ((DATA.flights || []).length) s.push({ id: 'flights', icon: ic('plane'), label: 'Flüge' });
+        if (DATA.climate) s.push({ id: 'climate', icon: ic('cloudSun'), label: 'Klima & Wetter' });
+        s.push({ id: 'imprint', icon: ic('doc'), label: 'Impressum' });
         return s;
     }
     let SECTIONS = [];
@@ -77,7 +79,7 @@
         $('#tabs').style.setProperty('--tab-count', tabs.length + 1);
         /* Schnellauswahl einzeilig: „Tagesplan Peru“ → „Peru“ (voller Name als Tooltip) */
         $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${s.id}" title="${esc(s.label)}"><span>${s.icon}</span>${esc(s.label.replace(/^Tagesplan (?=\S)/, ''))}</button>`).join('')
-            + '<button class="tab tab-menu" id="menuTab" type="button" aria-label="Menü öffnen"><span>☰</span>Menü</button>';
+            + '<button class="tab tab-menu" id="menuTab" type="button" aria-label="Menü öffnen"><span>' + ic('list') + '</span>Menü</button>';
         $('#popLinks').innerHTML = SECTIONS.map(s => `<button data-t="${s.id}" class="pop-btn"><span>${s.icon}</span>${esc(s.label)}</button>`).join('');
         document.querySelectorAll('.tabs .tab[data-t]').forEach(b => b.onclick = () => switchTab(b.dataset.t));
         $('#menuTab').onclick = () => $('#navPopover').classList.add('open');
@@ -121,7 +123,7 @@
         const all = [];
         Object.entries(P).forEach(([key, p]) => {
             const color = p.color || '#15803d';
-            const popup = `<b style="color:${color}">📍 ${esc(p.name)}</b>${p.date ? `<br><small>📅 ${esc(p.date)}</small>` : ''}${p.desc ? `<br>${p.desc}` : ''}`;
+            const popup = `<b style="color:${color}">${ic('pin')} ${esc(p.name)}</b>${p.date ? `<br><small>${ic('calendar')} ${esc(p.date)}</small>` : ''}${p.desc ? `<br>${p.desc}` : ''}`;
             const m = p.num != null
                 ? L.marker([p.lat, p.lng], { icon: L.divIcon({ className: 'nm', html: `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${color}">${esc(p.num)}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
                 : L.circleMarker([p.lat, p.lng], { color, fillColor: color, fillOpacity: .9, radius: p.size || 6 });
@@ -133,7 +135,7 @@
             const lg = L.control({ position: 'bottomright' });
             lg.onAdd = () => {
                 const d = L.DomUtil.create('div', 'legend');
-                d.innerHTML = `<div class="lh" style="cursor:pointer;font-weight:800">📌 Legende <span>▼</span></div><div class="lb" style="display:none;margin-top:4px">${DATA.legend.map(([c, sym, t]) => `<span style="color:${c}">${sym}</span> ${esc(t)}`).join('<br>')}</div>`;
+                d.innerHTML = `<div class="lh" style="cursor:pointer">${ic('info')}Legende <span>▼</span></div><div class="lb" style="display:none;margin-top:4px">${DATA.legend.map(([c, sym, t]) => `<span style="color:${c}">${sym}</span> ${esc(t)}`).join('<br>')}</div>`;
                 L.DomEvent.disableClickPropagation(d);
                 d.querySelector('.lh').onclick = () => {
                     const b = d.querySelector('.lb'), open = b.style.display === 'none';
@@ -237,7 +239,7 @@
             <tr class="row${isToday(r) ? ' today-row' : ''}" data-i="${p.rows.indexOf(r)}">
                 <td><span class="dn${dnCls}"${dnStyle}>${esc(r.day)}</span><div class="dt">${esc(r.date)}</div>${whoBadge(r)}</td>
                 <td>${(r.regions || []).map(regionBadge).join(' ')}</td>
-                <td><div class="tt">${esc(r.title)}${isToday(r) ? ' ⭐ (HEUTE)' : ''}</div></td>
+                <td><div class="tt">${esc(r.title)}${isToday(r) ? `<span class="today-tag">${ic('star')}Heute</span>` : ''}</div></td>
                 <td>${r.details || ''}</td>
                 <td>${pills(r)}</td>
                 <td>${hotel(r)}</td>
@@ -248,7 +250,7 @@
                     <div class="card-meta"><span class="dn${dnCls}"${dnStyle}>${esc(r.day)}</span> <span class="card-date">${esc(r.date)}</span> ${whoBadge(r)}</div>
                     <span>${(r.regions || []).map(regionBadge).join(' ')}</span>
                 </div>
-                <div class="card-title">${esc(r.title)}${isToday(r) ? ' ⭐' : ''}</div>
+                <div class="card-title">${esc(r.title)}${isToday(r) ? `<span class="today-tag">${ic('star')}Heute</span>` : ''}</div>
                 <div class="card-details">${r.details || ''}</div>
                 <div class="card-footer">${pills(r)} ${hotel(r)}</div>
             </div>`).join('');
@@ -263,7 +265,7 @@
         /* "home" = Ankunft zu Hause; Rückflüge nach Europa gehen über Nacht und belegen zwei Flugtage */
         const last = ps.reduce((x, p) => p.home && p.home > x ? p.home : x, m.end || m.start);
         const d0 = dayNum(m.start), n = dayNum(last) - d0 + 1;
-        $('#calTitle').textContent = `🗓️ Anwesenheit · ${n} Tage`;
+        $('#calTitle').innerHTML = ic('users') + `Anwesenheit · ${n} Tage`;
         $('#calBody').style.setProperty('--pc', ps.length);
         let h = `<div class="cr hd"><div>Tag</div>${ps.map(p => `<div style="color:${p.color}">${esc(p.name)}</div>`).join('')}</div>`;
         for (let d = 0; d < n; d++) {
@@ -276,7 +278,7 @@
                 let c = '';
                 if (d >= a && d <= back) {
                     const fl = d === a || d >= b;
-                    c = `<div class="bar${fl ? ' fl' : ''}" style="${fl ? `color:${p.color}` : `background:${p.color}`}" title="${esc(p.name)}: Tag ${d - a + 1}">${fl ? '✈️ ' : ''}${d - a + 1}</div>`;
+                    c = `<div class="bar${fl ? ' fl' : ''}" style="${fl ? `color:${p.color}` : `background:${p.color}`}" title="${esc(p.name)}: Tag ${d - a + 1}">${fl ? ic('plane') : ''}${d - a + 1}</div>`;
                 }
                 h += `<div class="cc">${c}</div>`;
             });
@@ -313,14 +315,14 @@
         }
         if ((DATA.links || []).length) {
             $('#linkBox').hidden = false;
-            $('#linkRow').innerHTML = DATA.links.map(l => `<a class="btn ql" href="${esc(l.url)}" target="_blank" rel="noopener">🧰 Link zu den Quick Tools${l.label ? ` · ${esc(l.label)}` : ''} ↗</a>`).join('');
+            $('#linkRow').innerHTML = DATA.links.map(l => `<a class="btn ql" href="${esc(l.url)}" target="_blank" rel="noopener">${ic('toolbox')}Link zu den Quick Tools${l.label ? ` · ${esc(l.label)}` : ''} ↗</a>`).join('');
         }
         if ((DATA.flights || []).length) {
             $('#flightList').innerHTML = DATA.flights.map(f => `
                 <li>
                     <div class="fl-date">${esc(f.date)}</div>
                     <div class="fl-route">${esc(f.route)}</div>
-                    ${f.duration ? `<div class="fl-dur">⏱️ ${esc(f.duration)}</div>` : ''}
+                    ${f.duration ? `<div class="fl-dur">${ic('clock')}${esc(f.duration)}</div>` : ''}
                     ${f.details ? `<div class="fl-details">${esc(f.details)}</div>` : ''}
                     ${f.price ? `<div class="fl-price">${esc(f.price)}</div>` : ''}
                 </li>`).join('');
@@ -393,7 +395,7 @@
             const c = tagColor(item.tag);
             li.innerHTML = `<label><input type="checkbox" ${item.done ? 'checked' : ''}><span></span></label>
                 <span class="todo-tag${c ? ' rc' : ''}" ${c ? `style="--c:${c}"` : ''}></span>
-                <button style="border:none;background:none;margin-left:8px;cursor:pointer" aria-label="Löschen">🗑️</button>`;
+                <button type="button" aria-label="Löschen" title="Löschen">${ic('trash')}</button>`;
             li.querySelector('label span').textContent = item.text;
             li.querySelector('.todo-tag').textContent = item.tag;
             li.querySelector('input').onchange = () => toggleTodo(idx);
@@ -447,8 +449,8 @@
     /* ---------- Hell/Dunkel ---------- */
     function applyTheme(dark, save) {
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#15803d';
-        document.querySelectorAll('.theme-toggle').forEach(b => { b.textContent = dark ? '☀️' : '🌙'; b.setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln'); });
+        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#f2f2f7';
+        document.querySelectorAll('.theme-toggle').forEach(b => { b.innerHTML = ic(dark ? 'sun' : 'moon'); b.setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln'); });
         if (save) { try { localStorage.setItem('overall-theme', dark ? 'dark' : 'light'); } catch (e) {} }
     }
 
@@ -459,7 +461,7 @@
         document.querySelectorAll('.theme-toggle').forEach(b => b.onclick = e => { e.stopPropagation(); applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true); });
         $('#closePopover').onclick = () => $('#navPopover').classList.remove('open');
         $('#navPopover').onclick = e => { if (e.target === $('#navPopover')) $('#navPopover').classList.remove('open'); };
-        $('#fs').onclick = () => { const f = $('#mapBox').classList.toggle('full'); $('#fs').textContent = f ? '❌ Verkleinern' : '🔍 Vollbild'; setTimeout(() => map && map.invalidateSize(), 200); };
+        $('#fs').onclick = () => { const f = $('#mapBox').classList.toggle('full'); $('#fs').innerHTML = f ? ic('shrink') + 'Verkleinern' : ic('expand') + 'Vollbild'; setTimeout(() => map && map.invalidateSize(), 200); };
         document.addEventListener('keydown', e => {
             if (e.key !== 'Escape') return;
             if ($('#mapBox').classList.contains('full')) $('#fs').click();
@@ -473,7 +475,7 @@
         const m = DATA.meta || {};
         if (!DATA.plans && m.detailsFor) {
             $('#tbLimited').hidden = false;
-            $('#tbLimited').textContent = `👀 Du siehst die Route und den Zeitraum. Weitere Details sind nur für ${m.detailsFor === 'admin' ? 'den Admin' : 'Mitreisende'} sichtbar.`;
+            $('#tbLimited').innerHTML = ic('eye') + `<span>Du siehst die Route und den Zeitraum. Weitere Details sind nur für ${m.detailsFor === 'admin' ? 'den Admin' : 'Mitreisende'} sichtbar.</span>`;
         }
         safe(renderHeader);
         safe(renderNav);

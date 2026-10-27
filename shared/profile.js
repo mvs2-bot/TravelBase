@@ -1,5 +1,5 @@
 /* TravelBase – Profil-Button oben rechts neben dem Mond
-   - zeigt 👤 bzw. das eigene Profilbild, sobald eins hochgeladen ist
+   - zeigt ein Personen-Symbol bzw. das eigene Profilbild, sobald eins hochgeladen ist
    - Menü: Kontoeinstellungen, Admin-Einstellungen (globale und TravelBase-Admins), Ausloggen
    Admin-Einstellungen sind wie die Kontoeinstellungen eine gemeinsame Seite im Dashboard (/admin.html).
    Kontoeinstellungen sind eine gemeinsame Seite für alle Apps im Dashboard (/konto.html);
@@ -17,8 +17,9 @@
     let photo = null;           /* data:-URL des Profilbilds oder null */
 
 
+    const ic = n => window.tbIcon ? tbIcon(n) : '';
     const shownName = () => (profile.display_name || '').trim() || (user && user.email) || '';
-    const avatarHtml = () => photo ? `<img src="${photo}" alt="">` : '👤';
+    const avatarHtml = () => photo ? `<img src="${photo}" alt="">` : (ic('person') || '👤');
 
     /* ---------- Daten ---------- */
     async function loadProfile() {
@@ -59,7 +60,7 @@
         /* Namen, die die Seite selbst anzeigt, gleich mitziehen */
         const n = shownName();
         const ue = document.getElementById('userEmail'); if (ue && n) ue.textContent = n;
-        const who = document.getElementById('tbWho'); if (who && n) who.textContent = '👤 ' + n;
+        const who = document.getElementById('tbWho'); if (who && n) who.innerHTML = ic('person') + esc(n);
         if (menu && !menu.hidden) renderMenu();
     }
 
@@ -69,9 +70,9 @@
                 <span class="tbp-ava">${avatarHtml()}</span>
                 <div><b>${esc(shownName())}</b><small>${esc(user.email)}</small></div>
             </div>
-            <button class="tbp-item" type="button" role="menuitem" data-act="settings">⚙️ Kontoeinstellungen</button>
-            ${profile.role === 'admin' || profile.app_role === 'admin' ? '<button class="tbp-item" type="button" role="menuitem" data-act="admin">🛡️ Admin-Einstellungen</button>' : ''}
-            <button class="tbp-item danger" type="button" role="menuitem" data-act="logout">🚪 Ausloggen</button>`;
+            <button class="tbp-item" type="button" role="menuitem" data-act="settings">${ic('gear')}Kontoeinstellungen</button>
+            ${profile.role === 'admin' || profile.app_role === 'admin' ? `<button class="tbp-item" type="button" role="menuitem" data-act="admin">${ic('shield')}Admin-Einstellungen</button>` : ''}
+            <button class="tbp-item danger" type="button" role="menuitem" data-act="logout">${ic('logout')}Ausloggen</button>`;
     }
 
     function openMenu() {
@@ -147,14 +148,16 @@
         .tb-profile-btn { display: inline-flex; align-items: center; justify-content: center; }
         .tb-profile-btn.has-photo { padding: 0 !important; overflow: hidden; }
         .tb-profile-btn img, .tbp-ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .tbp-menu { position: fixed; z-index: 20000; min-width: 250px; max-width: calc(100vw - 20px); background: var(--card, #fff); color: var(--text, #334155); border: 1px solid var(--line, #cbd5e1); border-radius: 14px; box-shadow: 0 12px 32px rgba(15,23,42,.2); padding: 8px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; line-height: 1.4; }
-        .tbp-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 12px; border-bottom: 1px solid var(--line, #cbd5e1); margin-bottom: 6px; }
-        .tbp-head b { display: block; color: var(--ink, #0f172a); font-size: .95rem; }
-        .tbp-head small { display: block; color: var(--mute, #64748b); font-size: .78rem; word-break: break-all; }
-        .tbp-ava { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: var(--hover, #f0fdf4); border: 1px solid var(--line, #cbd5e1); }
-        .tbp-item { display: flex; width: 100%; align-items: center; gap: 10px; background: none; border: 0; border-radius: 8px; padding: 10px 12px; font: inherit; font-size: .92rem; font-weight: 700; color: var(--ink, #0f172a); text-align: left; cursor: pointer; }
-        .tbp-item:hover, .tbp-item:focus-visible { background: var(--hover, #f0fdf4); outline: none; }
-        .tbp-item.danger { color: var(--danger, #dc2626); }
+        .tbp-menu { position: fixed; z-index: 20000; min-width: 250px; max-width: calc(100vw - 20px); background: var(--card, #fff); color: var(--text, #3a3a3c); border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,.18), 0 0 0 .5px rgba(0,0,0,.06); padding: 6px; font-family: var(--font, -apple-system, BlinkMacSystemFont, system-ui, sans-serif); font-size: 14px; line-height: 1.4; }
+        :root[data-theme="dark"] .tbp-menu { background: #2c2c2e; box-shadow: 0 12px 36px rgba(0,0,0,.5); }
+        .tbp-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 10px; border-bottom: 1px solid var(--sep, var(--line, #e2e2e7)); margin-bottom: 4px; }
+        .tbp-head b { display: block; color: var(--ink, #1c1c1e); font-size: 14px; font-weight: 600; }
+        .tbp-head small { display: block; color: var(--mute, #6c6c70); font-size: 12px; word-break: break-all; }
+        .tbp-ava { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--mute, #6c6c70); background: var(--well, #f2f2f7); }
+        .tbp-item { display: flex; width: 100%; align-items: center; gap: 10px; background: none; border: 0; border-radius: 9px; padding: 9px 10px; min-height: 40px; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink, #1c1c1e); text-align: left; cursor: pointer; }
+        .tbp-item .ic { color: var(--p1, #b8236a); }
+        .tbp-item:hover, .tbp-item:focus-visible { background: var(--hover, #e9e9ef); outline: none; }
+        .tbp-item.danger, .tbp-item.danger .ic { color: var(--danger, #d70015); }
         .tbp-menu[hidden] { display: none !important; }`;
     document.head.appendChild(css);
 

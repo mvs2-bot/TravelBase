@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#15803d">
-    <meta name="color-scheme" content="only light">
+    <meta name="theme-color" content="#f2f2f7">
+    <meta name="color-scheme" content="light dark">
     <script>(function(){try{if((localStorage.getItem('overall-theme')||localStorage.getItem('tb_theme_v1'))==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <title>TravelBase</title>
     <link rel="icon" type="image/png" sizes="32x32" href="../icons/favicon-32.png">
@@ -15,14 +15,12 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="TravelBase">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="../shared/flags.css">
     <link rel="stylesheet" href="../shared/trip.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="../shared/icons.js"></script>
     <script src="../shared/config.js"></script>
     <script src="../shared/travelbase.js"></script>
     <script src="../shared/overall-account.js"></script>
@@ -41,8 +39,8 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button id="themeToggleHdr" class="burger-btn theme-toggle" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
-                <button id="tbProfileBtn" class="burger-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
+                <button id="themeToggleHdr" class="burger-btn theme-toggle" type="button" aria-label="Zum dunklen Modus wechseln"><svg class="ic"><use href="#i-moon"></use></svg></button>
+                <button id="tbProfileBtn" class="burger-btn" type="button" aria-label="Profil-Menü öffnen" hidden><svg class="ic"><use href="#i-person"></use></svg></button>
             </div>
             <!-- Platzhalter: hält eine ältere trip.js aus dem Browser-Cache lauffähig; das Menü sitzt jetzt in der Schnellauswahl -->
             <button id="menuBurger" type="button" hidden aria-hidden="true" tabindex="-1"></button>
@@ -54,31 +52,31 @@
         <div class="popover-content">
             <div class="popover-header">
                 <div class="popover-title">
-                    <h2>🧭 Navigation</h2>
-                    <button id="themeToggle" class="theme-toggle theme-toggle-sm" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
+                    <h2><svg class="ic"><use href="#i-compass"></use></svg>Navigation</h2>
+                    <button id="themeToggle" class="theme-toggle theme-toggle-sm" type="button" aria-label="Zum dunklen Modus wechseln"><svg class="ic"><use href="#i-moon"></use></svg></button>
                 </div>
-                <button id="closePopover">✕</button>
+                <button id="closePopover" type="button" aria-label="Menü schließen"><svg class="ic"><use href="#i-x"></use></svg></button>
             </div>
             <div class="popover-links" id="popLinks"></div>
             <div class="tb-account">
                 <div class="tb-who" id="tbWho"></div>
                 <div class="tb-actions">
-                    <a class="tb-act" href="../">🏠 Alle Reisen</a>
-                    <button class="tb-act" type="button" id="tbLogout">🚪 Abmelden</button>
+                    <a class="tb-act" href="../"><svg class="ic"><use href="#i-home"></use></svg>Alle Reisen</a>
+                    <button class="tb-act" type="button" id="tbLogout"><svg class="ic"><use href="#i-logout"></use></svg>Abmelden</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="tbGate" class="box tb-gate"><h2>⏳ Lade Reisedaten …</h2></div>
-    <div id="tbOffline" class="tb-banner" hidden>📴 Offline – du siehst den zuletzt geladenen Stand.</div>
+    <div id="tbGate" class="box tb-gate"><h2><svg class="ic"><use href="#i-clock"></use></svg>Lade Reisedaten …</h2></div>
+    <div id="tbOffline" class="tb-banner" hidden><svg class="ic"><use href="#i-wifiOff"></use></svg><span>Offline – du siehst den zuletzt geladenen Stand.</span></div>
     <div id="tbLimited" class="tb-banner" hidden></div>
 
     <div id="mapview" class="pane">
         <div class="box map" id="mapBox" style="margin-bottom:0">
             <div class="mh">
                 <h2>Interaktive Reiseroute &amp; Karte</h2>
-                <button id="fs">🔍 Vollbild</button>
+                <button id="fs" type="button"><svg class="ic"><use href="#i-expand"></use></svg>Vollbild</button>
             </div>
             <div id="map"></div>
         </div>
@@ -88,30 +86,30 @@
 
     <div id="cal" class="pane">
         <div class="box">
-            <h2 id="calTitle">🗓️ Anwesenheit</h2>
-            <p class="note">Zahl = Tag der eigenen Reise. Gestrichelt ✈️ = An- oder Abreisetag (Rückflüge nach Europa gehen über Nacht und belegen zwei Tage).</p>
+            <h2 id="calTitle"><svg class="ic"><use href="#i-users"></use></svg>Anwesenheit</h2>
+            <p class="note">Zahl = Tag der eigenen Reise. Gestrichelt <svg class="ic"><use href="#i-plane"></use></svg> = An- oder Abreisetag (Rückflüge nach Europa gehen über Nacht und belegen zwei Tage).</p>
             <div class="cal" id="calBody"></div>
         </div>
     </div>
 
     <div id="misc" class="pane">
         <div class="box" id="statsBox" hidden>
-            <h2>👥 Reisezeiträume &amp; Dauer</h2>
+            <h2><svg class="ic"><use href="#i-users"></use></svg>Reisezeiträume &amp; Dauer</h2>
             <p class="note">Übersicht der Reisedauer pro Person.</p>
             <div class="stats" id="stats"></div>
         </div>
         <div class="box" id="workBox" hidden>
-            <h2>💼 Verbleibende Arbeitstage bis Abflug</h2>
+            <h2><svg class="ic"><use href="#i-briefcase"></use></svg>Verbleibende Arbeitstage bis Abflug</h2>
             <p class="note" id="workNote"></p>
             <div class="stats" id="workStats"></div>
-            <small id="workHolidays" style="font-size:.72rem;color:var(--mute)"></small>
+            <small id="workHolidays"></small>
         </div>
         <div class="box" id="infoBox" hidden>
-            <h2>💡 Wichtige Infos &amp; Hinweise</h2>
+            <h2><svg class="ic"><use href="#i-bulb"></use></svg>Wichtige Infos &amp; Hinweise</h2>
             <ul class="tips" id="infoList"></ul>
         </div>
         <div class="box" id="linkBox" hidden>
-            <h2>🚨 Infos &amp; Notfall</h2>
+            <h2><svg class="ic"><use href="#i-lifebuoy"></use></svg>Infos &amp; Notfall</h2>
             <p class="note">Auf unserer QuickTools-Seite gibt es für jedes Reiseland einen Währungsrechner mit aktuellem Kurs, wichtige Phrasen mit Audio, GPS-Standort und Taxi-Karte, Sonnenzeiten sowie Notrufnummern, Botschaft, SIM-Karten, nützliche Apps und Verhaltensregeln. Funktioniert auch offline.</p>
             <div class="link-row" id="linkRow"></div>
         </div>
@@ -120,18 +118,18 @@
     <div id="todos" class="pane">
         <div class="box" id="todoBox" hidden>
             <div class="mh">
-                <h2>✅ Reise To-Do &amp; Vorbereitungen</h2>
-                <span id="todoProgress" style="font-size:.8rem;font-weight:700;color:var(--p1)">0/0 erledigt</span>
+                <h2><svg class="ic"><use href="#i-checkCircle"></use></svg>Reise To-Do &amp; Vorbereitungen</h2>
+                <span id="todoProgress" style="font-size:13px;font-weight:600;color:var(--p1)">0/0 erledigt</span>
             </div>
             <p class="note">Gemeinsame Liste für alle Mitreisenden (Änderungen der anderen nach dem Neuladen sichtbar).</p>
-            <div class="lists-offline tb-banner" hidden>📴 Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</div>
+            <div class="lists-offline tb-banner" hidden><svg class="ic"><use href="#i-wifiOff"></use></svg><span>Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</span></div>
             <div class="controls todo-search">
                 <input type="search" id="todoSearch" class="q-input" placeholder="To-Dos durchsuchen...">
             </div>
             <div class="pack-add-form">
                 <input type="text" id="newTodoText" placeholder="Neuer To-Do Punkt...">
                 <select id="newTodoTag"></select>
-                <button class="f on" id="addTodoBtn" type="button">+ Hinzufügen</button>
+                <button class="f on" id="addTodoBtn" type="button"><svg class="ic"><use href="#i-plus"></use></svg>Hinzufügen</button>
             </div>
             <ul class="todo-list" id="todoList"></ul>
             <p class="note" id="todoEmpty" hidden>Keine To-Dos zur Suche gefunden.</p>
@@ -140,14 +138,14 @@
 
     <div id="flights" class="pane">
         <div class="box">
-            <h2>✈️ Flüge</h2>
+            <h2><svg class="ic"><use href="#i-plane"></use></svg>Flüge</h2>
             <ul class="fl-list" id="flightList" style="margin-top:10px"></ul>
         </div>
     </div>
 
     <div id="climate" class="pane">
         <div class="box">
-            <h2 id="climateTitle">🌤️ Klima &amp; Wetter</h2>
+            <h2 id="climateTitle"><svg class="ic"><use href="#i-cloudSun"></use></svg>Klima &amp; Wetter</h2>
             <p class="note" id="climateNote">Richtwerte (langjährige Mittel) für die Reisezeit, ohne Gewähr.</p>
             <div class="tw">
                 <table>
@@ -161,8 +159,8 @@
 
     <div id="imprint" class="pane">
         <div class="box">
-            <h2>📄 Impressum</h2>
-            <div style="font-size:.88rem;line-height:1.6;color:var(--text)">
+            <h2><svg class="ic"><use href="#i-doc"></use></svg>Impressum</h2>
+            <div style="font-size:14px;line-height:1.6;color:var(--text)">
                 <br>
                 <p><strong>Private Reise-Webseite:</strong><br>Private Reisedokumentation und Routenplanung.</p>
                 <br>

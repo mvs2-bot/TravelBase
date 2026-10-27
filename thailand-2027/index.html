@@ -3,8 +3,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#15803d">
-    <meta name="color-scheme" content="only light">
+    <meta name="theme-color" content="#f2f2f7">
+    <meta name="color-scheme" content="light dark">
     <script>/* PATCH: Dark Mode (frueh laden, verhindert Aufblitzen) */(function(){try{if((localStorage.getItem('overall-theme')||localStorage.getItem('tb_theme_v1'))==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <title>TravelBase</title>
     
@@ -13,431 +13,18 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="stylesheet" href="../shared/flags.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="../shared/icons.js"></script>
     <script src="../shared/config.js"></script>
     <script src="../shared/travelbase.js"></script>
     <script src="../shared/overall-account.js"></script>
     <script src="../shared/profile.js"></script>
     <script src="../shared/ios-nav.js" defer></script>
-    <!-- Google Fonts Preconnect & Stylesheet -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
     
     <!-- Leaflet Kartenbibliothek -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-<style>
-        /* ==========================================================================
-            CSS DESIGN-SYSTEM & VARIABLEN
-            ========================================================================== */
-        :root {
-            --bg: #f4f7f4;
-            --card: #fff;
-            --hover: #f0fdf4;
-            --line: #cbd5e1;
-            --ink: #0f172a;
-            --text: #334155;
-            --mute: #64748b;
-            --p1: #15803d;
-
-            --accent: #0d9488;
-            --danger: #dc2626;
-            --radius: 12px;
-            --shadow: 0 4px 12px rgba(15, 23, 42, .05);
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        body { font-family: 'Twemoji Country Flags', 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding: 20px 24px 48px; }
-        button, input, select { font: inherit; }
-        button { cursor: pointer; }
-        .wrap { max-width: 1280px; margin: 0 auto; }
-        :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-
-        /* ==========================================================================
-            HEADER & NAVIGATION
-            ========================================================================== */
-        .sticky-header { position: sticky; top: 0; background: var(--bg); z-index: 1000; padding-top: 12px; padding-bottom: 12px; margin-bottom: 24px; border-bottom: 3px solid var(--p1); box-shadow: 0 4px 12px rgba(15,23,42,.04); }
-        header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 2px 12px; }
-        h1 { font-size: clamp(1.5rem, 2.2vw, 2rem); line-height: 1.15; font-weight: 800; letter-spacing: -.025em; color: var(--ink); margin-bottom: 4px; }
-        /* Countdown immer unter dem Reisezeitraum, damit der Header auf jeder Reise gleich hoch ist */
-        .header-sub-row { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-        header p { font-size: .92rem; font-weight: 600; color: var(--mute); }
-        #countdown { display: inline-block; background: #dcfce7; border: 1px solid #86efac; color: var(--p1); padding: 2px 10px; border-radius: 999px; font-size: .75rem; font-weight: 700; }
-        
-        .burger-btn { background: var(--card); border: 2px solid var(--line); border-radius: 10px; font-size: 2rem; padding: 10px 18px; cursor: pointer; color: var(--ink); box-shadow: var(--shadow); transition: background .15s, border-color .15s; line-height: 1; }
-        .burger-btn:hover { background: var(--hover); border-color: var(--p1); }
-
-        /* Statistiken-Container */
-        .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; width: 680px; max-width: 100%; margin-bottom: 16px; }
-        .stat { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: .76rem; font-weight: 600; color: var(--ink); box-shadow: var(--shadow); }
-        .stat b { display: block; font-weight: 800; margin-top: 2px; font-size: .82rem; }
-
-        /* Tabs & Sub-Tabs */
-        .tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-        .sub-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-        .btn-action, .f, .tab { background: var(--card); border: 1px solid var(--line); color: var(--text); border-radius: 8px; font-weight: 700; }
-        .tab { min-height: 52px; padding: 6px 4px; font-size: .75rem; text-align: center; transition: background .15s, border-color .15s, color .15s, transform .15s; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
-        .tab span { font-size: 1.05rem; margin-bottom: 2px; display: block; }
-        .f.on, .f:hover, .tab.on, .tab:hover { background: var(--p1); border-color: var(--p1); color: #fff; }
-        .tab:hover { transform: translateY(-1px); }
-        .pane { display: none; }
-        .pane.on { display: block; }
-
-        /* Filter & Suchfelder */
-        .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
-        .q-input { flex: 1 1 300px; min-width: 240px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 9px 13px; font-size: .84rem; color: var(--ink); }
-        .q-input:focus { border-color: #86efac; outline: 3px solid rgba(13,148,136,.15); }
-        .f { padding: 7px 12px; font-size: .76rem; }
-
-        /* Bottom Sheet Navigations-Popover */
-        .nav-popover { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(15,23,42,.4); backdrop-filter: blur(2px); align-items: flex-end; justify-content: center; }
-        .nav-popover.open { display: flex; }
-        .popover-content { background: var(--card); border-top: 1px solid var(--line); width: 100%; max-width: 600px; max-height: 85vh; padding: 24px 20px; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -10px 30px rgba(0,0,0,.15); display: flex; flex-direction: column; overflow-y: auto; animation: slideUpBottom .25s ease-out; }
-        @keyframes slideUpBottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .popover-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
-        .popover-header h2 { font-size: 1.15rem; font-weight: 800; color: var(--ink); }
-        .popover-header button { background: 0 0; border: none; font-size: 1.25rem; cursor: pointer; color: var(--mute); padding: 4px 8px; border-radius: 6px; }
-        .popover-header button:hover { background: var(--hover); color: var(--ink); }
-        .popover-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
-        .popover-links button { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px; font-weight: 700; color: var(--text); text-align: left; width: 100%; font-size: .9rem; transition: background .15s, border-color .15s, color .15s; }
-        .popover-links button span { font-size: 1.1rem; }
-        .popover-links button.on, .popover-links button:hover { background: var(--p1); border-color: var(--p1); color: #fff; }
-
-        /* ==========================================================================
-            CONTAINER, KARTEN & KARTENDARSTELLUNG (LEAFLET)
-            ========================================================================== */
-        .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
-        .box.map { border-top: 4px solid var(--p1); padding-top: 16px; }
-        .box.full { position: fixed; inset: 0; z-index: 9999; border-radius: 0; margin: 0; overflow: auto; background: var(--bg); padding: 20px; }
-        .mh { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
-        .box h2, .box h3, .mh h2 { font-size: 1.1rem; line-height: 1.25; font-weight: 800; color: var(--ink); }
-        .mh button { flex: 0 0 auto; font-size: .8rem; font-weight: 700; color: var(--p1); background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 7px 12px; }
-        .mh button:hover { background: var(--hover); border-color: #86efac; }
-        .note { font-size: .8rem; color: var(--mute); margin-bottom: 14px; }
-        
-        #map { height: 620px; width: 100%; border-radius: 8px; border: 1px solid var(--line); overflow: hidden; position: relative; }
-        .box.full #map { height: calc(100vh - 86px); }
-        .legend { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; font-size: .78rem; color: var(--ink); line-height: 1.6; box-shadow: 0 2px 6px rgba(15,23,42,.1); max-width: 250px; }
-        .legend .lh { font: inherit; color: inherit; background: 0 0; border: 0; padding: 0; width: 100%; text-align: left; }
-
-        /* ==========================================================================
-            TABELLEN & ROUTENANSICHT
-            ========================================================================== */
-        .tw { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; box-shadow: var(--shadow); }
-        table { width: 100%; border-collapse: collapse; font-size: .83rem; text-align: left; }
-        th { position: sticky; top: 0; z-index: 1; background: #e2e8f0; color: var(--ink); font-size: .72rem; font-weight: 800; padding: 10px 12px; border-bottom: 2px solid var(--line); white-space: nowrap; }
-        td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; color: var(--ink); }
-        tr.row { cursor: pointer; }
-        tr.row:hover td { background: var(--hover); }
-        tr.row:last-child td { border-bottom: 0; }
-        tr.today-row td { background: #dcfce7 !important; border-left: 4px solid var(--p1); }
-        
-        .dn { display: inline-block; background: var(--p1); color: #fff; font-weight: 800; font-size: .72rem; border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
-        .dt { font-size: .71rem; color: var(--mute); font-weight: 600; margin-top: 3px; }
-        .tt { font-weight: 700; }
-        .pill { display: inline-block; font-size: .72rem; font-weight: 600; background: #f8fafc; border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; margin: 1px 0; }
-        .hotel-pill { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
-        
-        /* Gruppen- & Regionen-Badges */
-        .group-badge { display: inline-block; font-size: .67rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-top: 4px; white-space: nowrap; }
-        .group-ines-stefan { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-        .group-ines-alleine { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-        .group-ines-anna { background: #ccfbf1; color: #0d9488; border: 1px solid #c7d2fe; }
-        .rg { display: inline-block; font-size: .68rem; font-weight: 700; border-radius: 4px; padding: 2px 6px; white-space: nowrap; margin-bottom: 2px; }
-        .tag-norden { background: #dcfce7; color: #15803d; }
-        .tag-bangkok { background: #f3e8ff; color: #6b21a8; }
-        .tag-inseln { background: #ccfbf1; color: #0d9488; }
-        .tag-default { background: #f1f5f9; color: var(--mute); }
-        .tag-sl-westkueste { background: #d1fae5; color: #059669; }
-        .tag-sl-kulturdreieck { background: #fef3c7; color: #b45309; }
-        .tag-sl-hochland { background: #dcfce7; color: #15803d; }
-        .tag-sl-suedkueste { background: #ccfbf1; color: #0d9488; }
-        .tag-sl-colombo { background: #f3e8ff; color: #6b21a8; }
-
-        /* ==========================================================================
-            MOBILES KARTEN-LAYOUT FÜR ROUTEN & LISTEN
-            ========================================================================== */
-        .cards { display: none; flex-direction: column; gap: 8px; }
-        .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; font-size: .8rem; box-shadow: var(--shadow); transition: background .15s; }
-        .card:hover { background: var(--hover); }
-        .card.today-card { background: #dcfce7 !important; border: 2px solid var(--p1); }
-        .card-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px; }
-        .card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .card-date { font-size: .75rem; font-weight: 700; color: var(--mute); }
-        .card-title { font-size: .88rem; font-weight: 800; color: var(--ink); line-height: 1.25; margin-bottom: 4px; }
-        .card-details { font-size: .78rem; color: var(--text); line-height: 1.35; margin-bottom: 8px; }
-        .card-footer { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-        
-        .stay-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: .75rem; font-weight: 800; background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-        .travel-time-pill { display: inline-flex; align-items: center; gap: 4px; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 4px; font-size: .72rem; font-weight: 700; }
-        .status-booked, .status-open { padding: 2px 6px; border-radius: 4px; font-size: .7rem; font-weight: 700; }
-        .status-booked { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-        .status-open { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-
-        /* ==========================================================================
-            PACKLISTE & ARBEITSTAGE
-            ========================================================================== */
-        .pack-summary, .work-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
-        .pack-stat-val, .work-stat-val { font-size: 1.15rem; font-weight: 800; color: var(--p1); }
-        .pack-stat-lbl, .work-stat-lbl { font-size: .75rem; color: var(--mute); font-weight: 600; }
-        
-        .pack-add-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px solid var(--line); }
-        .pack-add-form input, .pack-add-form select, .table-select { background: var(--card); border: 1px solid var(--line); color: var(--ink); padding: 6px 10px; border-radius: 6px; font-size: .8rem; }
-        .pack-add-form input[type=text] { flex: 2; min-width: 140px; }
-        .pack-add-form select { flex: 1.2; min-width: 130px; }
-        .pack-add-form input[type=number] { width: 85px; }
-        .table-select { padding: 2px 5px; font-size: .75rem; font-weight: 600; }
-        .table-select.select-am-koerper { background: #fef3c7; color: #92400e; border-color: #fde68a; font-weight: 700; }
-        .pack-table-cat { background: #f1f5f9; color: var(--p1); font-weight: 800; font-size: .75rem; text-transform: uppercase; border-left: 3px solid var(--p1); padding: 6px 10px !important; }
-
-        /* Diagramm-Grid & To-Do Liste */
-        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
-        .chart-card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; }
-        .chart-container { position: relative; width: 100%; max-width: 360px; height: 300px; }
-        
-        .todo-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-        .todo-item { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; transition: background .15s; }
-        .todo-item:hover { background: var(--hover); }
-        .todo-item label { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; font-size: .88rem; font-weight: 600; color: var(--ink); }
-        .todo-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--p1); cursor: pointer; }
-        .todo-item.done label { text-decoration: line-through; color: var(--mute); }
-        .todo-tag { font-size: .7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #e2e8f0; color: var(--text); }
-        .todo-tag.tag-th { background: #dcfce7; color: #15803d; }
-        .todo-tag.tag-sl { background: #fef3c7; color: #b45309; }
-
-        /* Flüge & Klima-Karten */
-        #acc .status-mobile { display: none; }
-        ul.fl-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-        ul.fl-list li { background: #f8fafc; border: 1px solid var(--line); border-left: 4px solid var(--p1); border-radius: 8px; padding: 10px 14px; }
-        .fl-date { display: block; font-size: .75rem; font-weight: 800; color: var(--p1); text-transform: uppercase; margin-bottom: 2px; }
-        .fl-route { font-size: .9rem; font-weight: 700; color: var(--ink); }
-        .fl-details { font-size: .8rem; color: var(--text); }
-        .fl-price { display: inline-block; margin-top: 3px; font-size: .75rem; font-weight: 700; background: #dcfce7; color: var(--p1); padding: 2px 6px; border-radius: 4px; }
-        
-        .fl-link { color: var(--p1); font-weight: 700; }
-        .climate-cards { display: none; flex-direction: column; gap: 10px; }
-        .climate-card { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--p1); border-radius: 8px; padding: 12px 14px; box-shadow: var(--shadow); }
-        .climate-card-title { font-size: .92rem; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
-        .climate-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: .8rem; margin-bottom: 8px; }
-        .climate-card-item b { display: block; font-size: .65rem; text-transform: uppercase; color: var(--mute); }
-        .climate-card-desc { font-size: .78rem; color: var(--text); border-top: 1px solid #e2e8f0; padding-top: 6px; }
-
-        /* ==========================================================================
-            RESPONSIVE BREAKPOINTS (MEDIA QUERIES)
-            ========================================================================== */
-        @media (max-width: 860px) {
-            body { padding: 10px 8px 22px; }
-            .sticky-header { padding-top: 8px; margin-bottom: 12px; }
-            header { padding: 0 1px 8px; }
-            h1 { font-size: 1.2rem; }
-            header p { font-size: .74rem; line-height: 1.35; }
-            #countdown { font-size: .65rem; padding: 2px 6px; }
-            .burger-btn { padding: 8px 10px; font-size: 1.6rem; border-width: 1.5px; }
-            .stats { width: 100%; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 5px; }
-            .stat { padding: 5px 4px; text-align: center; font-size: .65rem; border-radius: 7px; }
-            .stat b { font-size: .72rem; }
-            .tabs { gap: 4px; }
-            .tab { min-height: 48px; padding: 4px 2px; font-size: .56rem; line-height: 1.15; }
-            .tab span { font-size: .9rem; margin-bottom: 1px; }
-            .box { padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-            .box.map { padding-top: 8px; }
-            .mh { margin-bottom: 8px; }
-			.box h2, .mh h2 { font-size: .92rem; }
-            .mh button { padding: 5px 7px; font-size: .67rem; }
-            #map { height: 600px; }
-            .controls { gap: 5px; margin-bottom: 8px; }
-            .q-input { flex: 1 1 100%; min-width: 0; padding: 7px 9px; font-size: .75rem; }
-            .f { padding: 5px 7px; font-size: .67rem; }
-            .tw-route { display: none; }
-            .cards { display: flex; }
-            
-            #acc .tw { background: 0 0; border: 0; box-shadow: none; overflow: visible; }
-            #acc thead { display: none; }
-            #acc table, #acc tbody { display: block; width: 100%; }
-            #acc tr { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; row-gap: 0; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--p1); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; box-shadow: var(--shadow); }
-            #acc tr.is-open { border-left-color: var(--danger); }
-            #acc td { border: 0; padding: 0; font-size: .76rem; min-width: 0; }
-            #acc td:nth-child(1) { grid-column: 1; grid-row: 1; font-size: .9rem; line-height: 1.2; font-weight: 700; }
-            #acc td:nth-child(2) { grid-column: 1; grid-row: 2; margin-top: 1px; color: var(--mute); font-weight: 600; font-size: .72rem; }
-            #acc td:nth-child(2)::before { content: "📅 "; }
-            #acc td:nth-child(3) { grid-column: 2; grid-row: 1/span 2; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-            #acc td:nth-child(3) .status-mobile { display: inline-block; font-size: .62rem; padding: 1px 4px; }
-            #acc td:nth-child(3) .stay-badge { font-size: .68rem; padding: 1px 6px; }
-            #acc td:nth-child(4) .status-booked, #acc td:nth-child(4) .status-open { display: none; }
-            #acc td:nth-child(4) { grid-column: 1/-1; grid-row: 3; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0; font-weight: 600; color: var(--ink); font-size: .76rem; }
-            #acc td:nth-child(5) { grid-column: 1/-1; grid-row: 4; margin-top: 6px; padding: 6px 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; line-height: 1.35; font-size: .74rem; }
-            #acc td:nth-child(4)::before, #acc td:nth-child(5)::before { content: attr(data-label); display: block; font-size: .58rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); margin-bottom: 2px; }
-            #acc td:nth-child(5)::before { color: #92400e; }
-            #acc .travel-time-pill { display: flex; width: fit-content; margin-bottom: 3px; background: #fef3c7; font-size: .68rem; padding: 1px 4px; }
-            
-            /* Mobile Packlisten-Vereinfachung */
-            #pack .tw { background: 0 0; border: 0; box-shadow: none; overflow: visible; }
-            #pack thead { display: none; }
-            #pack table, #pack tbody { display: block; width: 100%; }
-            #pack tr { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; box-shadow: var(--shadow); }
-            #pack tr:has(.pack-table-cat) { display: block; background: #f1f5f9; color: var(--p1); font-weight: 800; font-size: .75rem; text-transform: uppercase; border-left: 3px solid var(--p1); padding: 6px 10px; margin-top: 10px; }
-            #pack td { border: 0; padding: 0; font-size: .8rem; display: flex; align-items: center; }
-            #pack td:nth-child(1) { order: 1; margin-right: 10px; }
-            #pack td:nth-child(2) { order: 2; flex: 1; }
-            #pack td:nth-child(3), #pack td:nth-child(4), #pack td:nth-child(5), #pack td:nth-child(8) { display: none; }
-            #pack td:nth-child(6) { order: 3; font-size: .75rem; color: var(--mute); margin-right: 8px; }
-            #pack td:nth-child(7) { order: 4; font-weight: 700; color: var(--p1); font-size: .82rem; }
-
-            .charts-grid { grid-template-columns: 1fr; }
-            #climate .tw { display: none; }
-            .climate-cards { display: flex; }
-        }
-
-        @media (max-width: 420px) {
-            body { padding: 8px 6px 18px; }
-            h1 { font-size: 1rem; }
-            .stat { padding: 4px 2px; font-size: .6rem; }
-            .tab { min-height: 44px; font-size: .5rem; padding: 2px 1px; }
-            .tab span { font-size: .75rem; }
-            #map { height: 500px; }
-        }
-    
-        /* Buchungsinfos in der Unterkunftsübersicht */
-        .booking-info { display: block; margin-top: 4px; font-size: .72rem; font-weight: 600; color: var(--mute); line-height: 1.5; }
-        .booking-info b { color: var(--ink); }
-        .booking-info + .booking-info { margin-top: 8px; }
-    
-        /* Sonstiges: kompaktere Boxen für Zeiträume & Arbeitstage */
-        .box:has(> .stats) { padding: 14px 16px; margin-bottom: 12px; }
-        .box:has(> .stats) .note { margin-bottom: 8px; }
-        .box:has(> .stats) .stats { margin-bottom: 6px; }
-        .box:has(> .stats) small { display: block; line-height: 1.35; }
-        @media (max-width: 860px) {
-            .box:has(> .stats) { padding: 10px; margin-bottom: 10px; }
-        }
-    
-        /* PATCH: Unterkunft "noch offen" gelblich */
-        .hotel-pill.hotel-open { background: #fef9c3; border-color: #fde047; color: #854d0e; }
-        @media (prefers-color-scheme: dark) { .hotel-pill.hotel-open { background: #fef9c3; color: #854d0e; } }
-    
-        
-        
-        /* PATCH: Unterkünfte Desktop-Darstellung */
-@media (min-width: 861px) {
-    #acc table { table-layout: fixed; }
-    #acc th:nth-child(1) { width: 17%; }
-    #acc th:nth-child(2) { width: 12%; }
-    #acc th:nth-child(3) { width: 10%; }
-    #acc th:nth-child(4) { width: 36%; }
-    #acc th:nth-child(5) { width: 25%; }
-
-    /* Zeitraum und Dauer nicht umbrechen */
-    #acc td:nth-child(2),
-    #acc td:nth-child(3) { white-space: nowrap; }
-
-    /* Abstand zwischen Hotelname und Status-Badge */
-    #acc td:nth-child(4) .status-booked,
-    #acc td:nth-child(4) .status-open { margin-left: 8px; vertical-align: middle; }
-
-    /* Abstand zwischen Reisezeit-Pille und Transfer-Text */
-  #acc td:nth-child(5) .travel-time-pill { display: flex; width: fit-content; margin-bottom: 4px; }}
-        
-        
-        
-    
-    /* PATCH: Dark Mode */
-    .popover-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    :root[data-theme="dark"] { color-scheme: dark; --bg: #000; --card: #0a0d0b; --hover: #121915; --line: #1f2823; --ink: #e8f0ec; --text: #c3cfc8; --mute: #92a39a; --p1: #22c55e; --accent: #2dd4bf; --danger: #f87171; --shadow: none; }
-    :root[data-theme="dark"] .f.on, :root[data-theme="dark"] .f:hover, :root[data-theme="dark"] .tab.on, :root[data-theme="dark"] .tab:hover, :root[data-theme="dark"] .dn, :root[data-theme="dark"] .popover-links button.on, :root[data-theme="dark"] .popover-links button:hover { color: #052e16; }
-    :root[data-theme="dark"] #countdown, :root[data-theme="dark"] .stay-badge, :root[data-theme="dark"] .status-booked, :root[data-theme="dark"] .fl-price { background: #14361f; border-color: #1f5a35; color: #86efac; }
-    :root[data-theme="dark"] .status-open { background: #3b1717; border-color: #7f1d1d; color: #fca5a5; }
-    :root[data-theme="dark"] th { background: #111814; }
-    :root[data-theme="dark"] td { border-bottom-color: var(--line); }
-    :root[data-theme="dark"] tr.today-row td, :root[data-theme="dark"] .card.today-card { background: #14361f !important; }
-    :root[data-theme="dark"] .pill, :root[data-theme="dark"] .todo-item, :root[data-theme="dark"] ul.fl-list li, :root[data-theme="dark"] .pack-add-form, :root[data-theme="dark"] .pack-table-cat { background: #0f1512; }
-    :root[data-theme="dark"] .hotel-pill { background: #14301f; border-color: #1f5a35; color: #86efac; }
-    :root[data-theme="dark"] .hotel-pill.hotel-open { background: #3a3210; border-color: #854d0e; color: #fde68a; }
-    :root[data-theme="dark"] .group-ines-stefan, :root[data-theme="dark"] .tag-norden, :root[data-theme="dark"] .tag-sl-hochland, :root[data-theme="dark"] .todo-tag.tag-th { background: #14361f; color: #86efac; border-color: #1f5a35; }
-    :root[data-theme="dark"] .group-ines-alleine, :root[data-theme="dark"] .tag-bangkok, :root[data-theme="dark"] .tag-sl-colombo { background: #2e1f45; color: #d8b4fe; border-color: #4c2f73; }
-    :root[data-theme="dark"] .group-ines-anna, :root[data-theme="dark"] .tag-inseln, :root[data-theme="dark"] .tag-sl-suedkueste { background: #103a38; color: #5eead4; border-color: #1b5e5a; }
-    :root[data-theme="dark"] .tag-default { background: #121915; color: var(--mute); }
-    :root[data-theme="dark"] .tag-sl-westkueste { background: #0f3b2c; color: #6ee7b7; }
-    :root[data-theme="dark"] .tag-sl-kulturdreieck, :root[data-theme="dark"] .todo-tag.tag-sl, :root[data-theme="dark"] .travel-time-pill { background: #3a2f10; color: #fcd34d; border-color: #5c4a14; }
-    :root[data-theme="dark"] .todo-tag { background: #141b17; color: var(--text); }
-    :root[data-theme="dark"] .pack-summary, :root[data-theme="dark"] .work-summary { background: #14261c; border-color: #1f5a35; }
-    :root[data-theme="dark"] .table-select.select-am-koerper { background: #3a2f10; color: #fcd34d; border-color: #5c4a14; }
-    :root[data-theme="dark"] .climate-card-desc { border-top-color: var(--line); }
-    :root[data-theme="dark"] .legend { background: var(--card); border-color: var(--line); }
-    :root[data-theme="dark"] .leaflet-popup-content-wrapper, :root[data-theme="dark"] .leaflet-popup-tip { background: var(--card); color: var(--text); }
-    :root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.95) contrast(.9); }
-    :root[data-theme="dark"] [style*="background:#dcfce7"] { background: #14361f !important; color: #86efac !important; }
-    :root[data-theme="dark"] [style*="background:#fee2e2"] { background: #3b1717 !important; color: #fca5a5 !important; }
-    @media (max-width: 860px) {
-        :root[data-theme="dark"] #acc td:nth-child(5) { background: #3a2f10; border-color: #5c4a14; }
-        :root[data-theme="dark"] #acc td:nth-child(5)::before { color: #fcd34d; }
-        :root[data-theme="dark"] #pack tr:has(.pack-table-cat) { background: #0f1512; }
-    }
-
-    /* PATCH: Dark Mode v2 */
-    .header-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-    .theme-toggle { background: var(--card); color: var(--ink); border: 2px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); line-height: 1; cursor: pointer; transition: background .15s, border-color .15s; }
-    .theme-toggle:hover { background: var(--hover); border-color: var(--p1); }
-    .theme-toggle-sm { font-size: 1.4rem; padding: 6px 12px; }
-    @media (max-width: 860px) {
-        .header-actions { gap: 6px; }
-        .theme-toggle.burger-btn { padding: 5px 5px; font-size: 1.2rem; border-width: 1.5px; }
-    }
-
-    /* PATCH: Quick-Tools-Buttons */
-    a.btn[href*="mvs2-bot.github.io/QuickTools"] { background: var(--p1); color: #fff; border: 2px solid #14532d; border-radius: 10px; font-weight: 800; box-shadow: var(--shadow); transition: background .15s, transform .15s, box-shadow .15s; }
-    a.btn[href*="mvs2-bot.github.io/QuickTools"]:hover { background: #166534; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(21,128,61,.3); }
-    :root[data-theme="dark"] a.btn[href*="mvs2-bot.github.io/QuickTools"] { color: #052e16; border-color: #86efac; }
-    :root[data-theme="dark"] a.btn[href*="mvs2-bot.github.io/QuickTools"]:hover { background: #4ade80; }
-    /* Google-Maps-Links & "Heute hier"-Markierung in den Unterkünften */
-    .map-link { color: var(--p1); font-weight: 700; text-decoration: none; }
-    .map-link:hover { text-decoration: underline; }
-    .now-badge { display: inline-block; margin-left: 6px; font-size: .66rem; font-weight: 800; background: var(--p1); color: #fff; border-radius: 999px; padding: 1px 7px; vertical-align: middle; white-space: nowrap; }
-    :root[data-theme="dark"] .now-badge { color: #052e16; }
-    @media (min-width: 861px) {
-        #acc tr.acc-now td { background: #dcfce7; }
-        #acc tr.acc-now td:first-child { box-shadow: inset 4px 0 0 var(--p1); }
-        :root[data-theme="dark"] #acc tr.acc-now td { background: #14361f; }
-    }
-    @media (max-width: 860px) {
-        #acc tr.acc-now { background: #dcfce7; border: 2px solid var(--p1); border-left-width: 4px; }
-        :root[data-theme="dark"] #acc tr.acc-now { background: #14361f; }
-    }
-    /* TravelBase: Laden, Hinweise, Konto im Menü */
-    body.tb-loading .tabs, body.tb-loading .pane, body.tb-loading .header-sub-row { visibility: hidden; }
-    body.tb-loading .pane.on { display: none; }
-    .tb-gate h2 { margin-bottom: 6px; }
-    .tb-gate a { color: var(--p1); font-weight: 700; }
-    .tb-banner { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 10px; padding: 9px 14px; font-size: .84rem; font-weight: 600; margin-bottom: 12px; }
-    :root[data-theme="dark"] .tb-banner { background: #3a2f10; color: #fcd34d; border-color: #5c4a14; }
-    .tb-account { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-    .tb-who { font-size: .8rem; color: var(--mute); font-weight: 600; word-break: break-all; }
-    .tb-actions { display: flex; gap: 8px; }
-    .tb-act { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-weight: 700; font-size: .82rem; color: var(--text); text-decoration: none; }
-    .tb-act:hover { background: var(--hover); border-color: var(--p1); }
-    body.tb-guest .tabs .tab:not([data-t="mapview"]):not(.tab-menu), body.tb-guest .pop-btn:not([data-t="mapview"]):not([data-t="imprint"]) { display: none; }
-    body.tb-guest .tabs { grid-template-columns: 1fr; }
-    /* Buttons oben rechts (Profil, Hell/Dunkel, Menü): auf allen Seiten gleich groß wie auf der Übersicht */
-    .header-actions > .burger-btn { width: 48px; height: 42px; padding: 0; font-size: 1.3rem; border-width: 2px; display: inline-flex; align-items: center; justify-content: center; }
-        /* Menü-Button in der Schnellauswahl (ersetzt dort „Infos & mehr“) */
-        .tabs .tab-menu { background: color-mix(in srgb, var(--p1) 14%, var(--card)); border: 1.5px solid var(--p1); color: var(--p1); }
-        .tabs .tab-menu:hover { background: var(--p1); color: #fff; }
-        :root[data-theme="dark"] .tabs .tab-menu { background: color-mix(in srgb, var(--p1) 18%, var(--card)); }
-        :root[data-theme="dark"] .tabs .tab-menu:hover { color: #052e16; }
-    body.tb-guest .tabs { grid-template-columns: 1fr 1fr; }
-    /* Schnellauswahl: alle Buttons gleich aufgebaut (Icon + einzeiliges Label) */
-    .tabs .tab { white-space: nowrap; overflow: hidden; }
-    .tabs .tab span { font-size: 1.05rem; line-height: 1.2; }
-    @media (max-width: 860px) { .tabs .tab span { font-size: .9rem; } .tabs .tab { font-size: .62rem; } }
-    @media (max-width: 420px) { .tabs .tab span { font-size: .75rem; } .tabs .tab { font-size: .56rem; } }
-    /* Tagesplan-Kopfzeile: Titel immer einzeilig, Hinweis darunter */
-    .mh.plan-head { flex-direction: column; align-items: flex-start; gap: 2px; }
-    .mh.plan-head h2 { white-space: nowrap; }
-    /* To-Dos: Suche & Eingabe oben */
-    .todo-search { margin-bottom: 10px; }
-    #todos .pack-add-form { margin-bottom: 14px; }
-    </style>
+<link rel="stylesheet" href="../shared/trip.css">
 
 <!-- PATCH: PWA -->
 <link rel="manifest" href="../manifest.json">
@@ -454,22 +41,22 @@
                     <h1 id="tripTitle">🌏 TravelBase</h1>
                     <div class="header-sub-row">
                         <p id="tripPeriod"></p>
-                        <div id="countdown">⏳ Countdown wird berechnet...</div>
+                        <div id="countdown"><svg class="ic"><use href="#i-clock"></use></svg>Countdown wird berechnet...</div>
                     </div>
                 </div>
                 <div class="header-actions">
-                    <button id="themeToggleHdr" class="burger-btn theme-toggle" type="button" aria-label="Zum dunklen Modus wechseln" title="Dunklen Modus aktivieren">🌙</button>
-                    <button id="tbProfileBtn" class="burger-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
+                    <button id="themeToggleHdr" class="burger-btn theme-toggle" type="button" aria-label="Zum dunklen Modus wechseln" title="Dunklen Modus aktivieren"><svg class="ic"><use href="#i-moon"></use></svg></button>
+                    <button id="tbProfileBtn" class="burger-btn" type="button" aria-label="Profil-Menü öffnen" hidden><svg class="ic"><use href="#i-person"></use></svg></button>
                 </div>
             </header>
             
             <!-- Haupt-Tabs für Desktop/Tablet -->
             <div class="tabs" role="tablist">
-                <button class="tab on" data-t="mapview"><span>🗺️</span>Karte</button>
+                <button class="tab on" data-t="mapview"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
                 <button class="tab" data-t="thailand" title="Tagesplan Thailand"><span>🇹🇭</span>Thailand</button>
                 <button class="tab" data-t="srilanka" title="Tagesplan Sri Lanka"><span>🇱🇰</span>Sri Lanka</button>
-                <button class="tab" data-t="acc"><span>🏨</span>Unterkünfte</button>
-                <button class="tab tab-menu" id="menuBurger" type="button" aria-label="Menü öffnen"><span>☰</span>Menü</button>
+                <button class="tab" data-t="acc"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
+                <button class="tab tab-menu" id="menuBurger" type="button" aria-label="Menü öffnen"><span><svg class="ic"><use href="#i-list"></use></svg></span>Menü</button>
             </div>
         </div>
 
@@ -478,44 +65,44 @@
             <div class="popover-content">
                 <div class="popover-header">
                     <div class="popover-title">
-                        <h2>🧭 Navigation</h2>
-                        <button id="themeToggle" class="theme-toggle theme-toggle-sm" type="button" aria-label="Zum dunklen Modus wechseln" title="Dunklen Modus aktivieren">🌙</button>
+                        <h2><svg class="ic"><use href="#i-compass"></use></svg>Navigation</h2>
+                        <button id="themeToggle" class="theme-toggle theme-toggle-sm" type="button" aria-label="Zum dunklen Modus wechseln" title="Dunklen Modus aktivieren"><svg class="ic"><use href="#i-moon"></use></svg></button>
                     </div>
-                    <button id="closePopover">✕</button>
+                    <button id="closePopover" type="button" aria-label="Menü schließen"><svg class="ic"><use href="#i-x"></use></svg></button>
                 </div>
                 <div class="popover-links">
-                    <button data-t="mapview" class="pop-btn on"><span>🗺️</span>Karte</button>
+                    <button data-t="mapview" class="pop-btn on"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
                     <button data-t="thailand" class="pop-btn"><span>🇹🇭</span>Tagesplan Thailand</button>
                     <button data-t="srilanka" class="pop-btn"><span>🇱🇰</span>Tagesplan Sri Lanka</button>
-                    <button data-t="acc" class="pop-btn"><span>🏨</span>Unterkünfte</button>
-                    <button data-t="todos" class="pop-btn"><span>✅</span>To-Dos</button>
-                    <button data-t="misc" class="pop-btn"><span>📌</span>Infos &amp; mehr</button>
-                    <button data-t="flights" class="pop-btn"><span>✈️</span>Gebuchte Flüge</button>
-                    <button data-t="pack" class="pop-btn"><span>🎒</span>Packliste &amp; Gewicht</button>
-                    <button data-t="climate" class="pop-btn"><span>🌤️</span>Klima &amp; Wetter</button>
-                    <button data-t="imprint" class="pop-btn"><span>📄</span>Impressum</button>
+                    <button data-t="acc" class="pop-btn"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
+                    <button data-t="todos" class="pop-btn"><span><svg class="ic"><use href="#i-checkCircle"></use></svg></span>To-Dos</button>
+                    <button data-t="misc" class="pop-btn"><span><svg class="ic"><use href="#i-info"></use></svg></span>Infos &amp; mehr</button>
+                    <button data-t="flights" class="pop-btn"><span><svg class="ic"><use href="#i-plane"></use></svg></span>Gebuchte Flüge</button>
+                    <button data-t="pack" class="pop-btn"><span><svg class="ic"><use href="#i-backpack"></use></svg></span>Packliste &amp; Gewicht</button>
+                    <button data-t="climate" class="pop-btn"><span><svg class="ic"><use href="#i-cloudSun"></use></svg></span>Klima &amp; Wetter</button>
+                    <button data-t="imprint" class="pop-btn"><span><svg class="ic"><use href="#i-doc"></use></svg></span>Impressum</button>
                 </div>
                 <div class="tb-account">
                     <div class="tb-who" id="tbWho"></div>
                     <div class="tb-actions">
-                        <a class="tb-act" href="../">🏠 Alle Reisen</a>
-                        <button class="tb-act" type="button" id="tbLogout">🚪 Abmelden</button>
+                        <a class="tb-act" href="../"><svg class="ic"><use href="#i-home"></use></svg>Alle Reisen</a>
+                        <button class="tb-act" type="button" id="tbLogout"><svg class="ic"><use href="#i-logout"></use></svg>Abmelden</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- TravelBase: Lade- & Hinweisbereich -->
-        <div id="tbGate" class="box tb-gate"><h2>⏳ Lade Reisedaten …</h2></div>
-        <div id="tbOffline" class="tb-banner" hidden>📴 Offline – du siehst den zuletzt geladenen Stand.</div>
-        <div id="tbGuest" class="tb-banner" hidden>👀 Gast-Ansicht: Du siehst die Route und den Zeitraum. Weitere Details sind nur für Mitreisende sichtbar.</div>
+        <div id="tbGate" class="box tb-gate"><h2><svg class="ic"><use href="#i-clock"></use></svg>Lade Reisedaten …</h2></div>
+        <div id="tbOffline" class="tb-banner" hidden><svg class="ic"><use href="#i-wifiOff"></use></svg><span>Offline – du siehst den zuletzt geladenen Stand.</span></div>
+        <div id="tbGuest" class="tb-banner" hidden><svg class="ic"><use href="#i-eye"></use></svg><span>Gast-Ansicht: Du siehst die Route und den Zeitraum. Weitere Details sind nur für Mitreisende sichtbar.</span></div>
 
         <!-- Sektion 1: Interaktive Karte -->
         <div id="mapview" class="pane on">
             <div class="box map" id="mapBox" style="margin-bottom:0">
                 <div class="mh">
                     <h2>Interaktive Reiseroute &amp; Karte</h2>
-                    <button id="fs">🔍 Vollbild</button>
+                    <button id="fs" type="button"><svg class="ic"><use href="#i-expand"></use></svg>Vollbild</button>
                 </div>
                 <div id="map"></div>
             </div>
@@ -578,7 +165,7 @@
         <!-- Sektion 4: Unterkünfte -->
         <div id="acc" class="pane">
             <div class="box">
-                <h2>🏨 Unterkunfts- &amp; Reisezeitübersicht</h2>
+                <h2><svg class="ic"><use href="#i-building"></use></svg>Unterkunfts- &amp; Reisezeitübersicht</h2>
                 <p class="note">Schnellübersicht über Aufenthaltsdauern, Status und Transferzeiten. (Klicke auf eine Zeile, um den Ort auf der Karte anzuzeigen)</p>
                 
                 <h3 style="margin:12px 0 8px;color:var(--p1)" id="accHeadTh"></h3>
@@ -618,13 +205,13 @@
         <!-- Sektion 5: Sonstiges & Statistiken -->
         <div id="misc" class="pane">
             <div class="box">
-                <h2>👥 Reisezeiträume &amp; Dauer</h2>
+                <h2><svg class="ic"><use href="#i-users"></use></svg>Reisezeiträume &amp; Dauer</h2>
                 <p class="note">Übersicht der Reisedauer pro Person.</p>
                 <div class="stats" id="stats"></div>
             </div>
             
             <div class="box">
-                <h2>💼 Verbleibende Arbeitstage bis Abflug</h2>
+                <h2><svg class="ic"><use href="#i-briefcase"></use></svg>Verbleibende Arbeitstage bis Abflug</h2>
                 <p class="note">Verbleibende Werktage (Mo–Fr) ab heute bis zum Abflug am <span class="depLong"></span>. Gesetzliche Feiertage sind bereits abgezogen (ohne persönliche Urlaubstage).</p>
                 <div class="stats" id="workStats">
                     <div class="stat">
@@ -636,20 +223,20 @@
                         <b id="workDaysWien">0 Tage</b>bis Abflug <span class="depShort"></span>
                     </div>
                 </div>
-                <small style="font-size:.72rem;color:var(--mute)">* Berücksichtigte Feiertage in diesem Zeitraum: Tag der Dt. Einheit, Nationalfeiertag (AT), Allerheiligen, Maria Empfängnis (AT), 1. &amp; 2. Weihnachtsfeiertag, Neujahr.</small>
+                <small id="workHolidays">* Berücksichtigte Feiertage in diesem Zeitraum: Tag der Dt. Einheit, Nationalfeiertag (AT), Allerheiligen, Maria Empfängnis (AT), 1. &amp; 2. Weihnachtsfeiertag, Neujahr.</small>
             </div>
             
             <div class="box">
-                <h2>💡 Wichtige Infos &amp; Hinweise</h2>
-                <ul id="infoList" style="padding-left:18px;font-size:.85rem;line-height:1.7"></ul>
+                <h2><svg class="ic"><use href="#i-bulb"></use></svg>Wichtige Infos &amp; Hinweise</h2>
+                <ul id="infoList" class="tips"></ul>
             </div>
         
             <div class="box">
-                        <h2>🚨 Infos &amp; Notfall</h2>
+                        <h2><svg class="ic"><use href="#i-lifebuoy"></use></svg>Infos &amp; Notfall</h2>
                         <p class="note">Auf unserer QuickTools-Seite gibt es für jedes Reiseland einen Währungsrechner mit aktuellem Kurs, wichtige Phrasen mit Audio, GPS-Standort und Taxi-Karte, Sonnenzeiten sowie Notrufnummern, Botschaft, SIM-Karten, nützliche Apps und Verhaltensregeln. Funktioniert auch offline.</p>
-                        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin: 24px 0;">
-                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🧰 Link zu den Quick Tools · 🇹🇭 Thailand ↗</a>
-                            <a href="https://mvs2-bot.github.io/QuickTools/srilanka/" target="_blank" rel="noopener" class="btn" style="display:inline-block; text-decoration:none; padding: 16px 32px; font-size: 1.1rem;">🧰 Link zu den Quick Tools · 🇱🇰 Sri Lanka ↗</a>
+                        <div class="link-row">
+                            <a href="https://mvs2-bot.github.io/QuickTools/thailand/" target="_blank" rel="noopener" class="btn ql"><svg class="ic"><use href="#i-toolbox"></use></svg>Link zu den Quick Tools · 🇹🇭 Thailand ↗</a>
+                            <a href="https://mvs2-bot.github.io/QuickTools/srilanka/" target="_blank" rel="noopener" class="btn ql"><svg class="ic"><use href="#i-toolbox"></use></svg>Link zu den Quick Tools · 🇱🇰 Sri Lanka ↗</a>
                         </div>
                     </div>
         </div>
@@ -658,11 +245,11 @@
         <div id="todos" class="pane">
             <div class="box">
                 <div class="mh">
-                    <h2>✅ Reise To-Do &amp; Vorbereitungen</h2>
-                    <span id="todoProgress" style="font-size:.8rem;font-weight:700;color:var(--p1)">0/0 erledigt</span>
+                    <h2><svg class="ic"><use href="#i-checkCircle"></use></svg>Reise To-Do &amp; Vorbereitungen</h2>
+                    <span id="todoProgress" style="font-size:13px;font-weight:600;color:var(--p1)">0/0 erledigt</span>
                 </div>
                 <p class="note">Wichtige Erledigungen für Einreise, Gesundheit &amp; Dokumente – gemeinsame Liste für alle Mitreisenden (Änderungen der anderen nach dem Neuladen sichtbar).</p>
-                <div class="lists-offline tb-banner" hidden>📴 Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</div>
+                <div class="lists-offline tb-banner" hidden><svg class="ic"><use href="#i-wifiOff"></use></svg><span>Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</span></div>
                 <div class="controls todo-search">
                     <input type="search" id="todoSearch" class="q-input" placeholder="To-Dos durchsuchen..." oninput="renderTodos()">
                 </div>
@@ -673,7 +260,7 @@
                         <option value="Thailand">Thailand</option>
                         <option value="Sri Lanka">Sri Lanka</option>
                     </select>
-                    <button class="f on" onclick="addTodoItem()">+ Hinzufügen</button>
+                    <button class="f on" onclick="addTodoItem()"><svg class="ic"><use href="#i-plus"></use></svg>Hinzufügen</button>
                 </div>
                 <ul class="todo-list" id="todoList"></ul>
                 <p class="note todo-empty" id="todoEmpty" hidden>Keine To-Dos zur Suche gefunden.</p>
@@ -683,7 +270,7 @@
         <!-- Popover-Ansichten: Gebuchte Flüge -->
         <div id="flights" class="pane">
             <div class="box">
-                <h2>✈️ Gebuchte Flüge (Übersicht)</h2>
+                <h2><svg class="ic"><use href="#i-plane"></use></svg>Gebuchte Flüge (Übersicht)</h2>
                 <p class="note">Alle gebuchten Flugverbindungen und Zwischenstopps im Detail (inkl. direktem Link zur Flugstatusprüfung der Airline):</p>
                 <ul class="fl-list" id="flightList"></ul>
             </div>
@@ -693,19 +280,19 @@
         <div id="pack" class="pane">
             <div class="box">
                 <div class="sub-tabs">
-                    <button id="btnPackStefan" class="tab on" onclick="switchPerson(&quot;stefan&quot;)"><span>🎒</span><span class="pn-stefan"></span></button>
-                    <button id="btnPackInes" class="tab" onclick="switchPerson(&quot;ines&quot;)"><span>🎒</span><span class="pn-ines"></span></button>
+                    <button id="btnPackStefan" class="tab on" onclick="switchPerson(&quot;stefan&quot;)"><span><svg class="ic"><use href="#i-backpack"></use></svg></span><span class="pn-stefan"></span></button>
+                    <button id="btnPackInes" class="tab" onclick="switchPerson(&quot;ines&quot;)"><span><svg class="ic"><use href="#i-backpack"></use></svg></span><span class="pn-ines"></span></button>
                 </div>
                 <div class="mh">
-                    <h2 id="packlistTitle">🎒 Interaktive Packliste</h2>
+                    <h2 id="packlistTitle"><svg class="ic"><use href="#i-backpack"></use></svg>Interaktive Packliste</h2>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
-                        <button class="btn-action" style="color:#15803d;background:#dcfce7" onclick="setAllPacked(!0)">✅ Alle einpacken</button>
-                        <button class="btn-action" style="color:#dc2626;background:#fee2e2" onclick="setAllPacked(!1)">❌ Alle auspacken</button>
-                        <button class="btn-action" onclick="exportPacklistCSV()">📊 CSV Export</button>
-                        <button class="btn-action" style="color:var(--danger)" onclick="resetPacklist()">🔄 Reset</button>
+                        <button class="btn-action ok" onclick="setAllPacked(!0)"><svg class="ic"><use href="#i-checkCircle"></use></svg>Alle einpacken</button>
+                        <button class="btn-action danger" onclick="setAllPacked(!1)"><svg class="ic"><use href="#i-xCircle"></use></svg>Alle auspacken</button>
+                        <button class="btn-action" onclick="exportPacklistCSV()"><svg class="ic"><use href="#i-table"></use></svg>CSV Export</button>
+                        <button class="btn-action" style="color:var(--danger)" onclick="resetPacklist()"><svg class="ic"><use href="#i-refresh"></use></svg>Reset</button>
                     </div>
                 </div>
-                <div class="lists-offline tb-banner" hidden>📴 Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</div>
+                <div class="lists-offline tb-banner" hidden><svg class="ic"><use href="#i-wifiOff"></use></svg><span>Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</span></div>
                 <div class="pack-summary">
                     <div>
                         <span class="pack-stat-val" id="packWeightKg">0.00 kg</span>
@@ -750,7 +337,7 @@
                         <option value="Umhängetasche">Umhängetasche</option>
                         <option value="Am Körper">Am Körper</option>
                     </select>
-                    <button class="f on" onclick="addPackItem()">+ Hinzufügen</button>
+                    <button class="f on" onclick="addPackItem()"><svg class="ic"><use href="#i-plus"></use></svg>Hinzufügen</button>
                 </div>
                 <div class="tw">
                     <table>
@@ -772,7 +359,7 @@
             </div>
             
             <div class="box" style="margin-top:24px">
-                <h2>📊 Gewichtsanalyse je Kategorie</h2>
+                <h2><svg class="ic"><use href="#i-pie"></use></svg>Gewichtsanalyse je Kategorie</h2>
                 <p class="note">Vergleich des Gewichts pro Kategorie (nur eingepackte Gegenstände).</p>
                 <div class="tw" style="margin-bottom:20px">
                     <table>
@@ -805,7 +392,7 @@
 <!-- Popover-Ansichten: Klima & Wetter -->
         <div id="climate" class="pane">
             <div class="box">
-                <h2>🌤️ Klima &amp; Wetter (Januar &amp; Februar)</h2>
+                <h2><svg class="ic"><use href="#i-cloudSun"></use></svg>Klima &amp; Wetter (Januar &amp; Februar)</h2>
                 <p class="note">Detaillierte klimatische Bedingungen, Temperaturen, Sonnenstunden und Niederschläge an den Reiseorten.</p>
                 
                 <!-- Desktop Tabellenansicht -->
@@ -834,8 +421,8 @@
         <!-- Popover-Ansichten: Impressum -->
         <div id="imprint" class="pane">
             <div class="box">
-                <h2>📄 Impressum</h2>
-                <div style="font-size: .88rem; line-height: 1.6; color: var(--text);">
+                <h2><svg class="ic"><use href="#i-doc"></use></svg>Impressum</h2>
+                <div style="font-size: 14px; line-height: 1.6; color: var(--text);">
        
            <br>
         <p><strong>Private Reise-Webseite:</strong><br>
@@ -871,15 +458,15 @@
         const TRIP_SLUG = (() => { const p = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean); return p[p.length - 1]; })();
         function gate(html) { const g = $('#tbGate'); g.innerHTML = html; g.hidden = !html; }
         async function loadTripData() {
-            if (!window.TB || !TB.configured) { gate('<h2>⚙️ Noch nicht eingerichtet</h2><p class="note">Supabase ist noch nicht verbunden (shared/config.js).</p>'); return null; }
+            if (!window.TB || !TB.configured) { gate(`<h2>${ic('gear')}Noch nicht eingerichtet</h2><p class="note">Supabase ist noch nicht verbunden (shared/config.js).</p>`); return null; }
             let res;
             try { res = await TB.loadTrip(TRIP_SLUG); }
-            catch (e) { gate(`<h2>⚠️ Fehler beim Laden</h2><p class="note">${TB.errorText(e)}</p><a href="../">← Zur Übersicht</a>`); return null; }
+            catch (e) { gate(`<h2>${ic('alert')}Fehler beim Laden</h2><p class="note">${TB.errorText(e)}</p><a href="../">← Zur Übersicht</a>`); return null; }
             if (!res) { location.replace('../?next=' + encodeURIComponent(TRIP_SLUG)); return null; }
-            if (res.denied) { gate('<h2>🔒 Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>'); return null; }
+            if (res.denied) { gate(`<h2>${ic('lock')}Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>`); return null; }
             ROLE = res.role;
             TRIP_ID = res.trip.id;
-            $('#tbWho').textContent = '👤 ' + (res.user.name || res.user.email);
+            $('#tbWho').innerHTML = ic('person') + String(res.user.name || res.user.email).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
             $('#tbOffline').hidden = !res.offline;
             return res.data;
         }
@@ -907,12 +494,14 @@
 
         /* 1. Hilfsfunktionen */
         const $ = s => document.querySelector(s);
+        /* Linien-Symbol aus shared/icons.js */
+        const ic = n => window.tbIcon ? tbIcon(n) : '';
         const pad = n => String(n).padStart(2, '0');
         const localISO = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
         const fmtISO = iso => iso.slice(8, 10) + '.' + iso.slice(5, 7) + '.';
         const daysBetween = (a, b) => Math.round((Date.UTC(...b.split('-').map((v, i) => i === 1 ? v - 1 : +v)) - Date.UTC(...a.split('-').map((v, i) => i === 1 ? v - 1 : +v))) / 864e5);
         const mapsUrl = q => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
-        const mapsLink = q => `📍 <a class="map-link" href="${mapsUrl(q)}" target="_blank" rel="noopener">In Google Maps öffnen ↗</a>`;
+        const mapsLink = q => `${ic('pin')}<a class="map-link" href="${mapsUrl(q)}" target="_blank" rel="noopener">In Google Maps öffnen ↗</a>`;
 
         /* "Heute": echtes Datum – zum Testen per URL überschreibbar, z. B. index.html?heute=2027-01-14 */
         const TODAY = (() => {
@@ -951,10 +540,10 @@
                     const isNow = s.from && s.to && today >= s.from && today < s.to;
                     if (isNow) tr.classList.add('acc-now');
                     const multi = (s.bookings || []).length > 1;
-                    const bookings = (s.bookings || []).map(b => `<div class="booking-info">${multi ? `<b>${b.name}</b><br>` : ''}🛏️ ${b.room}<br>📲 ${b.by}<br>⏳ ${b.cancel}${b.maps ? '<br>' + mapsLink(b.maps) : ''}</div>`).join('');
+                    const bookings = (s.bookings || []).map(b => `<div class="booking-info">${multi ? `<b>${b.name}</b><br>` : ''}${ic('bed')}${b.room}<br>${ic('phone')}${b.by}<br>${ic('clock')}${b.cancel}${b.maps ? '<br>' + mapsLink(b.maps) : ''}</div>`).join('');
                     const extraMaps = s.maps ? `<div class="booking-info">${mapsLink(s.maps)}</div>` : '';
                     tr.innerHTML = `
-                        <td><strong>${s.title}</strong>${s.note ? ' ' + s.note : ''}${isNow ? '<span class="now-badge">📍 Heute hier</span>' : ''}</td>
+                        <td><strong>${s.title}</strong>${s.note ? ' ' + s.note : ''}${isNow ? `<span class="now-badge">${ic('pin')}Heute hier</span>` : ''}</td>
                         <td>${s.period}</td>
                         <td><span class="stay-badge">${s.nights} ${s.nights === 1 ? 'Nacht' : 'Nächte'}</span></td>
                         <td>${s.hotel}<span class="status-${s.status}">${s.statusText}</span>${bookings}${extraMaps}</td>
@@ -1041,7 +630,7 @@
                         <div class="dt">${item.date}</div>${groupBadge}
                     </td>
                     <td><span class="rg ${item.regTag}">${item.region}</span></td>
-                    <td><div class="tt">${item.title} ${isToday ? '⭐ (HEUTE)' : ''}</div></td>
+                    <td><div class="tt">${item.title} ${isToday ? `<span class="today-tag">${ic('star')}Heute</span>` : ''}</div></td>
                     <td>${item.details}</td>
                     <td><span class="pill">${item.transport}</span></td>
                     <td><span class="pill hotel-pill${/noch offen/i.test(item.hotel) ? ' hotel-open' : ''}">${item.hotel}</span></td>`;
@@ -1136,7 +725,7 @@
             Object.keys(points).forEach(key => {
                 const p = points[key];
                 const marker = L.circleMarker([p.lat, p.lng], { color: p.color, fillColor: p.color, fillOpacity: .9, radius: 6 })
-                    .bindPopup(`<b style="color:${p.color}">📍 ${p.name}</b><br><small>📅 ${p.date}</small><br>${p.desc}`);
+                    .bindPopup(`<b style="color:${p.color}">${ic('pin')} ${p.name}</b><br><small>${ic('calendar')} ${p.date}</small><br>${p.desc}`);
                 marker.addTo(map);
                 markers[p.name] = { marker, lat: p.lat, lng: p.lng };
                 markers[key] = { marker, lat: p.lat, lng: p.lng };
@@ -1146,7 +735,7 @@
             lg.onAdd = () => {
                 const d = L.DomUtil.create('div', 'legend');
                 d.innerHTML = `
-                    <div class="lh" style="cursor:pointer;font-weight:800">📌 Legende <span>▼</span></div>
+                    <div class="lh" style="cursor:pointer">${ic('info')}Legende <span>▼</span></div>
                     <div class="lb" style="display:none;margin-top:4px">
                         <span style="color:#0d9488">━</span> Thailand Straße &amp; Transfers<br>
                         <span style="color:#0d9488">┈</span> Fähren (Ko Phi Phi, Koh Tao)<br>
@@ -1191,11 +780,11 @@
             const diff = new Date(DATA.meta.departureUTC).getTime() - Date.now(), el = $('#countdown');
             if (!el) return;
             if (diff <= 0) {
-                el.innerHTML = '🎉 Gute Reise!';
+                el.innerHTML = ic('sparkles') + 'Gute Reise!';
                 return;
             }
             const t = Math.floor(diff / 1000);
-            el.innerHTML = `⏳ Noch <b>${Math.floor(t / 86400)}</b> T., <b>${Math.floor(t / 3600) % 24}</b> Std., <b>${Math.floor(t / 60) % 60}</b> Min.`;
+            el.innerHTML = ic('clock') + `Noch <b>${Math.floor(t / 86400)}</b> T., <b>${Math.floor(t / 3600) % 24}</b> Std., <b>${Math.floor(t / 60) % 60}</b> Min.`;
         }
 
         function calculateWorkDays() {
@@ -1297,7 +886,7 @@
                         <span></span>
                     </label>
                     <span class="todo-tag ${tagClass}"></span>
-                    <button style="border:none;background:none;margin-left:8px;cursor:pointer" onclick="deleteTodo(${idx})">🗑️</button>`;
+                    <button type="button" onclick="deleteTodo(${idx})" aria-label="Löschen" title="Löschen">${ic('trash')}</button>`;
                 li.querySelector('label span').textContent = item.text;
                 li.querySelector('.todo-tag').textContent = item.tag;
                 ul.appendChild(li);
@@ -1353,7 +942,7 @@
             currentPerson = person;
             $('#btnPackStefan').classList.toggle('on', person === 'stefan');
             $('#btnPackInes').classList.toggle('on', person === 'ines');
-            $('#packlistTitle').innerText = `🎒 Interaktive Packliste (${personName()})`;
+            $('#packlistTitle').innerHTML = ic('backpack') + `Interaktive Packliste (${personName()})`;
             renderPacklist();
         }
 
@@ -1458,21 +1047,21 @@
                     const idx = item._origIndex, total = (item.weight || 0) * (item.qty || 1), tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td style="text-align:center">
-                            <input type="checkbox" ${item.packed ? 'checked' : ''} onchange="togglePacked(${idx})" style="accent-color:var(--p1);width:14px;height:14px;cursor:pointer">
+                            <input type="checkbox" ${item.packed ? 'checked' : ''} onchange="togglePacked(${idx})" class="pack-check" aria-label="Eingepackt">
                         </td>
                         <td><strong style="color:${item.packed ? 'var(--mute)' : 'var(--ink)'};${item.packed ? 'text-decoration:line-through;' : ''}"></strong></td>
                         <td><select class="table-select ${item.type === 'Am Körper' ? 'select-am-koerper' : ''}" onchange="changeType(${idx}, this.value)">${sel(item.type, ['Basis', 'Am Körper', 'Verbrauch'])}</select></td>
                         <td><select class="table-select" onchange="changeLoc(${idx}, this.value)">${sel(item.loc, ['Aufgabegepäck', 'Handgepäck', 'Umhängetasche', 'Am Körper'])}</select></td>
                         <td style="text-align:center">
-                            <button style="border:none;background:none;font-weight:bold" onclick="changeQty(${idx}, -1)">-</button>
+                            <button class="qty-btn" type="button" onclick="changeQty(${idx}, -1)" aria-label="Weniger">−</button>
                             <span>${item.qty || 1}</span>
-                            <button style="border:none;background:none;font-weight:bold" onclick="changeQty(${idx}, 1)">+</button>
+                            <button class="qty-btn" type="button" onclick="changeQty(${idx}, 1)" aria-label="Mehr">+</button>
                         </td>
                         <td style="text-align:right">${item.weight || 0} g</td>
                         <td style="text-align:right;font-weight:700;color:var(--p1)">${total} g</td>
                         <td style="text-align:center">
-                            <button style="border:none;background:none" onclick="editPackItem(${idx})">✏</button>
-                            <button style="border:none;background:none" onclick="deletePackItem(${idx})">🗑️</button>
+                            <button class="icon-act" type="button" onclick="editPackItem(${idx})" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button>
+                            <button class="icon-act del" type="button" onclick="deletePackItem(${idx})" aria-label="Löschen" title="Löschen">${ic('trash')}</button>
                         </td>`;
                     tr.querySelector('td:nth-child(2) strong').textContent = item.name;
                     tbody.appendChild(tr);
@@ -1640,7 +1229,7 @@
         };
         $('#fs').onclick = () => {
             const f = $('#mapBox').classList.toggle('full');
-            $('#fs').textContent = f ? '❌ Verkleinern' : '🔍 Vollbild';
+            $('#fs').innerHTML = f ? ic('shrink') + 'Verkleinern' : ic('expand') + 'Vollbild';
             setTimeout(() => map.invalidateSize(), 200);
         };
         document.addEventListener('keydown', e => {
@@ -1675,9 +1264,9 @@
             const dark = t === 'dark';
             document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
             const m = document.querySelector('meta[name="theme-color"]');
-            if (m) m.setAttribute('content', dark ? '#000000' : '#15803d');
+            if (m) m.setAttribute('content', dark ? '#000000' : '#f2f2f7');
             document.querySelectorAll('.theme-toggle').forEach(b => {
-                b.innerHTML = dark ? '☀️' : '🌙';
+                b.innerHTML = ic(dark ? 'sun' : 'moon');
                 b.setAttribute('aria-pressed', dark ? 'true' : 'false');
                 b.setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
                 b.setAttribute('title', dark ? 'Hellen Modus aktivieren' : 'Dunklen Modus aktivieren');
