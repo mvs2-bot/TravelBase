@@ -155,7 +155,7 @@
         .tbp-head small { display: block; color: var(--mute, #6c6c70); font-size: 12px; word-break: break-all; }
         .tbp-ava { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--mute, #6c6c70); background: var(--well, #f2f2f7); }
         .tbp-item { display: flex; width: 100%; align-items: center; gap: 10px; background: none; border: 0; border-radius: 9px; padding: 9px 10px; min-height: 40px; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink, #1c1c1e); text-align: left; cursor: pointer; }
-        .tbp-item .ic { color: var(--p1, #b8236a); }
+        .tbp-item .ic { color: var(--p1, #166534); }
         .tbp-item:hover, .tbp-item:focus-visible { background: var(--hover, #e9e9ef); outline: none; }
         .tbp-item.danger, .tbp-item.danger .ic { color: var(--danger, #d70015); }
         .tbp-menu[hidden] { display: none !important; }`;
