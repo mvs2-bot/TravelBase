@@ -340,7 +340,7 @@ body.tb-loading .pane.on { display: none; }
 .tb-gate a { color: var(--p1); font-weight: 600; text-decoration: none; }
 .tb-banner { display: flex; align-items: flex-start; gap: 8px; background: var(--warn-soft); color: var(--warn); border-radius: var(--radius-s); padding: 9px 14px; font-size: 13px; font-weight: 500; margin-bottom: 12px; }
 .tb-banner .ic { margin-top: 1px; }
-body.tb-guest .tabs .tab:not([data-t="mapview"]):not(.tab-menu), body.tb-guest .pop-btn:not([data-t="mapview"]):not([data-t="imprint"]) { display: none; }
+body.tb-guest .tabs .tab:not([data-t="mapview"]):not(.tab-menu), body.tb-guest .pop-btn:not([data-t="mapview"]) { display: none; }
 body.tb-guest .tabs { grid-template-columns: 1fr 1fr; }
 
 /* Tagesplan-Kopfzeile: Titel einzeilig, Hinweis darunter */

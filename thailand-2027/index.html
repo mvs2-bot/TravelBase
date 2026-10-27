@@ -80,7 +80,6 @@
                     <button data-t="flights" class="pop-btn"><span><svg class="ic"><use href="#i-plane"></use></svg></span>Gebuchte Flüge</button>
                     <button data-t="pack" class="pop-btn"><span><svg class="ic"><use href="#i-backpack"></use></svg></span>Packliste &amp; Gewicht</button>
                     <button data-t="climate" class="pop-btn"><span><svg class="ic"><use href="#i-cloudSun"></use></svg></span>Klima &amp; Wetter</button>
-                    <button data-t="imprint" class="pop-btn"><span><svg class="ic"><use href="#i-doc"></use></svg></span>Impressum</button>
                 </div>
                 <div class="tb-account">
                     <div class="tb-who" id="tbWho"></div>
@@ -415,30 +414,6 @@
 
                 <!-- Mobile Kartenansicht -->
                 <div class="climate-cards" id="climateCards"></div>
-            </div>
-        </div>
-
-        <!-- Popover-Ansichten: Impressum -->
-        <div id="imprint" class="pane">
-            <div class="box">
-                <h2><svg class="ic"><use href="#i-doc"></use></svg>Impressum</h2>
-                <div style="font-size: 14px; line-height: 1.6; color: var(--text);">
-       
-           <br>
-        <p><strong>Private Reise-Webseite:</strong><br>
-        Private Reisedokumentation und Routenplanung für Thailand und Sri Lanka.</p>
-        <br>
-        
-        <p><strong>Haftungsausschluss:</strong><br>
-        Diese Webseite dient ausschließlich der privaten Planung, Organisation und Dokumentation unserer persönlichen Urlaubsreise. Alle Angaben auf der Webseite ohne Gewähr.</p>
-        <br>
-        <p><strong>Kartenmaterial &amp; Lizenzen:</strong><br>
-        Kartenansicht erstellt mit Leaflet.js und OpenStreetMap-Daten (© OpenStreetMap-Mitwirkende).</p>
-    <br>
-	
-	
-	        <p class="note">Angaben gemäß allgemeiner Informationspflicht.</p>
-                </div>
             </div>
         </div>
     </div>
@@ -1283,7 +1258,7 @@
         /* 12. Bereich aus URL-Hash öffnen (#acc, #pack …) */
         function loadTabFromHash() {
             const hash = window.location.hash.replace('#', '');
-            if (!DATA || (ROLE === 'guest' && !['mapview', 'imprint'].includes(hash))) return;
+            if (!DATA || (ROLE === 'guest' && hash !== 'mapview')) return;
             if (hash && document.getElementById(hash) && document.getElementById(hash).classList.contains('pane')) switchTab(hash);
         }
         window.addEventListener('hashchange', loadTabFromHash);
@@ -1304,13 +1279,12 @@
             gate('');
             safe(applyTexts);
             if (ROLE === 'guest') {
-                /* Gast: nur Countdown, Karte & Impressum */
+                /* Gast: nur Countdown & Karte */
                 document.body.classList.add('tb-guest');
                 $('#tbGuest').hidden = false;
                 safe(() => { updateCountdown(); setInterval(updateCountdown, 1000); });
                 safe(initMap);
-                const h = location.hash.replace('#', '');
-                switchTab(h === 'imprint' ? 'imprint' : 'mapview');
+                switchTab('mapview');
                 return;
             }
             safe(() => {

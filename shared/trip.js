@@ -69,7 +69,6 @@
         if (DATA.persons || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
         if ((DATA.flights || []).length) s.push({ id: 'flights', icon: ic('plane'), label: 'Flüge' });
         if (DATA.climate) s.push({ id: 'climate', icon: ic('cloudSun'), label: 'Klima & Wetter' });
-        s.push({ id: 'imprint', icon: ic('doc'), label: 'Impressum' });
         return s;
     }
     let SECTIONS = [];
