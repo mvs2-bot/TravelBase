@@ -314,14 +314,15 @@ a.btn.ql:hover, a.btn[href*="mvs2-bot.github.io/QuickTools"]:hover { filter: bri
 /* ==========================================================================
    ANWESENHEITSKALENDER
    ========================================================================== */
-.cal { border: 1px solid var(--line); border-radius: var(--radius-s); overflow: auto; max-height: 560px; background: var(--card); }
+/* kein eigener Scrollbereich (sonst Scrollen im Scrollen); clip statt auto, damit die Kopfzeile an der Seite klebt */
+.cal { border: 1px solid var(--line); border-radius: var(--radius-s); overflow: clip; background: var(--card); }
 .cr { display: grid; grid-template-columns: 76px repeat(var(--pc, 4), 1fr); border-bottom: 1px solid var(--sep); align-items: center; }
 .cr:last-child { border-bottom: 0; }
 /* Wochenende: leicht getönt, Wochentag farbig */
 .cr.we { background: color-mix(in srgb, #ff9f0a 9%, var(--card)); }
 .cr.we .cd small { color: var(--warn); font-weight: 600; }
 :root[data-theme="dark"] .cr.we { background: color-mix(in srgb, #ff9f0a 8%, var(--card)); }
-.cr.hd { position: sticky; top: 0; z-index: 2; background: var(--well); font-weight: 600; text-align: center; color: var(--mute); }
+.cr.hd { position: sticky; top: var(--hh, 0px); z-index: 2; background: var(--well); font-weight: 600; text-align: center; color: var(--mute); }
 .cr.hd div { padding: 9px 4px; font-size: 12px; }
 .cr.today { outline: 2px solid var(--p1); outline-offset: -2px; background: var(--p1-soft); }
 .cd { padding: 4px 8px; font-weight: 600; font-size: 12px; border-right: 1px solid var(--sep); color: var(--ink); }
@@ -331,19 +332,19 @@ a.btn.ql:hover, a.btn[href*="mvs2-bot.github.io/QuickTools"]:hover { filter: bri
 .bar.fl { background: transparent !important; border: 1.5px dashed; }
 .bar .ic { width: 12px; height: 12px; }
 .mcal { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-s); padding: 12px; margin-bottom: 12px; }
-.mcal .mw { display: grid; gap: 20px; }
+.mcal .mw { display: grid; gap: 14px; }
 @media (min-width: 861px) { .mcal .mw { grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); } }
-.mcal .mn { display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
-.mcal .mn b { font-size: 16px; font-weight: 700; color: var(--ink); }
-.mg { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
-.mg .wd { font-size: 12px; font-weight: 600; color: var(--mute); padding: 4px 0; }
-.md { min-height: 46px; border-radius: 10px; padding: 5px 0 4px; font-size: 14px; color: var(--mute); display: flex; flex-direction: column; align-items: center; gap: 4px; border: 2px solid transparent; }
+.mcal .mn { display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.mcal .mn b { font-size: 15px; font-weight: 700; color: var(--ink); }
+.mg { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
+.mg .wd { font-size: 11px; font-weight: 600; color: var(--mute); padding: 2px 0; }
+.md { min-height: 34px; border-radius: 8px; padding: 2px 0; font-size: 13px; line-height: 1.2; color: var(--mute); display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px solid transparent; }
 .md.on { background: var(--p1-soft); color: var(--ink); }
 .md.now { border-color: var(--p1); color: var(--p1); font-weight: 700; }
-.md span { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
-.mcal i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.md span { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; }
+.mcal i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .mcal i.fl { background: transparent; border: 1.5px solid; }
-.ml { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--mute); }
+.ml { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin-top: 8px; font-size: 13px; color: var(--mute); }
 .ml span { display: inline-flex; align-items: center; gap: 5px; }
 
 /* ==========================================================================

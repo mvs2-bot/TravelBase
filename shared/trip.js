@@ -287,6 +287,10 @@
         renderMonth(ps, m.start, last);
     }
 
+    /* Höhe des Sticky-Headers als --hh, damit die Kopfzeile der Anwesenheitstabelle darunter klebt */
+    const sh = $('.sticky-header');
+    if (sh && window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--hh', sh.offsetHeight + 'px')).observe(sh);
+
     /* Monatsansicht über der Tabelle: ein Punkt je anwesender Person (Ring = An-/Abreisetag); alle Reisemonate; nur wo #calMonth im HTML steht */
     function renderMonth(ps, start, last) {
         const box = $('#calMonth');
