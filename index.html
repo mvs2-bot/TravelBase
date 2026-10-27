@@ -3,8 +3,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#15803d">
-    <meta name="color-scheme" content="only light">
+    <meta name="theme-color" content="#f2f2f7">
+    <meta name="color-scheme" content="light dark">
     <script>(function(){try{if((localStorage.getItem('overall-theme')||localStorage.getItem('tb_theme_v1'))==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <title>TravelBase</title>
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -13,127 +13,151 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="TravelBase">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="shared/flags.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="shared/icons.js"></script>
     <script src="shared/config.js"></script>
     <script src="shared/travelbase.js"></script>
     <script src="shared/overall-account.js"></script>
     <script src="shared/profile.js"></script>
     <script src="shared/ios-nav.js" defer></script>
 <style>
+    /* TravelBase – Übersicht. Apple-Designsprache wie Dashboard und „Zuhause“, Akzent Himbeere. */
     :root {
-        --bg: #f4f7f4; --card: #fff; --hover: #f0fdf4; --line: #cbd5e1; --ink: #0f172a; --text: #334155; --mute: #64748b;
-        --p1: #15803d; --p1-soft: #dcfce7; --p1-line: #86efac; --accent: #0d9488; --danger: #dc2626; --danger-soft: #fee2e2;
-        --radius: 14px; --shadow: 0 4px 12px rgba(15, 23, 42, .05);
+        --bg: #f2f2f7; --card: #fff; --well: #f2f2f7; --hover: #e9e9ef; --line: #e2e2e7; --sep: rgba(60, 60, 67, .14);
+        --ink: #1c1c1e; --text: #3a3a3c; --mute: #6c6c70;
+        --p1: #b8236a; --p1-soft: #fbe9f1; --p1-line: #f2c2d7; --on-p1: #fff; --accent: var(--p1);
+        --ok: #248a3d; --ok-soft: #e4f5e9; --warn: #8a5a00; --warn-soft: #fff4d6; --danger: #d70015; --danger-soft: #ffe6e8;
+        --radius: 18px; --radius-s: 12px; --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 14px rgba(0, 0, 0, .04);
+        --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        color-scheme: light;
     }
     :root[data-theme="dark"] {
-        color-scheme: dark; --bg: #000; --card: #0a0d0b; --hover: #121915; --line: #1f2823; --ink: #e8f0ec; --text: #c3cfc8; --mute: #92a39a;
-        --p1: #22c55e; --p1-soft: #14361f; --p1-line: #1f5a35; --accent: #2dd4bf; --danger: #f87171; --danger-soft: #3b1717; --shadow: none;
+        color-scheme: dark; --bg: #000; --card: #1c1c1e; --well: #2c2c2e; --hover: #3a3a3c; --line: #38383a; --sep: rgba(84, 84, 88, .55);
+        --ink: #f5f5f7; --text: #d1d1d6; --mute: #98989f;
+        --p1: #ff70a6; --p1-soft: #3a1426; --p1-line: #6b2848; --on-p1: #2e0618;
+        --ok: #30d158; --ok-soft: #0f2a17; --warn: #ffd60a; --warn-soft: #332a05; --danger: #ff6961; --danger-soft: #3a1412; --shadow: none;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Twemoji Country Flags', 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding: 0 24px 48px; min-height: 100vh; }
-    button, input { font: inherit; }
+    html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+    body { font-family: 'Twemoji Country Flags', var(--font); font-size: 14px; background: var(--bg); color: var(--text); line-height: 1.45; letter-spacing: -.005em; padding: 0 20px 48px; min-height: 100vh; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+    button, input { font: inherit; color: inherit; }
     button { cursor: pointer; }
-    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    :focus-visible { outline: 2px solid var(--p1); outline-offset: 2px; }
     .wrap { max-width: 1080px; margin: 0 auto; }
     [hidden] { display: none !important; }
 
-    .sticky-header { position: sticky; top: 0; z-index: 100; background: var(--bg); padding: 14px 0 12px; margin-bottom: 24px; border-bottom: 3px solid var(--p1); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    h1 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); font-weight: 800; letter-spacing: -.025em; color: var(--ink); line-height: 1.15; }
-    .sub { font-size: .9rem; font-weight: 600; color: var(--mute); }
-    .icon-btn { background: var(--card); border: 2px solid var(--line); border-radius: 10px; font-size: 1.3rem; width: 48px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; color: var(--ink); box-shadow: var(--shadow); }
+    .sticky-header { position: sticky; top: 0; z-index: 100; margin: 0 -20px 20px; padding: calc(10px + env(safe-area-inset-top, 0px)) 20px 10px; background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: saturate(1.8) blur(18px); backdrop-filter: saturate(1.8) blur(18px); border-bottom: 1px solid var(--sep); }
+    .sticky-header > .in { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand img { width: 34px; height: 34px; border-radius: 8px; flex: 0 0 auto; }
+    h1 { font-size: 20px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); line-height: 1.2; }
+    .sub { font-size: 13px; font-weight: 500; color: var(--mute); }
+    .icon-btn { background: var(--card); border: 0; border-radius: 50%; width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; line-height: 1; color: var(--ink); box-shadow: var(--shadow); font-size: 17px; transition: background .15s; }
+    :root[data-theme="dark"] .icon-btn { background: var(--well); }
+    .icon-btn .ic { width: 18px; height: 18px; }
     .header-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-    .icon-btn:hover { background: var(--hover); border-color: var(--p1); }
+    .icon-btn:hover { background: var(--hover); }
 
-    .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; box-shadow: var(--shadow); }
-    .box h2 { font-size: 1.1rem; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
-    .note { font-size: .84rem; color: var(--mute); margin-bottom: 14px; }
-    .msg { font-size: .84rem; font-weight: 600; border-radius: 8px; padding: 8px 12px; margin-top: 12px; }
+    .box { background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .box h2 { font-size: 16px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .box h2 .ic { color: var(--p1); width: 18px; height: 18px; }
+    .note { font-size: 13px; color: var(--mute); margin-bottom: 14px; }
+    .msg { font-size: 13px; font-weight: 500; border-radius: 10px; padding: 8px 12px; margin-top: 12px; }
     .msg.err { background: var(--danger-soft); color: var(--danger); }
-    .msg.ok { background: var(--p1-soft); color: var(--p1); }
-    .banner { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 10px; padding: 9px 14px; font-size: .84rem; font-weight: 600; margin-bottom: 16px; }
-    :root[data-theme="dark"] .banner { background: #3a2f10; color: #fcd34d; border-color: #5c4a14; }
+    .msg.ok { background: var(--ok-soft); color: var(--ok); }
+    .banner { display: flex; align-items: flex-start; gap: 8px; background: var(--warn-soft); color: var(--warn); border-radius: var(--radius-s); padding: 9px 14px; font-size: 13px; font-weight: 500; margin-bottom: 16px; }
+    .banner .ic { margin-top: 1px; }
 
     /* Login */
-    .login-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-    form { display: flex; flex-direction: column; gap: 10px; }
-    label { font-size: .78rem; font-weight: 700; color: var(--mute); display: flex; flex-direction: column; gap: 4px; }
-    input[type=email], input[type=password] { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; font-size: 16px; color: var(--ink); }
-    input:focus { border-color: var(--p1-line); outline: 3px solid rgba(13,148,136,.15); }
-    .btn { background: var(--p1); color: #fff; border: 2px solid var(--p1); border-radius: 10px; padding: 11px 18px; font-weight: 800; font-size: .95rem; }
-    .btn:hover { filter: brightness(.95); }
-    .btn:disabled { opacity: .6; cursor: wait; }
-    :root[data-theme="dark"] .btn { color: #052e16; }
-    .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: .85rem; }
-    .btn-ghost:hover { background: var(--hover); border-color: var(--p1); }
-    .link-btn { background: none; border: 0; color: var(--p1); font-weight: 700; font-size: .84rem; padding: 2px 0; align-self: flex-start; }
+    .login-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    form { display: flex; flex-direction: column; gap: 12px; }
+    label { font-size: 12px; font-weight: 500; color: var(--mute); display: flex; flex-direction: column; gap: 4px; }
+    input[type=email], input[type=password] { background: var(--well); border: 0; border-radius: 10px; padding: 10px 12px; font-size: 16px; color: var(--ink); }
+    input:focus { outline: 2px solid var(--p1); outline-offset: 0; }
+    .btn { background: var(--p1); color: var(--on-p1); border: 0; border-radius: 12px; padding: 10px 18px; min-height: 44px; font-weight: 600; font-size: 15px; }
+    .btn:hover { filter: brightness(1.08); }
+    .btn:disabled { opacity: .5; cursor: wait; }
+    .btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: var(--well); color: var(--ink); border: 0; border-radius: 999px; padding: 7px 14px; min-height: 34px; font-weight: 500; font-size: 13px; }
+    .btn-ghost:hover { background: var(--hover); }
+    .link-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; color: var(--p1); font-weight: 500; font-size: 13px; padding: 2px 0; align-self: flex-start; }
     .link-btn:hover { text-decoration: underline; }
 
     /* Flaggen ohne Login */
-    .flag-row { display: flex; flex-wrap: wrap; gap: 12px; }
-    .flag-chip { display: flex; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: 2.2rem; line-height: 1; }
-    .flag-empty { font-size: .84rem; color: var(--mute); }
+    .flag-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .flag-chip { display: flex; gap: 4px; background: var(--well); border-radius: 14px; padding: 10px 14px; font-size: 32px; line-height: 1; }
+    .flag-empty { font-size: 13px; color: var(--mute); }
 
-    /* Reise-Karten: einheitliche, kompakte Typografie */
+    /* Reise-Karten */
     .trip-section + .trip-section { margin-top: 8px; }
-    .trip-section-title { display: flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); margin: 0 0 10px; }
-    .trip-section-title .count { font-size: .7rem; font-weight: 700; letter-spacing: 0; text-transform: none; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
-    .trips { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 20px; }
-    .trip-card { display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--p1); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s, border-color .15s, opacity .15s; }
-    .trip-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(15,23,42,.1); border-color: var(--p1-line); }
-    .trip-flags { font-size: 1.6rem; line-height: 1; display: flex; gap: 4px; }
-    .trip-title { font-size: .95rem; font-weight: 800; color: var(--ink); line-height: 1.3; }
-    .trip-dates { font-size: .78rem; font-weight: 600; color: var(--mute); }
+    .trip-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); margin: 0 4px 10px; }
+    .trip-section-title .ic { color: var(--p1); width: 18px; height: 18px; }
+    .trip-section-title .count { font-size: 12px; font-weight: 600; color: var(--mute); background: var(--card); border-radius: 999px; padding: 1px 8px; box-shadow: var(--shadow); }
+    :root[data-theme="dark"] .trip-section-title .count { background: var(--well); }
+    .trips { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .trip-card { position: relative; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; background: var(--card); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s, opacity .15s, background .15s; }
+    .trip-card::after { content: ""; position: absolute; top: 18px; right: 16px; width: 7px; height: 7px; border-right: 2px solid var(--mute); border-top: 2px solid var(--mute); transform: rotate(45deg); opacity: .5; }
+    .trip-card:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0, 0, 0, .05), 0 10px 24px rgba(0, 0, 0, .08); }
+    :root[data-theme="dark"] .trip-card:hover { background: #242426; box-shadow: none; }
+    .trip-flags { font-size: 28px; line-height: 1; display: flex; gap: 4px; }
+    .trip-title { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+    .trip-dates { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500; color: var(--mute); }
     .trip-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
-    .chip { font-size: .7rem; font-weight: 700; line-height: 1.4; border-radius: 999px; padding: 2px 9px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
-    .chip.status { background: var(--p1-soft); border-color: var(--p1-line); color: var(--p1); }
-    .chip.now { background: var(--p1); border-color: var(--p1); color: #fff; }
-    :root[data-theme="dark"] .chip.now { color: #052e16; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; line-height: 1.4; border-radius: 999px; padding: 2px 9px; background: var(--well); color: var(--text); }
+    .chip .ic { width: 13px; height: 13px; }
+    .chip.status { background: var(--p1-soft); color: var(--p1); font-weight: 600; }
+    .chip.now { background: var(--p1); color: var(--on-p1); font-weight: 600; }
     /* Vergangene Reisen: dezent zurückgenommen, damit die kommenden im Fokus stehen */
-    .trip-card.past { border-top-color: var(--line); background: rgba(255,255,255,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: none; opacity: .72; }
+    .trip-card.past { background: color-mix(in srgb, var(--card) 60%, transparent); box-shadow: none; opacity: .75; }
     .trip-card.past .trip-flags { filter: grayscale(.5); }
     .trip-card.past:hover { opacity: 1; }
-    :root[data-theme="dark"] .trip-card.past { background: rgba(10,13,11,.55); }
 
     .account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-    .account-who { font-size: .88rem; font-weight: 600; }
-    .account-who b { color: var(--ink); }
+    .account-who { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; }
+    .account-who .ic { color: var(--mute); }
+    .account-who b { color: var(--ink); font-weight: 600; }
     .account-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .pw-form { margin-top: 14px; max-width: 360px; }
 
     @media (max-width: 760px) {
-        body { padding: 0 10px 28px; }
-        .sticky-header { padding: 10px 0 8px; margin-bottom: 14px; }
+        body { padding: 0 12px 28px; }
+        .sticky-header { margin: 0 -12px 14px; padding-left: 12px; padding-right: 12px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: 8px; }
+        h1 { font-size: 18px; }
+        .sub { font-size: 12px; }
+        .brand img { width: 30px; height: 30px; border-radius: 7px; }
         .login-grid { grid-template-columns: 1fr; }
-        .box { padding: 16px; border-radius: 10px; }
-        .flag-chip { font-size: 1.8rem; padding: 8px 11px; }
+        .box { padding: 16px; border-radius: 16px; }
+        .flag-chip { font-size: 28px; padding: 8px 11px; }
     }
+    @media (prefers-reduced-transparency: reduce) { .sticky-header { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
     <header class="sticky-header">
-        <div>
-            <h1>🧭 TravelBase</h1>
-            <div class="sub">Unsere Reiseplanungen an einem Ort</div>
-        </div>
-        <div class="header-actions">
-            <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln">🌙</button>
-            <button id="tbProfileBtn" class="icon-btn" type="button" aria-label="Profil-Menü öffnen" hidden>👤</button>
+        <div class="in">
+            <div class="brand">
+                <img src="icons/apple-touch-icon.png" alt="">
+                <div>
+                    <h1>TravelBase</h1>
+                    <div class="sub">Unsere Reiseplanungen an einem Ort</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln"><svg class="ic"><use href="#i-moon"></use></svg></button>
+                <button id="tbProfileBtn" class="icon-btn" type="button" aria-label="Profil-Menü öffnen" hidden><svg class="ic"><use href="#i-person"></use></svg></button>
+            </div>
         </div>
     </header>
 
-    <div id="setupHint" class="banner" hidden>⚙️ Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</div>
-    <div id="offlineHint" class="banner" hidden>📴 Offline – du siehst den zuletzt geladenen Stand.</div>
+    <div id="setupHint" class="banner" hidden><svg class="ic"><use href="#i-gear"></use></svg><span>Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</span></div>
+    <div id="offlineHint" class="banner" hidden><svg class="ic"><use href="#i-wifiOff"></use></svg><span>Offline – du siehst den zuletzt geladenen Stand.</span></div>
 
     <!-- Nicht angemeldet -->
     <section id="viewLoggedOut" hidden>
         <div class="login-grid">
             <div class="box">
-                <h2>🔐 Anmelden</h2>
+                <h2><svg class="ic"><use href="#i-lock"></use></svg>Anmelden</h2>
                 <p class="note">Melde dich mit deiner E-Mail und deinem Passwort an, um die Reisen zu sehen.</p>
                 <form id="loginForm">
                     <label>E-Mail<input type="email" id="loginEmail" autocomplete="username" required></label>
@@ -144,12 +168,12 @@
                 <form id="resetForm" hidden>
                     <label>E-Mail für den Link zum Zurücksetzen<input type="email" id="resetEmail" autocomplete="username" required></label>
                     <button class="btn" type="submit">Link senden</button>
-                    <button class="link-btn" type="button" id="hideReset">← Zurück zur Anmeldung</button>
+                    <button class="link-btn" type="button" id="hideReset"><svg class="ic"><use href="#i-chevronLeft"></use></svg>Zurück zur Anmeldung</button>
                 </form>
                 <div id="loginMsg" class="msg" hidden></div>
             </div>
             <div class="box">
-                <h2>🌍 Unsere Reisen</h2>
+                <h2><svg class="ic"><use href="#i-globe"></use></svg>Unsere Reisen</h2>
                 <p class="note">Details sind nur nach dem Anmelden sichtbar.</p>
                 <div class="flag-row" id="publicFlags"><span class="flag-empty">Lade …</span></div>
             </div>
@@ -159,7 +183,7 @@
     <!-- Neues Passwort nach Klick auf den E-Mail-Link -->
     <section id="viewRecovery" hidden>
         <div class="box">
-            <h2>🔑 Neues Passwort festlegen</h2>
+            <h2><svg class="ic"><use href="#i-key"></use></svg>Neues Passwort festlegen</h2>
             <p class="note">Bitte gib dein neues Passwort ein (mind. 8 Zeichen).</p>
             <form id="recoveryForm" class="pw-form">
                 <label>Neues Passwort<input type="password" id="recoveryPw" autocomplete="new-password" minlength="8" required></label>
@@ -174,9 +198,9 @@
         <div id="tripList"></div>
         <div class="box">
             <div class="account">
-                <div class="account-who">Angemeldet als <b id="userEmail"></b></div>
+                <div class="account-who"><svg class="ic"><use href="#i-person"></use></svg><span>Angemeldet als <b id="userEmail"></b></span></div>
                 <div class="account-actions">
-                    <button class="btn-ghost" id="backupBtn" type="button" hidden>💾 Backup herunterladen</button>
+                    <button class="btn-ghost" id="backupBtn" type="button" hidden><svg class="ic"><use href="#i-download"></use></svg>Backup herunterladen</button>
                 </div>
             </div>
             <div id="backupMsg" class="msg" hidden></div>
@@ -193,9 +217,9 @@
     /* Hell/Dunkel */
     function applyTheme(dark, save) {
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-        $('#themeToggle').textContent = dark ? '☀️' : '🌙';
+        $('#themeToggle').innerHTML = tbIcon(dark ? 'sun' : 'moon');
         $('#themeToggle').setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
-        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#15803d';
+        const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#f2f2f7';
         if (save) { try { localStorage.setItem('overall-theme', dark ? 'dark' : 'light'); } catch (e) {} }
     }
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
@@ -212,7 +236,7 @@
         if (now <= e) return { text: `Unterwegs · Tag ${now - s + 1} von ${e - s + 1}`, cls: 'now', past: false };
         return { text: 'Abgeschlossen', cls: '', past: true };
     }
-    const ROLE_LABEL = { admin: '👑 Admin', member: '🧳 Mitreisend', guest: '👀 Gast' };
+    const ROLE_LABEL = { admin: tbIcon('crown') + 'Admin', member: tbIcon('suitcase') + 'Mitreisend', guest: tbIcon('eye') + 'Gast' };
 
     /* Ansicht: nicht angemeldet */
     async function renderLoggedOut() {
@@ -241,7 +265,7 @@
             <a class="trip-card${t.st.past ? ' past' : ''}" href="${encodeURIComponent(t.slug)}/">
                 <div class="trip-flags">${(t.flags || []).map(esc).join('')}</div>
                 <div class="trip-title">${esc(t.title)}</div>
-                <div class="trip-dates">📅 ${fmtDate(t.start_date)}${t.end_date ? ' – ' + fmtDate(t.end_date) : ''}</div>
+                <div class="trip-dates">${tbIcon('calendar')}${fmtDate(t.start_date)}${t.end_date ? ' – ' + fmtDate(t.end_date) : ''}</div>
                 <div class="trip-meta">
                     <span class="chip ${t.st.cls}">${esc(t.st.text)}</span>
                     <span class="chip">${ROLE_LABEL[t.role] || esc(t.role)}</span>
@@ -253,7 +277,7 @@
                 <div class="trips">${items.map(card).join('')}</div>
             </section>` : '';
         const upcoming = list.filter(t => !t.st.past), past = list.filter(t => t.st.past);
-        $('#tripList').innerHTML = list.length ? section('🧭 Zukünftige Reisen', upcoming) + section('🗂️ Vergangene Reisen', past)
+        $('#tripList').innerHTML = list.length ? section(tbIcon('compass') + 'Zukünftige Reisen', upcoming) + section(tbIcon('archive') + 'Vergangene Reisen', past)
             : '<div class="box"><h2>Noch keine Reisen</h2><p class="note" style="margin:0">Du bist noch keiner Reise zugeordnet. Bitte den Admin, dich freizuschalten.</p></div>';
     }
 
