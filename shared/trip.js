@@ -284,6 +284,33 @@
             h += '</div>';
         }
         $('#calBody').innerHTML = h;
+        renderMonth(ps, m.start, last);
+    }
+
+    /* Monatsansicht über der Tabelle: ein Punkt je anwesender Person (Ring = An-/Abreisetag); nur wo #calMonth im HTML steht */
+    function renderMonth(ps, start, last) {
+        const box = $('#calMonth');
+        if (!box) return;
+        const months = [];
+        for (let y = +start.slice(0, 4), mo = +start.slice(5, 7); y * 12 + mo <= +last.slice(0, 4) * 12 + +last.slice(5, 7); mo === 12 ? (y++, mo = 1) : mo++) months.push([y, mo]);
+        let i = Math.max(0, months.findIndex(([y, mo]) => y === +TODAY.slice(0, 4) && mo === +TODAY.slice(5, 7)));
+        const draw = () => {
+            const [y, mo] = months[i], first = Date.UTC(y, mo - 1, 1) / 864e5, len = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+            let g = '<div></div>'.repeat((new Date(first * 864e5).getUTCDay() + 6) % 7);
+            for (let d = 0; d < len; d++) {
+                const dn = first + d, iso = new Date(dn * 864e5).toISOString().slice(0, 10);
+                const dots = ps.map(p => dn >= dayNum(p.start) && dn <= dayNum(homeOf(p))
+                    ? `<i class="${dn === dayNum(p.start) || dn >= dayNum(p.end) ? 'fl' : ''}" style="color:${p.color}" title="${esc(p.name)}"></i>` : '').join('');
+                g += `<div class="md${dots ? ' on' : ''}${iso === TODAY ? ' now' : ''}">${d + 1}<span>${dots}</span></div>`;
+            }
+            box.innerHTML = `<div class="mn"><button data-m="-1" aria-label="Vorheriger Monat"${i ? '' : ' disabled'}>${ic('chevronLeft')}</button>`
+                + `<b>${'Januar Februar März April Mai Juni Juli August September Oktober November Dezember'.split(' ')[mo - 1]} ${y}</b>`
+                + `<button data-m="1" aria-label="Nächster Monat"${i < months.length - 1 ? '' : ' disabled'}>${ic('chevronRight')}</button></div>`
+                + `<div class="mg">${'Mo Di Mi Do Fr Sa So'.split(' ').map(w => `<div class="wd">${w}</div>`).join('')}${g}</div>`
+                + `<div class="ml">${ps.map(p => `<span><i style="color:${p.color}"></i>${esc(p.name)}</span>`).join('')}</div>`;
+        };
+        box.onclick = e => { const b = e.target.closest('[data-m]'); if (b && !b.disabled) { i += +b.dataset.m; draw(); } };
+        draw();
     }
 
     /* ---------- Infos & mehr ---------- */
