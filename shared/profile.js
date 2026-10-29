@@ -1,6 +1,6 @@
 /* TravelBase – Profil-Button oben rechts neben dem Mond
    - zeigt ein Personen-Symbol bzw. das eigene Profilbild, sobald eins hochgeladen ist
-   - Menü: Kontoeinstellungen, Admin-Einstellungen (globale und TravelBase-Admins), Ausloggen
+   - Menü: Dashboard, Kontoeinstellungen, Admin-Einstellungen (globale und TravelBase-Admins), Ausloggen
    Admin-Einstellungen sind wie die Kontoeinstellungen eine gemeinsame Seite im Dashboard (/admin.html).
    Kontoeinstellungen sind eine gemeinsame Seite für alle Apps im Dashboard (/konto.html);
    shared/overall-account.js wird hier nur noch für das Profilbild gebraucht.
@@ -70,6 +70,7 @@
                 <span class="tbp-ava">${avatarHtml()}</span>
                 <div><b>${esc(shownName())}</b><small>${esc(user.email)}</small></div>
             </div>
+            <button class="tbp-item" type="button" role="menuitem" data-act="dashboard">${ic('home')}Dashboard</button>
             <button class="tbp-item" type="button" role="menuitem" data-act="settings">${ic('gear')}Kontoeinstellungen</button>
             ${profile.role === 'admin' || profile.app_role === 'admin' ? `<button class="tbp-item" type="button" role="menuitem" data-act="admin">${ic('shield')}Admin-Einstellungen</button>` : ''}
             <button class="tbp-item danger" type="button" role="menuitem" data-act="logout">${ic('logout')}Ausloggen</button>`;
@@ -82,7 +83,8 @@
             menu.onclick = e => {
                 const b = e.target.closest('[data-act]'); if (!b) return;
                 closeMenu();
-                if (b.dataset.act === 'settings') location.href = SETTINGS;
+                if (b.dataset.act === 'dashboard') location.href = '/';
+                else if (b.dataset.act === 'settings') location.href = SETTINGS;
                 else if (b.dataset.act === 'admin') location.href = ADMIN;
                 else if (b.dataset.act === 'logout') logout();
             };
