@@ -324,7 +324,7 @@
         const w = DATA.workdays;
         if (w && TODAY < w.until) {
             $('#workBox').hidden = false;
-            $('#workNote').textContent = `Verbleibende Werktage (Mo–Fr) ab heute bis zum Abflug am ${fmtDM(w.until)}${w.until.slice(0, 4)}. Gesetzliche Feiertage sind bereits abgezogen (ohne persönliche Urlaubstage).`;
+            $('#workNote').textContent = `Verbleibende Werktage (Mo–Fr) ab heute bis zum Abflug am ${fmtDM(w.until)}${w.until.slice(0, 4)}. Gesetzliche Feiertage und persönliche Urlaubstage sind bereits abgezogen.`;
             const [y, mo, d] = w.until.split('-').map(Number), end = new Date(y, mo - 1, d);
             $('#workStats').innerHTML = w.regions.map(r => {
                 let n = 0;
