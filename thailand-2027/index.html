@@ -38,7 +38,7 @@
         <div class="sticky-header">
             <header>
                 <div>
-                    <h1 id="tripTitle">🌏 TravelBase</h1>
+                    <h1 id="tripTitle">TravelBase</h1>
                     <div class="header-sub-row">
                         <p id="tripPeriod"></p>
                         <div id="countdown"><svg class="ic"><use href="#i-clock"></use></svg>Countdown wird berechnet...</div>
@@ -449,7 +449,7 @@
         function applyTexts() {
             const m = DATA.meta || {}, t = DATA.texts || {}, set = (sel, v) => document.querySelectorAll(sel).forEach(el => el.textContent = v || '');
             document.title = (m.title || 'Reise') + ' · TravelBase';
-            set('#tripTitle', '🌏 ' + (m.title || ''));
+            set('#tripTitle', (m.title || ''));
             set('#tripPeriod', m.period);
             set('#planNoteTh', t.planNoteTh); set('#planNoteSl', t.planNoteSl);
             set('#accHeadTh', t.accHeadTh); set('#accHeadSl', t.accHeadSl);
