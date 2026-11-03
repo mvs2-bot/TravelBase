@@ -1,6 +1,7 @@
 /* TravelBase – Profil-Button oben rechts neben dem Mond
    - zeigt ein Personen-Symbol bzw. das eigene Profilbild, sobald eins hochgeladen ist
-   - Menü: Dashboard, Kontoeinstellungen, Admin-Einstellungen (globale und TravelBase-Admins), Ausloggen
+   - Menü wie in allen Apps (Vorlage: JobTracker): Kopf mit Bild/Initialen, Name, E-Mail und Rolle, Cloud-Sync-Status,
+     Dashboard, Kontoeinstellungen, Admin-Einstellungen (globale und TravelBase-Admins), Abmelden
    Admin-Einstellungen sind wie die Kontoeinstellungen eine gemeinsame Seite im Dashboard (/admin.html).
    Kontoeinstellungen sind eine gemeinsame Seite für alle Apps im Dashboard (/konto.html);
    shared/overall-account.js wird hier nur noch für das Profilbild gebraucht.
@@ -20,6 +21,22 @@
     const ic = n => window.tbIcon ? tbIcon(n) : '';
     const shownName = () => (profile.display_name || '').trim() || (user && user.email) || '';
     const avatarHtml = () => photo ? `<img src="${photo}" alt="">` : (ic('person') || '👤');
+    const AVATAR_COLORS = ['#0b6e79', '#4a7356', '#b25000', '#5856d6', '#0066cc', '#a2453a'];
+    const ROLE_LABELS = { admin: 'Admin', member: 'Mitglied', guest: 'Gast' };
+    const myRole = () => profile.role === 'admin' ? 'admin' : (profile.app_role || null);
+    function menuAvaHtml() {
+        if (photo) return `<span class="tbp-ava"><img src="${photo}" alt=""></span>`;
+        const n = shownName();
+        let h = 0; for (const c of n) h = (h * 31 + c.codePointAt(0)) >>> 0;
+        const ini = n.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+        return `<span class="tbp-ava" style="background:${AVATAR_COLORS[h % AVATAR_COLORS.length]}">${esc(ini)}</span>`;
+    }
+    function syncHtml() {
+        const off = !navigator.onLine, t = window.TB && TB.lastSync;
+        const text = off ? 'Offline · zuletzt geladener Stand'
+            : t ? 'Verbunden · zuletzt ' + t.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : 'Verbunden';
+        return `<div class="tbp-sync" role="status"><i class="${off ? 'pending' : ''}"></i><span><b>Cloud-Sync</b> · ${esc(text)}</span></div>`;
+    }
 
     /* ---------- Daten ---------- */
     async function loadProfile() {
@@ -65,15 +82,18 @@
     }
 
     function renderMenu() {
+        const role = myRole();
         menu.innerHTML = `
             <div class="tbp-head">
-                <span class="tbp-ava">${avatarHtml()}</span>
-                <div><b>${esc(shownName())}</b><small>${esc(user.email)}</small></div>
+                ${menuAvaHtml()}
+                <div><b>${esc(shownName())}</b><small>${esc(user.email)}</small>${role ? `<span class="tbp-role">${esc(ROLE_LABELS[role] || role)}</span>` : ''}</div>
             </div>
+            ${syncHtml()}
             <button class="tbp-item" type="button" role="menuitem" data-act="dashboard">${ic('home')}Dashboard</button>
             <button class="tbp-item" type="button" role="menuitem" data-act="settings">${ic('gear')}Kontoeinstellungen</button>
-            ${profile.role === 'admin' || profile.app_role === 'admin' ? `<button class="tbp-item" type="button" role="menuitem" data-act="admin">${ic('shield')}Admin-Einstellungen</button>` : ''}
-            <button class="tbp-item danger" type="button" role="menuitem" data-act="logout">${ic('logout')}Ausloggen</button>`;
+            ${role === 'admin' ? `<button class="tbp-item" type="button" role="menuitem" data-act="admin">${ic('shield')}Admin-Einstellungen<small>nur Admins</small></button>` : ''}
+            <div class="tbp-sep"></div>
+            <button class="tbp-item danger" type="button" role="menuitem" data-act="logout">${ic('logout')}Abmelden</button>`;
     }
 
     function openMenu() {
@@ -150,16 +170,26 @@
         .tb-profile-btn { display: inline-flex; align-items: center; justify-content: center; }
         .tb-profile-btn.has-photo { padding: 0 !important; overflow: hidden; }
         .tb-profile-btn img, .tbp-ava img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .tbp-menu { position: fixed; z-index: 20000; min-width: 250px; max-width: calc(100vw - 20px); background: var(--card, #fff); color: var(--text, #3a3a3c); border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,.18), 0 0 0 .5px rgba(0,0,0,.06); padding: 6px; font-family: var(--font, -apple-system, BlinkMacSystemFont, system-ui, sans-serif); font-size: 14px; line-height: 1.4; }
+        .tbp-menu { position: fixed; z-index: 20000; width: 290px; max-width: calc(100vw - 32px); background: var(--card, #fff); color: var(--text, #3a3a3c); border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,.18), 0 0 0 .5px rgba(0,0,0,.06); padding: 6px; font-family: var(--font, -apple-system, BlinkMacSystemFont, system-ui, sans-serif); font-size: 14px; line-height: 1.4; text-align: left; }
         :root[data-theme="dark"] .tbp-menu { background: #2c2c2e; box-shadow: 0 12px 36px rgba(0,0,0,.5); }
-        .tbp-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 10px; border-bottom: 1px solid var(--sep, var(--line, #e2e2e7)); margin-bottom: 4px; }
-        .tbp-head b { display: block; color: var(--ink, #1c1c1e); font-size: 14px; font-weight: 600; }
-        .tbp-head small { display: block; color: var(--mute, #6c6c70); font-size: 12px; word-break: break-all; }
-        .tbp-ava { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--mute, #6c6c70); background: var(--well, #f2f2f7); }
-        .tbp-item { display: flex; width: 100%; align-items: center; gap: 10px; background: none; border: 0; border-radius: 9px; padding: 9px 10px; min-height: 40px; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink, #1c1c1e); text-align: left; cursor: pointer; }
-        .tbp-item .ic { color: var(--p1, #1f6fb2); }
+        .tbp-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 10px; min-width: 0; }
+        .tbp-head > div { min-width: 0; }
+        .tbp-head b { display: block; color: var(--ink, #1c1c1e); font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tbp-head small { display: block; color: var(--mute, #6c6c70); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tbp-ava { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; color: #fff; font-size: 14px; font-weight: 600; background: var(--well, #f2f2f7); }
+        .tbp-role { display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--p1-soft, #e6f0f9); color: var(--p1, #1f6fb2); }
+        .tbp-sync { display: flex; align-items: center; gap: 8px; margin: 0 4px 6px; padding: 8px 10px; border-radius: 10px; background: var(--well, #f2f2f7); font-size: 12px; color: var(--text, #3a3a3c); }
+        :root[data-theme="dark"] .tbp-sync { background: #3a3a3c; }
+        .tbp-sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok, #34c759); flex: none; }
+        .tbp-sync i.pending { background: var(--warn, #ff9f0a); }
+        .tbp-sync span { min-width: 0; }
+        .tbp-sync b { font-weight: 600; color: var(--ink, #1c1c1e); }
+        .tbp-item { display: flex; width: 100%; align-items: center; gap: 10px; background: none; border: 0; border-radius: 8px; padding: 8px 10px; min-height: 40px; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink, #1c1c1e); text-align: left; cursor: pointer; }
+        .tbp-item .ic { width: 18px; height: 18px; color: var(--mute, #6c6c70); flex: none; }
         .tbp-item:hover, .tbp-item:focus-visible { background: var(--hover, #e9e9ef); outline: none; }
+        .tbp-item small { margin-left: auto; font-size: 11px; color: var(--mute, #6c6c70); white-space: nowrap; }
         .tbp-item.danger, .tbp-item.danger .ic { color: var(--danger, #d70015); }
+        .tbp-sep { height: 1px; margin: 4px 6px; background: var(--sep, rgba(60, 60, 67, .14)); }
         .tbp-menu[hidden] { display: none !important; }`;
     document.head.appendChild(css);
 

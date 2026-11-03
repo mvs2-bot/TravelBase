@@ -57,6 +57,7 @@
         try {
             const list = check(await sb.rpc('travelbase_my_trips'));
             cacheSet('trips_' + session.user.id, list);
+            TB.lastSync = new Date();
             return { list, offline: false };
         } catch (e) {
             const cached = cacheGet('trips_' + session.user.id);
@@ -88,6 +89,7 @@
                 user: { email: session.user.email, name }, userId: session.user.id, savedAt: Date.now()
             };
             cacheSet('trip_' + slug, result);
+            TB.lastSync = new Date();
             return { ...result, offline: false };
         } catch (e) {
             if (cached && cached.userId === session.user.id && isNetErr(e)) return { ...cached, offline: true };
