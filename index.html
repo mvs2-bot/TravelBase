@@ -112,7 +112,11 @@
     .trip-card.past .trip-flags { filter: grayscale(.5); }
     .trip-card.past:hover { opacity: 1; }
     /* Vielleicht-Reisen (Varianten, Ideen): gestrichelt, zählen nicht als gereist */
-    .trip-card.tentative { box-shadow: none; outline: 1.5px dashed var(--sep); outline-offset: -1.5px; }
+    .trip-card.tentative { background: color-mix(in srgb, var(--card) 55%, transparent); box-shadow: none; outline: 1.5px dashed color-mix(in srgb, var(--mute) 45%, transparent); outline-offset: -1.5px; }
+    .trip-card.tentative .trip-flags { opacity: .7; }
+    .trip-card.tentative .trip-title { color: var(--text); }
+    .trip-card.tentative:hover { background: var(--card); }
+    .chip.maybe { background: transparent; color: var(--mute); box-shadow: inset 0 0 0 1px var(--sep); font-style: italic; }
 
     .account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
     .account-who { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; }
@@ -270,7 +274,7 @@
                 <div class="trip-dates">${tbIcon('calendar')}${fmtDate(t.start_date)}${t.end_date ? ' – ' + fmtDate(t.end_date) : ''}</div>
                 <div class="trip-meta">
                     <span class="chip ${t.st.cls}">${esc(t.st.text)}</span>
-                    ${t.tentative ? '<span class="chip">Vielleicht</span>' : ''}
+                    ${t.tentative ? '<span class="chip maybe">Vielleicht</span>' : ''}
                     <span class="chip">${ROLE_LABEL[t.role] || esc(t.role)}</span>
                 </div>
             </a>`;
