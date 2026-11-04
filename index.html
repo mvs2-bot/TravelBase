@@ -111,6 +111,8 @@
     .trip-card.past { background: color-mix(in srgb, var(--card) 60%, transparent); box-shadow: none; opacity: .75; }
     .trip-card.past .trip-flags { filter: grayscale(.5); }
     .trip-card.past:hover { opacity: 1; }
+    /* Vielleicht-Reisen (Varianten, Ideen): gestrichelt, zählen nicht als gereist */
+    .trip-card.tentative { box-shadow: none; outline: 1.5px dashed var(--sep); outline-offset: -1.5px; }
 
     .account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
     .account-who { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; }
@@ -234,7 +236,7 @@
         const now = dayNum(todayISO), s = dayNum(t.start_date), e = t.end_date ? dayNum(t.end_date) : s;
         if (now < s) { const n = s - now; return { text: n === 1 ? 'Morgen geht’s los' : `In ${n} Tagen`, cls: 'status', past: false }; }
         if (now <= e) return { text: `Unterwegs · Tag ${now - s + 1} von ${e - s + 1}`, cls: 'now', past: false };
-        return { text: 'Abgeschlossen', cls: '', past: true };
+        return { text: t.tentative ? 'Nicht gereist' : 'Abgeschlossen', cls: '', past: true };
     }
     const ROLE_LABEL = { admin: tbIcon('crown') + 'Admin', member: tbIcon('suitcase') + 'Mitreisend', guest: tbIcon('eye') + 'Gast' };
 
@@ -262,12 +264,13 @@
         const list = res.list.map(t => ({ ...t, st: tripStatus(t) }))
             .sort((a, b) => (a.st.past - b.st.past) || (a.st.past ? (b.start_date || '').localeCompare(a.start_date || '') : (a.start_date || '9').localeCompare(b.start_date || '9')) || a.sort_order - b.sort_order);
         const card = t => `
-            <a class="trip-card${t.st.past ? ' past' : ''}" href="${encodeURIComponent(t.slug)}/">
+            <a class="trip-card${t.st.past ? ' past' : ''}${t.tentative ? ' tentative' : ''}" href="${encodeURIComponent(t.slug)}/">
                 <div class="trip-flags">${(t.flags || []).map(esc).join('')}</div>
                 <div class="trip-title">${esc(t.title)}</div>
                 <div class="trip-dates">${tbIcon('calendar')}${fmtDate(t.start_date)}${t.end_date ? ' – ' + fmtDate(t.end_date) : ''}</div>
                 <div class="trip-meta">
                     <span class="chip ${t.st.cls}">${esc(t.st.text)}</span>
+                    ${t.tentative ? '<span class="chip">Vielleicht</span>' : ''}
                     <span class="chip">${ROLE_LABEL[t.role] || esc(t.role)}</span>
                 </div>
             </a>`;
