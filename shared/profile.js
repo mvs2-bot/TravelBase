@@ -79,15 +79,22 @@
         const ue = document.getElementById('userEmail'); if (ue && n) ue.textContent = n;
         const who = document.getElementById('tbWho'); if (who && n) who.innerHTML = ic('person') + esc(n);
         if (menu && !menu.hidden) renderMenu();
+        /* Profil-Seite und Profilbild in der Handy-Leiste (nur Übersicht) mitziehen */
+        document.querySelectorAll('[data-tbp-avatar]').forEach(el => { el.innerHTML = user ? menuAvaHtml() : ''; });
+        document.querySelectorAll('[data-tbp-page]').forEach(el => { if (user) renderMenu(el, true); else el.innerHTML = ''; });
+        document.querySelectorAll('[data-tbp-name]').forEach(el => { el.textContent = user ? shownName() : ''; });
+        document.querySelectorAll('[data-tbp-mail]').forEach(el => { el.textContent = user ? user.email : ''; });
+        document.querySelectorAll('[data-tbp-role]').forEach(el => { const r = myRole(); el.textContent = r ? (ROLE_LABELS[r] || r) : ''; el.hidden = !r; });
     }
 
-    function renderMenu() {
+    /* page = true: dasselbe Menü als feste Liste auf der Profil-Seite (ohne Kopf, der steht dort groß) */
+    function renderMenu(el = menu, page = false) {
         const role = myRole();
-        menu.innerHTML = `
+        el.innerHTML = (page ? '' : `
             <div class="tbp-head">
                 ${menuAvaHtml()}
                 <div><b>${esc(shownName())}</b><small>${esc(user.email)}</small>${role ? `<span class="tbp-role">${esc(ROLE_LABELS[role] || role)}</span>` : ''}</div>
-            </div>
+            </div>`) + `
             ${syncHtml()}
             <button class="tbp-item" type="button" role="menuitem" data-act="dashboard">${ic('home')}Dashboard</button>
             <button class="tbp-item" type="button" role="menuitem" data-act="settings">${ic('gear')}Kontoeinstellungen</button>
@@ -100,14 +107,7 @@
         if (!menu) {
             menu = document.createElement('div');
             menu.className = 'tbp-menu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
-            menu.onclick = e => {
-                const b = e.target.closest('[data-act]'); if (!b) return;
-                closeMenu();
-                if (b.dataset.act === 'dashboard') location.href = '/';
-                else if (b.dataset.act === 'settings') location.href = SETTINGS;
-                else if (b.dataset.act === 'admin') location.href = ADMIN;
-                else if (b.dataset.act === 'logout') logout();
-            };
+            menu.onclick = onAct;
             document.body.appendChild(menu);
         }
         renderMenu();
@@ -117,6 +117,14 @@
         menu.hidden = false;
         btn.setAttribute('aria-expanded', 'true');
         const first = menu.querySelector('.tbp-item'); if (first) first.focus();
+    }
+    function onAct(e) {
+        const b = e.target.closest('[data-act]'); if (!b) return;
+        closeMenu();
+        if (b.dataset.act === 'dashboard') location.href = '/';
+        else if (b.dataset.act === 'settings') location.href = SETTINGS;
+        else if (b.dataset.act === 'admin') location.href = ADMIN;
+        else if (b.dataset.act === 'logout') logout();
     }
     function closeMenu() {
         if (menu) menu.hidden = true;
@@ -154,6 +162,7 @@
         btn.setAttribute('aria-label', 'Profil-Menü öffnen');
         btn.setAttribute('aria-haspopup', 'menu');
         btn.setAttribute('aria-expanded', 'false');
+        document.querySelectorAll('[data-tbp-page]').forEach(el => { el.classList.add('tbp-menu', 'tbp-page'); el.setAttribute('role', 'menu'); el.onclick = onAct; });
         btn.onclick = e => { e.stopPropagation(); (menu && !menu.hidden) ? closeMenu() : openMenu(); };
         document.addEventListener('click', e => { if (menu && !menu.hidden && !menu.contains(e.target)) closeMenu(); });
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
@@ -190,7 +199,9 @@
         .tbp-item small { margin-left: auto; font-size: 11px; color: var(--mute, #6c6c70); white-space: nowrap; }
         .tbp-item.danger, .tbp-item.danger .ic { color: var(--danger, #d70015); }
         .tbp-sep { height: 1px; margin: 4px 6px; background: var(--sep, rgba(60, 60, 67, .14)); }
-        .tbp-menu[hidden] { display: none !important; }`;
+        .tbp-menu[hidden] { display: none !important; }
+        .tbp-menu.tbp-page { position: static; width: auto; max-width: none; box-shadow: var(--shadow); border-radius: var(--radius, 18px); }
+        :root[data-theme="dark"] .tbp-menu.tbp-page { background: var(--card); box-shadow: none; }`;
     document.head.appendChild(css);
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

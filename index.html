@@ -20,7 +20,7 @@
     <script src="shared/travelbase.js"></script>
     <script src="shared/overall-account.js"></script>
     <script src="shared/profile.js"></script>
-    <script src="shared/ios-nav.js" defer></script>
+    <script src="shared/ios-nav.js" data-bottom="84" defer></script>
 <style>
     /* TravelBase – Übersicht. Apple-Designsprache wie Dashboard und „Zuhause“, Akzent Ozeanblau. */
     :root {
@@ -135,6 +135,61 @@
         .box { padding: 16px; border-radius: 16px; }
         .flag-chip { font-size: 28px; padding: 8px 11px; }
     }
+
+    /* Ladeanzeige beim Start (verschwindet, sobald Anmeldung oder Reisen da sind) */
+    .load-view { text-align: center; padding: 60px 0; font-size: 13px; color: var(--mute); }
+    .load-view .spin { width: 22px; height: 22px; margin: 0 auto 12px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--p1); animation: spin .8s linear infinite; }
+    .load-view .btn { margin-top: 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Profil-Seite und Tab-Leiste gibt es nur auf dem Handy */
+    .tabbar, #viewProfile, .tab-empty { display: none; }
+    @media (max-width: 767.98px) {
+        /* Schwebende Leiste: abgerundete Karte mit Schatten, aktive Seite als Pille */
+        .tabbar { position: fixed; z-index: 90; left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
+            bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 1fr);
+            height: 62px; padding: 0 6px; border-radius: 22px; background: var(--card);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, .16), 0 0 0 .5px rgba(0, 0, 0, .06); }
+        :root[data-theme="dark"] .tabbar { background: #2c2c2e; box-shadow: 0 8px 28px rgba(0, 0, 0, .6), 0 0 0 .5px rgba(255, 255, 255, .1); }
+        .tabbar[hidden] { display: none; }
+        .tabbar button { position: relative; z-index: 0; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0; border: 0; background: none; font-size: 11px; font-weight: 500; color: var(--text); }
+        .tabbar button .ic { width: 24px; height: 24px; }
+        .tabbar button[aria-current="page"]::before { content: ""; position: absolute; inset: 7px 6px; z-index: -1; border-radius: 16px; background: var(--p1-soft); }
+        .tabbar button[aria-current="page"] { color: var(--p1); font-weight: 600; }
+        .tabbar .bar-ava { width: 26px; height: 26px; display: grid; }
+        .tabbar .bar-ava .tbp-ava { flex: 0 0 26px; width: 26px; height: 26px; font-size: 10px; }
+        .tabbar [aria-current="page"] .bar-ava .tbp-ava { box-shadow: 0 0 0 2px var(--p1); }
+        /* Mond und Profilbild im Kopf übernimmt die Leiste (nur nach dem Anmelden) */
+        .header-actions.in-app { display: none; }
+        body.has-tabbar { padding-bottom: calc(62px + 36px + env(safe-area-inset-bottom, 0px)); }
+        .sticky-header { margin-bottom: 12px; }
+
+        /* Je Feld nur der passende Abschnitt; Überschrift und Zähler bleiben */
+        body[data-tab="upcoming"] .trip-section.past, body[data-tab="past"] .trip-section.upcoming,
+        body[data-tab="profile"] #viewLoggedIn { display: none; }
+        body[data-tab="upcoming"] .tab-empty.upcoming, body[data-tab="past"] .tab-empty.past { display: block; }
+        #viewLoggedIn .box.account-box { display: none; }
+        body[data-tab="profile"] #viewProfile { display: block; }
+
+        .prof-head { text-align: center; padding: 8px 0 18px; }
+        .prof-head .tbp-ava { width: 96px; height: 96px; margin: 0 auto 12px; font-size: 32px; box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--p1); }
+        .prof-head b { display: block; font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+        .prof-head small { display: block; font-size: 13px; color: var(--mute); }
+        .prof-head .tbp-role { margin-top: 6px; }
+        .prof-sec { font-size: 13px; font-weight: 600; color: var(--mute); margin: 18px 4px 8px; }
+        .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--well); border-radius: 12px; padding: 3px; }
+        :root[data-theme="dark"] .seg { background: var(--card); }
+        .seg button { border: 0; background: none; border-radius: 9px; min-height: 36px; font-size: 13px; font-weight: 500; color: var(--mute); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .seg button .ic { width: 16px; height: 16px; }
+        .seg button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+        :root[data-theme="dark"] .seg button.on { background: #48484a; }
+        .stat-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+        .stat-tile { background: var(--card); border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow); }
+        .stat-tile b { display: block; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; line-height: 1.2; }
+        .stat-tile span { font-size: 12px; font-weight: 500; color: var(--mute); }
+        .tab-empty { text-align: center; padding: 28px 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .load-view .spin { animation-duration: 1.6s; } }
     @media (prefers-reduced-transparency: reduce) { .sticky-header { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 </style>
 </head>
@@ -149,7 +204,7 @@
                     <div class="sub">Unsere Reiseplanungen an einem Ort</div>
                 </div>
             </div>
-            <div class="header-actions">
+            <div class="header-actions" id="hdrActions">
                 <button id="themeToggle" class="icon-btn" type="button" aria-label="Zum dunklen Modus wechseln"><svg class="ic"><use href="#i-moon"></use></svg></button>
                 <button id="tbProfileBtn" class="icon-btn" type="button" aria-label="Profil-Menü öffnen" hidden><svg class="ic"><use href="#i-person"></use></svg></button>
             </div>
@@ -158,6 +213,13 @@
 
     <div id="setupHint" class="banner" hidden><svg class="ic"><use href="#i-gear"></use></svg><span>Supabase ist noch nicht verbunden: Bitte in <b>shared/config.js</b> die Project URL und den Publishable Key eintragen.</span></div>
     <div id="offlineHint" class="banner" hidden><svg class="ic"><use href="#i-wifiOff"></use></svg><span>Offline – du siehst den zuletzt geladenen Stand.</span></div>
+
+    <!-- Start: sichtbar, bis Anmeldung oder Reisen da sind (8 s ohne Antwort → „Neu laden“) -->
+    <section id="loadView" class="load-view" aria-live="polite">
+        <div class="spin"></div>
+        <div id="loadText">TravelBase wird geladen …</div>
+        <button class="btn" type="button" id="reloadBtn" hidden onclick="location.reload()">Neu laden</button>
+    </section>
 
     <!-- Nicht angemeldet -->
     <section id="viewLoggedOut" hidden>
@@ -202,7 +264,7 @@
     <!-- Angemeldet -->
     <section id="viewLoggedIn" hidden>
         <div id="tripList"></div>
-        <div class="box">
+        <div class="box account-box">
             <div class="account">
                 <div class="account-who"><svg class="ic"><use href="#i-person"></use></svg><span>Angemeldet als <b id="userEmail"></b></span></div>
                 <div class="account-actions">
@@ -212,12 +274,49 @@
             <div id="backupMsg" class="msg" hidden></div>
         </div>
     </section>
+
+    <!-- Profil (nur Handy, über „Profil“ in der Leiste) -->
+    <section id="viewProfile" hidden>
+        <div class="prof-head">
+            <span data-tbp-avatar></span>
+            <b data-tbp-name></b>
+            <small data-tbp-mail></small>
+            <span class="tbp-role" data-tbp-role hidden></span>
+        </div>
+        <div class="prof-sec">Darstellung</div>
+        <div class="seg" role="group" aria-label="Darstellung">
+            <button type="button" data-theme-set="light"><svg class="ic"><use href="#i-sun"></use></svg>Hell</button>
+            <button type="button" data-theme-set="dark"><svg class="ic"><use href="#i-moon"></use></svg>Dunkel</button>
+        </div>
+        <div class="prof-sec">Konto</div>
+        <div data-tbp-page></div>
+        <div class="prof-sec">Unsere Reisen</div>
+        <div class="stat-grid" id="profStats"></div>
+        <div id="profBackup" hidden>
+            <div class="prof-sec">Admin</div>
+            <div class="box" style="margin:0">
+                <button class="btn-ghost" id="backupBtn2" type="button"><svg class="ic"><use href="#i-download"></use></svg>Backup herunterladen</button>
+                <div id="backupMsg2" class="msg" hidden></div>
+            </div>
+        </div>
+    </section>
 </div>
 
+<!-- Untere Tab-Leiste (nur Handy, siehe CSS) -->
+<nav class="tabbar" id="tabbar" aria-label="Navigation" hidden>
+    <button type="button" data-tab="upcoming"><svg class="ic"><use href="#i-compass"></use></svg>Zukünftige</button>
+    <button type="button" data-tab="past"><svg class="ic"><use href="#i-archive"></use></svg>Vergangene</button>
+    <button type="button" data-tab="profile"><span class="bar-ava" data-tbp-avatar></span>Profil</button>
+</nav>
+
+<script>
+    /* Notbremse, falls das Hauptskript oder eine Bibliothek nicht lädt: nach 8 s „Neu laden“ anbieten */
+    setTimeout(() => { const v = document.getElementById('loadView'); if (v && !v.hidden) { document.getElementById('loadText').textContent = 'Das dauert ungewöhnlich lange.'; document.getElementById('reloadBtn').hidden = false; } }, 8000);
+</script>
 <script>
     const $ = s => document.querySelector(s);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const show = (el, on = true) => { el.hidden = !on; };
+    const show = (el, on = true) => { el.hidden = !on; if (on) $('#loadView').hidden = true; };
     function msg(el, text, ok) { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); show(el, !!text); }
 
     /* Hell/Dunkel */
@@ -226,10 +325,35 @@
         $('#themeToggle').innerHTML = tbIcon(dark ? 'sun' : 'moon');
         $('#themeToggle').setAttribute('aria-label', dark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln');
         const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#f2f2f7';
+        document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('on', (b.dataset.themeSet === 'dark') === dark));
         if (save) { try { localStorage.setItem('overall-theme', dark ? 'dark' : 'light'); } catch (e) {} }
     }
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark', false);
     $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);
+    document.querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => applyTheme(b.dataset.themeSet === 'dark', true));
+
+    /* Handy-Leiste: Zukünftige · Vergangene · Profil. Offenes Feld bleibt beim Neuladen (sessionStorage). */
+    const TABS = ['upcoming', 'past', 'profile'];
+    const mobileMq = matchMedia('(max-width: 767.98px)');
+    function setTab(t, scroll = true) {
+        if (!TABS.includes(t)) t = 'upcoming';
+        document.body.dataset.tab = t;
+        document.querySelectorAll('#tabbar [data-tab]').forEach(b => b.dataset.tab === t ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+        $('#viewProfile').hidden = t !== 'profile';
+        try { sessionStorage.setItem('travelbase-tab', t); } catch (e) {}
+        if (scroll) window.scrollTo(0, 0);
+    }
+    document.querySelectorAll('#tabbar [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+    setTab((() => { try { return sessionStorage.getItem('travelbase-tab'); } catch (e) { return null; } })(), false);
+    /* Profil gibt es nur am Handy: wird das Fenster breit, zurück zu den Reisen */
+    mobileMq.addEventListener('change', e => { if (!e.matches && document.body.dataset.tab === 'profile') setTab('upcoming', false); });
+    function appChrome(on) {
+        show($('#tabbar'), on);
+        document.body.classList.toggle('has-tabbar', on);
+        $('#hdrActions').classList.toggle('in-app', on);
+        if (!on) $('#viewProfile').hidden = true;
+        else $('#viewProfile').hidden = document.body.dataset.tab !== 'profile';
+    }
 
     /* Datums-Helfer */
     const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
@@ -246,7 +370,7 @@
 
     /* Ansicht: nicht angemeldet */
     async function renderLoggedOut() {
-        show($('#viewLoggedIn'), false); show($('#viewRecovery'), false); show($('#viewLoggedOut'));
+        show($('#viewLoggedIn'), false); show($('#viewRecovery'), false); show($('#viewLoggedOut')); appChrome(false);
         const flags = await TB.publicFlags();
         $('#publicFlags').innerHTML = flags.length
             ? flags.map(f => `<span class="flag-chip">${f.map(esc).join('')}</span>`).join('')
@@ -255,7 +379,7 @@
 
     /* Ansicht: angemeldet */
     async function renderLoggedIn(session) {
-        show($('#viewLoggedOut'), false); show($('#viewRecovery'), false); show($('#viewLoggedIn'));
+        show($('#viewLoggedOut'), false); show($('#viewRecovery'), false); show($('#viewLoggedIn')); appChrome(true);
         $('#userEmail').textContent = TB.cacheGet('name_' + session.user.id) || session.user.email;
         /* Schutz: falls der Browser noch eine ältere travelbase.js ohne displayName hat */
         if (TB.displayName) TB.displayName(session).then(n => { $('#userEmail').textContent = n; }).catch(() => {});
@@ -265,6 +389,7 @@
         try { res = await TB.myTrips(); } catch (e) { $('#tripList').innerHTML = `<div class="box">${esc(TB.errorText(e))}</div>`; return; }
         show($('#offlineHint'), res.offline);
         show($('#backupBtn'), res.list.some(t => t.role === 'admin'));
+        $('#profBackup').hidden = !res.list.some(t => t.role === 'admin');
         const list = res.list.map(t => ({ ...t, st: tripStatus(t) }))
             .sort((a, b) => (a.st.past - b.st.past) || (a.st.past ? (b.start_date || '').localeCompare(a.start_date || '') : (a.start_date || '9').localeCompare(b.start_date || '9')) || a.sort_order - b.sort_order);
         const card = t => `
@@ -278,18 +403,32 @@
                     <span class="chip">${ROLE_LABEL[t.role] || esc(t.role)}</span>
                 </div>
             </a>`;
-        const section = (title, items) => items.length ? `
-            <section class="trip-section">
+        const section = (title, items, cls) => items.length ? `
+            <section class="trip-section ${cls}">
                 <h2 class="trip-section-title">${title}<span class="count">${items.length}</span></h2>
                 <div class="trips">${items.map(card).join('')}</div>
             </section>` : '';
         const upcoming = list.filter(t => !t.st.past), past = list.filter(t => t.st.past);
-        $('#tripList').innerHTML = list.length ? section(tbIcon('compass') + 'Zukünftige Reisen', upcoming) + section(tbIcon('archive') + 'Vergangene Reisen', past)
+        const empty = (cls, text) => `<div class="box tab-empty ${cls}"><p class="note" style="margin:0">${text}</p></div>`;
+        renderStats(list);
+        $('#tripList').innerHTML = list.length ? section(tbIcon('compass') + 'Zukünftige Reisen', upcoming, 'upcoming') + section(tbIcon('archive') + 'Vergangene Reisen', past, 'past')
+            + (upcoming.length ? '' : empty('upcoming', 'Gerade ist keine Reise geplant.')) + (past.length ? '' : empty('past', 'Noch keine abgeschlossenen Reisen.'))
             : '<div class="box"><h2>Noch keine Reisen</h2><p class="note" style="margin:0">Du bist noch keiner Reise zugeordnet. Bitte den Admin, dich freizuschalten.</p></div>';
     }
 
+    /* Kacheln auf der Profil-Seite: nur echte Reisen (ohne „Vielleicht“) */
+    function renderStats(list) {
+        const real = list.filter(t => !t.tentative), done = real.filter(t => t.st.past);
+        const lands = new Set(done.flatMap(t => t.flags || []));
+        const days = done.reduce((n, t) => n + (t.start_date ? dayNum(t.end_date || t.start_date) - dayNum(t.start_date) + 1 : 0), 0);
+        const next = real.filter(t => t.start_date && dayNum(t.start_date) > dayNum(todayISO)).sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
+        const tile = (v, l) => `<div class="stat-tile"><b>${v}</b><span>${l}</span></div>`;
+        $('#profStats').innerHTML = tile(done.length, 'Reisen gemacht') + tile(lands.size, 'Länder bereist') + tile(days, 'Tage unterwegs')
+            + tile(next ? dayNum(next.start_date) - dayNum(todayISO) : '–', next ? 'Tage bis ' + esc(next.title) : 'Nächste Reise offen');
+    }
+
     let recovering = /type=recovery/.test(location.hash);
-    function renderRecovery() { show($('#viewLoggedOut'), false); show($('#viewLoggedIn'), false); show($('#viewRecovery')); }
+    function renderRecovery() { show($('#viewLoggedOut'), false); show($('#viewLoggedIn'), false); show($('#viewRecovery')); appChrome(false); }
 
     async function route() {
         if (recovering) return renderRecovery();
@@ -315,8 +454,8 @@
     };
 
     /* Konto */
-    $('#backupBtn').onclick = async () => {
-        const btn = $('#backupBtn'); btn.disabled = true; msg($('#backupMsg'), '');
+    const backup = (btn, out) => async () => {
+        btn.disabled = true; msg(out, '');
         try {
             const b = await TB.exportBackup();
             const url = URL.createObjectURL(new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' }));
@@ -324,10 +463,12 @@
             document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
             const n = Object.entries(b.tables).map(([t, r]) => `${t}: ${r.length}`).join(', ');
             const fail = Object.keys(b.errors);
-            msg($('#backupMsg'), fail.length ? `⚠️ Backup gespeichert (${n}), aber nicht lesbar: ${fail.join(', ')}` : `✅ Backup gespeichert (${n}).`, !fail.length);
-        } catch (err) { msg($('#backupMsg'), TB.errorText(err)); }
+            msg(out, fail.length ? `⚠️ Backup gespeichert (${n}), aber nicht lesbar: ${fail.join(', ')}` : `✅ Backup gespeichert (${n}).`, !fail.length);
+        } catch (err) { msg(out, TB.errorText(err)); }
         finally { btn.disabled = false; }
     };
+    $('#backupBtn').onclick = backup($('#backupBtn'), $('#backupMsg'));
+    $('#backupBtn2').onclick = backup($('#backupBtn2'), $('#backupMsg2'));
     $('#recoveryForm').onsubmit = async e => {
         e.preventDefault();
         try { await TB.updatePassword($('#recoveryPw').value); recovering = false; history.replaceState(null, '', location.pathname); route(); }
