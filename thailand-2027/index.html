@@ -19,7 +19,7 @@
     <script src="../shared/overall-account.js"></script>
     <script src="../shared/trip-mobile.js"></script>
     <script src="../shared/profile.js"></script>
-    <script src="../shared/ios-nav.js" data-bottom="84" defer></script>
+    <script src="../shared/ios-nav.js" defer></script>
     
     <!-- Leaflet Kartenbibliothek -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -1328,7 +1328,7 @@
             }));
             const tiles = {
                 thailand: { text: `${(DATA.days.th || []).length} Tage` }, srilanka: { text: `${(DATA.days.sl || []).length} Tage` },
-                acc: { text: `${st.length} Stationen` }, mapview: { text: `Route mit ${Object.keys(DATA.places || {}).length} Orten` }
+                acc: { text: `${st.length} Stationen` }, mapview: { text: `${Object.keys(DATA.places || {}).length} Orte` }
             };
             if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} Flüge` };
             if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
