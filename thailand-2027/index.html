@@ -729,7 +729,17 @@
                 return d;
             };
             lg.addTo(map);
+            fitStartView();
+        }
+
+        /* Start-Ausschnitt erst setzen, wenn die Karte sichtbar ist – sonst rechnet Leaflet
+           mit 0 Pixeln Größe (z. B. am Handy auf der Übersicht der Reise) und zoomt falsch */
+        let mapFitted = false;
+        function fitStartView() {
+            if (!map || mapFitted || !$('#map').offsetWidth) return;
+            map.invalidateSize();
             map.fitBounds([[4.0, 78.0], [21.0, 106.0]], { padding: [20, 20] });
+            mapFitted = true;
         }
 
         function focusMap(name) {
@@ -1188,7 +1198,7 @@
             if (window.location.hash !== '#' + targetId) history.replaceState(null, '', location.pathname + location.search + '#' + targetId);
             window.scrollTo(0, 0);
             if (targetId === 'pack' && DATA) renderAnalysis();
-            if (targetId === 'mapview' && map) setTimeout(() => map.invalidateSize(), 100);
+            if (targetId === 'mapview' && map) setTimeout(() => { map.invalidateSize(); fitStartView(); }, 100);
         }
         document.querySelectorAll('.tabs .tab[data-t]').forEach(b => {
             b.onclick = () => switchTab(b.dataset.t);
