@@ -28,6 +28,20 @@
         b.click();
         setHome(false);
         store(id);
+        /* eigener Verlaufseintrag: Zurück (Knopf, Wischgeste, App-Leiste) führt einen Schritt zurück zur Reise-Übersicht */
+        if (mq.matches) history.pushState({ tbView: id }, '', location.pathname + location.search + '#' + id);
+    }
+    /* einen Schritt zurück: Bereich → Reise-Übersicht → Alle Reisen */
+    function stepBack() {
+        if (document.body.classList.contains('m-home') || !mq.matches) {
+            /* kam man von der Übersicht, dorthin zurück (statt einen neuen Eintrag anzulegen) */
+            let fromOverview = false;
+            try { fromOverview = new URL(document.referrer).pathname === new URL('../', location.href).pathname; } catch (e) {}
+            if (fromOverview && history.length > 1) history.back(); else location.href = '../';
+            return;
+        }
+        if (history.state && history.state.tbView) history.back();
+        else setHome(true);
     }
 
     function tileSub(id) { return (data.tiles || {})[id] || {}; }
@@ -91,7 +105,9 @@
         back = document.createElement('button');
         back.type = 'button'; back.className = 'm-back'; back.setAttribute('aria-label', 'Zurück');
         back.innerHTML = ic('chevronLeft');
-        back.onclick = () => document.body.classList.contains('m-home') || !mq.matches ? (location.href = '../') : setHome(true);
+        back.onclick = stepBack;
+        /* Browser-Zurück aus einem Bereich: wieder die Reise-Übersicht */
+        window.addEventListener('popstate', e => { if (mq.matches && !(e.state && e.state.tbView)) setHome(true); });
         header.insertBefore(back, header.firstElementChild);
         /* Übersicht direkt unter der Kopfzeile */
         home = document.createElement('section');
