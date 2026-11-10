@@ -429,7 +429,7 @@
         /* 0. Daten laden & Speicher
            Später: loadTripData() holt die Daten nach dem Login aus Supabase,
            store.get/set speichern To-Dos & Packlisten dann gemeinsam statt nur im Browser. */
-        let DATA = null, ROLE = null;
+        let DATA = null, ROLE = null, TRIP_FLAGS = [];
         /* Ordnername = Reise-Kennung in Supabase (z. B. "thailand-2027") */
         const TRIP_SLUG = (() => { const p = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean); return p[p.length - 1]; })();
         function gate(html) { const g = $('#tbGate'); g.innerHTML = html; g.hidden = !html; }
@@ -442,6 +442,7 @@
             if (res.denied) { gate(`<h2>${ic('lock')}Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>`); return null; }
             ROLE = res.role;
             TRIP_ID = res.trip.id;
+            TRIP_FLAGS = res.trip.flags || [];
             $('#tbWho').innerHTML = ic('person') + String(res.user.name || res.user.email).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
             $('#tbOffline').hidden = !res.offline;
             return res.data;
@@ -1304,7 +1305,35 @@
             safe(loadPacklist);
             safe(renderClimate);
             safe(loadTabFromHash);
+            safe(mobileData);
         });
+
+        /* Handy-Übersicht der Reise (shared/trip-mobile.js): Heute, Route aus den Unterkünften, Zusatzinfos der Kacheln */
+        function mobileData() {
+            if (!window.TBTripMobile) return;
+            const days = [...(DATA.days.th || []), ...(DATA.days.sl || [])];
+            const st = [...(DATA.stations.th || []), ...(DATA.stations.sl || [])];
+            const m = DATA.meta || {}, persons = DATA.persons || [];
+            const start = persons.reduce((a, p) => !a || p.start < a ? p.start : a, ''), end = persons.reduce((a, p) => p.end > a ? p.end : a, '');
+            const past = !!end && TODAY > end;
+            let today = null;
+            const tr = days.find(d => d.rawDate === TODAY);
+            if (tr) today = { ...tr, label: 'Heute' };
+            else if (start && TODAY < start && days[0]) today = { ...days[0], label: 'Los geht’s' };
+            const placeColor = name => (Object.values(DATA.places || {}).find(p => p.name === name) || {}).color;
+            const route = st.map((x, i) => ({
+                num: i + 1, name: String(x.title || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus),
+                when: `${x.period || ''}${x.nights ? ` · ${x.nights} ${x.nights === 1 ? 'Nacht' : 'Nächte'}` : ''}`,
+                now: !!(x.from && x.to && TODAY >= x.from && TODAY < x.to), label: 'Heute hier'
+            }));
+            const tiles = {
+                thailand: { text: `${(DATA.days.th || []).length} Tage` }, srilanka: { text: `${(DATA.days.sl || []).length} Tage` },
+                acc: { text: `${st.length} Stationen` }, mapview: { text: `Route mit ${Object.keys(DATA.places || {}).length} Orten` }
+            };
+            if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} Flüge` };
+            if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
+            TBTripMobile.setData({ flags: TRIP_FLAGS, past, today, route, tiles, people: persons.map(p => p.name).join(', ') });
+        }
     </script>
 <script>/* TravelBase PWA */if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("../sw.js").catch(function(){});});}</script>
 </body></html>
