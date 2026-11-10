@@ -18,7 +18,7 @@
     const TODAY = (() => { const q = new URLSearchParams(location.search).get('heute'); return /^\d{4}-\d{2}-\d{2}$/.test(q || '') ? q : localISO(new Date()); })();
     const TRIP_SLUG = (() => { const p = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean); return p[p.length - 1]; })();
 
-    let DATA = null, ROLE = null, TRIP_ID = null, map = null;
+    let DATA = null, ROLE = null, TRIP_ID = null, TRIP_FLAGS = [], TRIP_MAYBE = false, map = null;
     const markers = {};
     const planState = {};
 
@@ -31,7 +31,7 @@
         catch (e) { gate(`<h2>${ic('alert')}Fehler beim Laden</h2><p class="note">${esc(TB.errorText(e))}</p><a href="../">← Zur Übersicht</a>`); return false; }
         if (!res) { location.replace('../?next=' + encodeURIComponent(TRIP_SLUG)); return false; }
         if (res.denied) { gate(`<h2>${ic('lock')}Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>`); return false; }
-        DATA = res.data; ROLE = res.role; TRIP_ID = res.trip.id;
+        DATA = res.data; ROLE = res.role; TRIP_ID = res.trip.id; TRIP_FLAGS = res.trip.flags || []; TRIP_MAYBE = !!res.trip.tentative;
         $('#tbWho').innerHTML = ic('person') + esc(res.user.name || res.user.email);
         $('#tbOffline').hidden = !res.offline;
         return true;
@@ -432,6 +432,8 @@
         $('#todoEmpty').hidden = !(term && todoList.length && !shown);
         const pct = todoList.length ? Math.round(done / todoList.length * 100) : 0;
         $('#todoProgress').textContent = `${done}/${todoList.length} erledigt (${pct}%)`;
+        /* Fortschritt auch auf der Kachel der Handy-Übersicht */
+        if (window.TBTripMobile && TBTripMobile.setTile && todoList.length) TBTripMobile.setTile('todos', { text: `${done} von ${todoList.length} erledigt`, pct });
     }
     function toggleTodo(idx) {
         const item = todoList[idx];
@@ -471,6 +473,48 @@
         $('#newTodoText').onkeydown = e => { if (e.key === 'Enter') addTodo(); };
         $('#todoSearch').oninput = renderTodos;
         loadTodos();
+    }
+
+    /* ---------- Handy-Übersicht der Reise (shared/trip-mobile.js): Heute, Route, Zusatzinfos der Kacheln ---------- */
+    function mobileData() {
+        if (!window.TBTripMobile) return;
+        const m = DATA.meta || {}, plans = DATA.plans || [], P = DATA.places || {};
+        const rows = plans.flatMap(p => p.rows || []);
+        const now = dayNum(TODAY), s = m.start ? dayNum(m.start) : null, e = m.end ? dayNum(m.end) : s;
+        const past = s != null && now > e;
+        /* Heute (unterwegs) bzw. der erste Tag (vor der Reise) */
+        let today = null;
+        const tr = rows.find(isToday);
+        if (tr) today = { ...tr, label: 'Heute' };
+        else if (s != null && now < s && rows[0]) today = { ...rows[0], label: 'Los geht’s' };
+        /* Route: Tagesplan-Zeilen nach Ort zusammenfassen; ohne Tagesplan (Gäste) die Orte nach Nummer */
+        let route = [];
+        const fmt = iso => iso ? fmtDM(iso) : '';
+        if (rows.length) {
+            rows.forEach(r => (r.focus || []).forEach((k, i, all) => {
+                const last = route[route.length - 1], p = P[k] || {};
+                const from = r.from, to = all.length > 1 ? null : (r.to || r.from);
+                if (last && last.k === k) { if (to) last.to = to; last.rows.push(r); return; }
+                route.push({ k, num: p.num, name: p.name || k, color: p.color, from: i === 0 ? from : null, to, rows: [r] });
+            }));
+            route.forEach(x => {
+                const n = x.from && x.to ? dayNum(x.to) - dayNum(x.from) + 1 : 0;
+                x.when = x.from ? fmt(x.from) + (x.to && x.to !== x.from ? ' – ' + fmt(x.to) : '') + (n ? ` · ${n} ${n > 1 ? 'Tage' : 'Tag'}` : '') : (x.rows[0].date || '');
+                x.now = x.rows.some(isToday);
+            });
+        } else {
+            route = Object.values(P).filter(p => p.num != null).sort((a, b) => a.num - b.num).map(p => ({ num: p.num, name: p.name, color: p.color }));
+        }
+        /* kurze Zusatzinfos unter den Kacheln */
+        const tiles = {};
+        if (DATA.places) tiles.mapview = { text: `Route mit ${Object.keys(P).length} Orten` };
+        plans.forEach(p => { tiles[p.id] = { text: `${p.rows.length} Einträge` }; });
+        if ((DATA.persons || []).length) tiles.cal = { text: `${DATA.persons.length} Personen` };
+        if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} Flüge` };
+        if (DATA.climate) tiles.climate = { text: `${(DATA.climate.rows || []).length} Orte` };
+        if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
+        const people = (DATA.persons || []).map(p => p.name).join(', ');
+        TBTripMobile.setData({ flags: TRIP_FLAGS, past, maybe: TRIP_MAYBE, today, route, tiles, people });
     }
 
     /* ---------- Hell/Dunkel ---------- */
@@ -513,6 +557,7 @@
         safe(initTodos);
         tabFromHash();
         window.addEventListener('hashchange', tabFromHash);
+        safe(mobileData);
     });
     if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 })();

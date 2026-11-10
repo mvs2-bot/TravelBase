@@ -17,10 +17,12 @@
     }
     const isNetErr = e => !navigator.onLine || /fetch|network|load failed|timeout/i.test(String(e && (e.message || e)));
     const check = ({ data, error }) => { if (error) throw error; return data; };
+    /* Hängende Anfragen (schwaches Netz, App aus dem Hintergrund) nach ms abbrechen; „timeout“ gilt als Netzfehler */
+    const withTimeout = (p, ms) => Promise.race([Promise.resolve(p), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 
     async function getSession() {
         if (!sb) return null;
-        try { return (await sb.auth.getSession()).data.session; } catch (e) { return null; }
+        try { return (await withTimeout(sb.auth.getSession(), 6000)).data.session; } catch (e) { return null; }
     }
 
     /* Anzeigename aus overall_profiles (display_name); ohne Eintrag oder offline → E-Mail */
@@ -28,7 +30,7 @@
         if (!session) return '';
         const key = 'name_' + session.user.id;
         try {
-            const row = check(await sb.from('overall_profiles').select('display_name').eq('id', session.user.id).maybeSingle());
+            const row = check(await withTimeout(sb.from('overall_profiles').select('display_name').eq('id', session.user.id).maybeSingle(), 8000));
             const name = (row && row.display_name || '').trim();
             cacheSet(key, name);
             return name || session.user.email;
@@ -41,7 +43,7 @@
     async function publicFlags() {
         if (!sb) return cacheGet('flags') || [];
         try {
-            const rows = check(await sb.rpc('travelbase_get_public_flags'));
+            const rows = check(await withTimeout(sb.rpc('travelbase_get_public_flags'), 10000));
             const flags = rows.map(r => r.flags || []);
             cacheSet('flags', flags);
             return flags;
@@ -55,7 +57,7 @@
         const session = await getSession();
         if (!session) return null;
         try {
-            const list = check(await sb.rpc('travelbase_my_trips'));
+            const list = check(await withTimeout(sb.rpc('travelbase_my_trips'), 12000));
             cacheSet('trips_' + session.user.id, list);
             TB.lastSync = new Date();
             return { list, offline: false };
@@ -76,10 +78,10 @@
         if (!session) return (cached && !navigator.onLine) ? { ...cached, offline: true } : null;
         if (cached && cached.userId !== session.user.id) clearCache();
         try {
-            const trip = check(await sb.from('travelbase_trips').select('id, slug, title, flags, start_date, end_date').eq('slug', slug).maybeSingle());
+            const trip = check(await withTimeout(sb.from('travelbase_trips').select('id, slug, title, flags, start_date, end_date, tentative').eq('slug', slug).maybeSingle(), 12000));
             if (!trip) return { denied: true };
-            const myRole = check(await sb.rpc('travelbase_trip_role', { p_trip: trip.id }));
-            const [secsRes, name] = await Promise.all([sb.from('travelbase_trip_sections').select('key, data').eq('trip_id', trip.id), displayName(session)]);
+            const myRole = check(await withTimeout(sb.rpc('travelbase_trip_role', { p_trip: trip.id }), 10000));
+            const [secsRes, name] = await withTimeout(Promise.all([sb.from('travelbase_trip_sections').select('key, data').eq('trip_id', trip.id), displayName(session)]), 12000);
             const secs = check(secsRes);
             const order = { guest: 0, member: 1, admin: 2 };
             secs.sort((a, b) => (order[a.key] ?? 9) - (order[b.key] ?? 9));
@@ -158,6 +160,6 @@
         return m;
     }
 
-    window.TB = { sb, configured, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
+    window.TB = { sb, configured, withTimeout, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();
