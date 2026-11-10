@@ -1,7 +1,7 @@
 /* TravelBase – Reise-Seite am Handy (< 768 px)
    - Start ist eine Übersicht der Reise: Status/Countdown, „Heute“, Kacheln für alle Bereiche, Route als Zeitstrahl
    - jede Kachel öffnet den Bereich wie bisher; oben links führt „‹“ zurück (Bereich → Übersicht → Alle Reisen)
-   - unten die schwebende Leiste wie auf der Übersicht: Zukünftige · Vergangene · Profil
+   - unten die schwebende Leiste wie auf der Übersicht: Zukünftige · Vielleicht · Vergangene · Profil
    Am Desktop ändert sich nichts (alles hängt an der Media Query in trip.css).
    Funktioniert mit jeder Reise-Seite, die .pop-btn[data-t] und .pane hat (Vorlage und Thailand).
    „Heute“, Route und Zusatzinfos der Kacheln liefert die Seite über TBTripMobile.setData(), sonst nur Kacheln. */
@@ -79,7 +79,8 @@
     function markBar() {
         if (!bar) return;
         const past = data.past != null ? data.past : /abgeschlossen/i.test((document.getElementById('countdown') || {}).textContent || '');
-        bar.querySelectorAll('[data-go]').forEach(b => b.dataset.go === (past ? 'past' : 'upcoming') ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+        const cur = past ? 'past' : data.maybe ? 'maybe' : 'upcoming';
+        bar.querySelectorAll('[data-go]').forEach(b => b.dataset.go === cur ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
     }
 
     function init() {
@@ -100,6 +101,7 @@
         bar = document.createElement('nav');
         bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Navigation');
         bar.innerHTML = `<button type="button" data-go="upcoming">${ic('compass')}Zukünftige</button>
+            <button type="button" data-go="maybe">${ic('bulb')}Vielleicht</button>
             <button type="button" data-go="past">${ic('archive')}Vergangene</button>
             <button type="button" data-go="profile"><span class="bar-ava" data-tbp-avatar></span>Profil</button>`;
         bar.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goOverview(b.dataset.go));

@@ -78,7 +78,7 @@
         if (!session) return (cached && !navigator.onLine) ? { ...cached, offline: true } : null;
         if (cached && cached.userId !== session.user.id) clearCache();
         try {
-            const trip = check(await withTimeout(sb.from('travelbase_trips').select('id, slug, title, flags, start_date, end_date').eq('slug', slug).maybeSingle(), 12000));
+            const trip = check(await withTimeout(sb.from('travelbase_trips').select('id, slug, title, flags, start_date, end_date, tentative').eq('slug', slug).maybeSingle(), 12000));
             if (!trip) return { denied: true };
             const myRole = check(await withTimeout(sb.rpc('travelbase_trip_role', { p_trip: trip.id }), 10000));
             const [secsRes, name] = await withTimeout(Promise.all([sb.from('travelbase_trip_sections').select('key, data').eq('trip_id', trip.id), displayName(session)]), 12000);

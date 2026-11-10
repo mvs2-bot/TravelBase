@@ -18,7 +18,7 @@
     const TODAY = (() => { const q = new URLSearchParams(location.search).get('heute'); return /^\d{4}-\d{2}-\d{2}$/.test(q || '') ? q : localISO(new Date()); })();
     const TRIP_SLUG = (() => { const p = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean); return p[p.length - 1]; })();
 
-    let DATA = null, ROLE = null, TRIP_ID = null, TRIP_FLAGS = [], map = null;
+    let DATA = null, ROLE = null, TRIP_ID = null, TRIP_FLAGS = [], TRIP_MAYBE = false, map = null;
     const markers = {};
     const planState = {};
 
@@ -31,7 +31,7 @@
         catch (e) { gate(`<h2>${ic('alert')}Fehler beim Laden</h2><p class="note">${esc(TB.errorText(e))}</p><a href="../">← Zur Übersicht</a>`); return false; }
         if (!res) { location.replace('../?next=' + encodeURIComponent(TRIP_SLUG)); return false; }
         if (res.denied) { gate(`<h2>${ic('lock')}Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>`); return false; }
-        DATA = res.data; ROLE = res.role; TRIP_ID = res.trip.id; TRIP_FLAGS = res.trip.flags || [];
+        DATA = res.data; ROLE = res.role; TRIP_ID = res.trip.id; TRIP_FLAGS = res.trip.flags || []; TRIP_MAYBE = !!res.trip.tentative;
         $('#tbWho').innerHTML = ic('person') + esc(res.user.name || res.user.email);
         $('#tbOffline').hidden = !res.offline;
         return true;
@@ -514,7 +514,7 @@
         if (DATA.climate) tiles.climate = { text: `${(DATA.climate.rows || []).length} Orte` };
         if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
         const people = (DATA.persons || []).map(p => p.name).join(', ');
-        TBTripMobile.setData({ flags: TRIP_FLAGS, past, today, route, tiles, people });
+        TBTripMobile.setData({ flags: TRIP_FLAGS, past, maybe: TRIP_MAYBE, today, route, tiles, people });
     }
 
     /* ---------- Hell/Dunkel ---------- */

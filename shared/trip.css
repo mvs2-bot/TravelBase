@@ -516,7 +516,7 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
 
     /* Schwebende Leiste wie auf der Übersicht */
     .tabbar { position: fixed; z-index: 1001; left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
-        bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 1fr);
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr);
         height: 62px; padding: 0 6px; border-radius: 22px; background: var(--card);
         box-shadow: 0 8px 28px rgba(0, 0, 0, .16), 0 0 0 .5px rgba(0, 0, 0, .06); }
     :root[data-theme="dark"] .tabbar { background: #2c2c2e; box-shadow: 0 8px 28px rgba(0, 0, 0, .6), 0 0 0 .5px rgba(255, 255, 255, .1); }

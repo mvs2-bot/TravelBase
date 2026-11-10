@@ -143,11 +143,11 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Profil-Seite und Tab-Leiste gibt es nur auf dem Handy */
-    .tabbar, #viewProfile, .tab-empty { display: none; }
+    .tabbar, #viewProfile, .tab-empty, .trip-section.m-only { display: none; }
     @media (max-width: 767.98px) {
         /* Schwebende Leiste: abgerundete Karte mit Schatten, aktive Seite als Pille */
         .tabbar { position: fixed; z-index: 90; left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
-            bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 1fr);
+            bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr);
             height: 62px; padding: 0 6px; border-radius: 22px; background: var(--card);
             box-shadow: 0 8px 28px rgba(0, 0, 0, .16), 0 0 0 .5px rgba(0, 0, 0, .06); }
         :root[data-theme="dark"] .tabbar { background: #2c2c2e; box-shadow: 0 8px 28px rgba(0, 0, 0, .6), 0 0 0 .5px rgba(255, 255, 255, .1); }
@@ -165,9 +165,11 @@
         .sticky-header { margin-bottom: 12px; }
 
         /* Je Feld nur der passende Abschnitt; Überschrift und Zähler bleiben */
-        body[data-tab="upcoming"] .trip-section.past, body[data-tab="past"] .trip-section.upcoming,
+        /* „Vielleicht“-Reisen (Varianten, Ideen) haben am Handy ein eigenes Feld; am Desktop stehen sie wie bisher bei den zukünftigen */
+        #tripList .trip-section { display: none; }
+        body[data-tab="upcoming"] #tripList .trip-section.upcoming.m-only, body[data-tab="maybe"] #tripList .trip-section.maybe, body[data-tab="past"] #tripList .trip-section.past { display: block; }
         body[data-tab="profile"] #viewLoggedIn { display: none; }
-        body[data-tab="upcoming"] .tab-empty.upcoming, body[data-tab="past"] .tab-empty.past { display: block; }
+        body[data-tab="upcoming"] .tab-empty.upcoming, body[data-tab="maybe"] .tab-empty.maybe, body[data-tab="past"] .tab-empty.past { display: block; }
         #viewLoggedIn .box.account-box { display: none; }
         body[data-tab="profile"] #viewProfile { display: block; }
 
@@ -305,6 +307,7 @@
 <!-- Untere Tab-Leiste (nur Handy, siehe CSS) -->
 <nav class="tabbar" id="tabbar" aria-label="Navigation" hidden>
     <button type="button" data-tab="upcoming"><svg class="ic"><use href="#i-compass"></use></svg>Zukünftige</button>
+    <button type="button" data-tab="maybe"><svg class="ic"><use href="#i-bulb"></use></svg>Vielleicht</button>
     <button type="button" data-tab="past"><svg class="ic"><use href="#i-archive"></use></svg>Vergangene</button>
     <button type="button" data-tab="profile"><span class="bar-ava" data-tbp-avatar></span>Profil</button>
 </nav>
@@ -332,8 +335,8 @@
     $('#themeToggle').onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark', true);
     document.querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => applyTheme(b.dataset.themeSet === 'dark', true));
 
-    /* Handy-Leiste: Zukünftige · Vergangene · Profil. Offenes Feld bleibt beim Neuladen (sessionStorage). */
-    const TABS = ['upcoming', 'past', 'profile'];
+    /* Handy-Leiste: Zukünftige · Vielleicht · Vergangene · Profil. Offenes Feld bleibt beim Neuladen (sessionStorage). */
+    const TABS = ['upcoming', 'maybe', 'past', 'profile'];
     const mobileMq = matchMedia('(max-width: 767.98px)');
     function setTab(t, scroll = true) {
         if (!TABS.includes(t)) t = 'upcoming';
@@ -409,10 +412,14 @@
                 <div class="trips">${items.map(card).join('')}</div>
             </section>` : '';
         const upcoming = list.filter(t => !t.st.past), past = list.filter(t => t.st.past);
+        const sure = upcoming.filter(t => !t.tentative), maybe = upcoming.filter(t => t.tentative);
         const empty = (cls, text) => `<div class="box tab-empty ${cls}"><p class="note" style="margin:0">${text}</p></div>`;
         renderStats(list);
-        $('#tripList').innerHTML = list.length ? section(tbIcon('compass') + 'Zukünftige Reisen', upcoming, 'upcoming') + section(tbIcon('archive') + 'Vergangene Reisen', past, 'past')
-            + (upcoming.length ? '' : empty('upcoming', 'Gerade ist keine Reise geplant.')) + (past.length ? '' : empty('past', 'Noch keine abgeschlossenen Reisen.'))
+        $('#tripList').innerHTML = list.length ? section(tbIcon('compass') + 'Zukünftige Reisen', upcoming, 'upcoming d-only')
+            + section(tbIcon('compass') + 'Zukünftige Reisen', sure, 'upcoming m-only') + section(tbIcon('bulb') + 'Vielleicht', maybe, 'maybe m-only')
+            + section(tbIcon('archive') + 'Vergangene Reisen', past, 'past')
+            + (sure.length ? '' : empty('upcoming', 'Gerade ist keine Reise fest geplant.')) + (maybe.length ? '' : empty('maybe', 'Keine Vielleicht-Reisen.'))
+            + (past.length ? '' : empty('past', 'Noch keine abgeschlossenen Reisen.'))
             : '<div class="box"><h2>Noch keine Reisen</h2><p class="note" style="margin:0">Du bist noch keiner Reise zugeordnet. Bitte den Admin, dich freizuschalten.</p></div>';
     }
 
