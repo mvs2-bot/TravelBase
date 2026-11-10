@@ -433,7 +433,7 @@
         const pct = todoList.length ? Math.round(done / todoList.length * 100) : 0;
         $('#todoProgress').textContent = `${done}/${todoList.length} erledigt (${pct}%)`;
         /* Fortschritt auch auf der Kachel der Handy-Übersicht */
-        if (window.TBTripMobile && TBTripMobile.setTile && todoList.length) TBTripMobile.setTile('todos', { text: `${done} von ${todoList.length} erledigt`, pct });
+        if (window.TBTripMobile && TBTripMobile.setTile && todoList.length) TBTripMobile.setTile('todos', { text: `${done} / ${todoList.length}`, pct });
     }
     function toggleTodo(idx) {
         const item = todoList[idx];
@@ -507,8 +507,8 @@
         }
         /* kurze Zusatzinfos unter den Kacheln */
         const tiles = {};
-        if (DATA.places) tiles.mapview = { text: `Route mit ${Object.keys(P).length} Orten` };
-        plans.forEach(p => { tiles[p.id] = { text: `${p.rows.length} Einträge` }; });
+        if (DATA.places) tiles.mapview = { text: `${Object.keys(P).length} Orte` };
+        plans.forEach(p => { tiles[p.id] = { text: `${p.rows.length} Tage` }; });
         if ((DATA.persons || []).length) tiles.cal = { text: `${DATA.persons.length} Personen` };
         if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} Flüge` };
         if (DATA.climate) tiles.climate = { text: `${(DATA.climate.rows || []).length} Orte` };
