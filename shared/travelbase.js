@@ -68,6 +68,18 @@
         }
     }
 
+    /* Nur für Admins: wer auf welchen Reisen welche Rolle hat (ohne einen selbst). Fehler → leere Liste */
+    async function tripMembers() {
+        const session = await getSession();
+        if (!session) return [];
+        const key = 'members_' + session.user.id;
+        try {
+            const list = check(await withTimeout(sb.rpc('travelbase_trip_members_overview'), 10000));
+            cacheSet(key, list);
+            return list;
+        } catch (e) { return cacheGet(key) || []; }
+    }
+
     /* Inhalte einer Reise laden. Rückgabe:
        null            → nicht angemeldet
        { denied:true } → angemeldet, aber kein Mitglied dieser Reise
@@ -160,6 +172,6 @@
         return m;
     }
 
-    window.TB = { sb, configured, withTimeout, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
+    window.TB = { sb, configured, withTimeout, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, tripMembers, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();
