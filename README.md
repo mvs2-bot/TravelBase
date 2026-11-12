@@ -38,3 +38,5 @@ TravelBase nutzt das zentrale Supabase-Projekt. Das Schema liegt im Repo
 [`supabase-core`](https://github.com/mvs2-bot/supabase-core): Tabellen mit Präfix `travelbase_`,
 Profile in `overall_profiles`, Zugang zur App über `overall_app_access`.
 Admins von TravelBase sehen jede Reise als Admin.
+Admins sehen in der Übersicht unter jeder Reise, wer mit welcher Rolle freigeschaltet ist
+(RPC `travelbase_trip_members_overview()`, liefert nur Reisen, auf denen man selbst Admin ist).

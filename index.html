@@ -116,6 +116,12 @@
     .trip-card.tentative .trip-flags { opacity: .7; }
     .trip-card.tentative .trip-title { color: var(--text); }
     .trip-card.tentative:hover { background: var(--card); }
+    /* Nur für Admins: wer ist auf der Reise mit welcher Rolle (dezent, unten auf der Karte) */
+    .trip-people { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--mute); border-top: 1px solid var(--sep); margin-top: 4px; padding-top: 6px; }
+    .trip-people:empty { display: none; }
+    .trip-people span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .trip-people .ic { width: 12px; height: 12px; opacity: .8; }
+    .trip-people b { font-weight: 500; color: var(--text); }
     .chip.maybe { background: transparent; color: var(--mute); box-shadow: inset 0 0 0 1px var(--sep); font-style: italic; }
 
     .account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
@@ -405,6 +411,7 @@
                     ${t.tentative ? '<span class="chip maybe">Vielleicht</span>' : ''}
                     <span class="chip">${ROLE_LABEL[t.role] || esc(t.role)}</span>
                 </div>
+                ${t.role === 'admin' ? `<div class="trip-people" data-trip="${esc(t.id)}"></div>` : ''}
             </a>`;
         const section = (title, items, cls) => items.length ? `
             <section class="trip-section ${cls}">
@@ -415,12 +422,26 @@
         const sure = upcoming.filter(t => !t.tentative), maybe = upcoming.filter(t => t.tentative);
         const empty = (cls, text) => `<div class="box tab-empty ${cls}"><p class="note" style="margin:0">${text}</p></div>`;
         renderStats(list);
+        if (list.some(t => t.role === 'admin') && TB.tripMembers) renderPeople();
         $('#tripList').innerHTML = list.length ? section(tbIcon('compass') + 'Zukünftige Reisen', upcoming, 'upcoming d-only')
             + section(tbIcon('compass') + 'Zukünftige Reisen', sure, 'upcoming m-only') + section(tbIcon('bulb') + 'Vielleicht', maybe, 'maybe m-only')
             + section(tbIcon('archive') + 'Vergangene Reisen', past, 'past')
             + (sure.length ? '' : empty('upcoming', 'Gerade ist keine Reise fest geplant.')) + (maybe.length ? '' : empty('maybe', 'Keine Vielleicht-Reisen.'))
             + (past.length ? '' : empty('past', 'Noch keine abgeschlossenen Reisen.'))
             : '<div class="box"><h2>Noch keine Reisen</h2><p class="note" style="margin:0">Du bist noch keiner Reise zugeordnet. Bitte den Admin, dich freizuschalten.</p></div>';
+    }
+
+    /* Admin: Mitglieder je Reise dezent unter der Karte (Name + Rolle), z. B. „Ines · Mitreisend“ */
+    const PEOPLE_LABEL = { admin: 'Admin', member: 'Mitreisend', guest: 'Gast' };
+    const PEOPLE_ICON = { admin: 'crown', member: 'suitcase', guest: 'eye' };
+    async function renderPeople() {
+        const rows = await TB.tripMembers();
+        const by = {};
+        rows.forEach(r => (by[r.trip_id] = by[r.trip_id] || []).push(r));
+        document.querySelectorAll('.trip-people[data-trip]').forEach(el => {
+            el.innerHTML = (by[el.dataset.trip] || []).map(r =>
+                `<span>${tbIcon(PEOPLE_ICON[r.role] || 'person')}<b>${esc(r.name)}</b>${esc(PEOPLE_LABEL[r.role] || r.role)}</span>`).join('');
+        });
     }
 
     /* Kacheln auf der Profil-Seite: nur echte Reisen (ohne „Vielleicht“) */
