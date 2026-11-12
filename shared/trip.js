@@ -163,6 +163,21 @@
         flight: { color: '#059669', weight: 2.5, opacity: .85, dashArray: '6, 6' },
         transfer: { color: '#64748b', weight: 2, opacity: .6, dashArray: '3, 3' }
     };
+    /* Kartenfarben nach anwesenden Personen ("mapColors": "persons"): Orte und Strecken in den Farben der Personen,
+       die laut Ablauf dort sind (mehrere = Tortenstück-Punkt bzw. gestreifte Linie). Ohne Personen (Gäste) bleiben die Ortsfarben. */
+    const byPersons = () => DATA.mapColors === 'persons' && (DATA.persons || []).length;
+    const whoColors = who => byPersons() ? (DATA.persons || []).filter(p => (who || []).includes(p.key)).map(p => p.color) : [];
+    function placeWho(k) {
+        const who = new Set();
+        (DATA.plans || []).forEach(p => (p.rows || []).forEach(r => { if ((r.focus || []).includes(k)) (r.who || []).forEach(x => who.add(x)); }));
+        return [...who];
+    }
+    function placeColor(k) {
+        const cs = whoColors(placeWho(k));
+        if (!cs.length) return (DATA.places[k] || {}).color || '#15803d';
+        return cs.length === 1 ? cs[0] : `conic-gradient(${cs.map((c, i) => `${c} ${i / cs.length * 360}deg ${(i + 1) / cs.length * 360}deg`).join(', ')})`;
+    }
+    const legend = () => [...(byPersons() ? DATA.persons.map(p => [p.color, '●', p.name]) : []), ...(DATA.legend || [])];
     function initMap() {
         const layer = (url, attr, maxZoom = 15) => L.tileLayer(url, { maxZoom, attribution: attr });
         const baseLayers = {
@@ -179,24 +194,29 @@
         const P = DATA.places || {}, styles = { ...DEFAULT_STYLES, ...(DATA.routeStyles || {}) };
         (DATA.routes || []).forEach(r => {
             const pts = r.path || (r.via || []).map(k => P[k] && [P[k].lat, P[k].lng]).filter(Boolean);
-            if (pts.length > 1) L.polyline(pts, styles[r.style] || DEFAULT_STYLES.road).addTo(map);
+            if (pts.length < 2) return;
+            const st = styles[r.style] || DEFAULT_STYLES.road, cs = whoColors(r.who);
+            if (!cs.length) return L.polyline(pts, st).addTo(map);
+            /* mehrere Personen: Linie in Streifen ihrer Farben (Flüge behalten eine Lücke) */
+            const seg = 10, gap = st.dashArray ? 8 : 0, period = seg * cs.length + gap;
+            cs.forEach((color, i) => L.polyline(pts, { ...st, color, dashArray: period > seg ? `${seg} ${period - seg}` : null, dashOffset: String(-i * seg) }).addTo(map));
         });
         const all = [];
         Object.entries(P).forEach(([key, p]) => {
-            const color = p.color || '#15803d';
-            const popup = `<b style="color:${color}">${ic('pin')} ${esc(p.name)}</b>${p.date ? `<br><small>${ic('calendar')} ${esc(p.date)}</small>` : ''}${p.desc ? `<br>${p.desc}` : ''}`;
+            const color = placeColor(key), solid = whoColors(placeWho(key))[0] || p.color || '#15803d';
+            const popup = `<b style="color:${solid}">${ic('pin')} ${esc(p.name)}</b>${p.date ? `<br><small>${ic('calendar')} ${esc(p.date)}</small>` : ''}${p.desc ? `<br>${p.desc}` : ''}`;
             const m = p.num != null
                 ? L.marker([p.lat, p.lng], { icon: L.divIcon({ className: 'nm', html: `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${color}">${esc(p.num)}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
-                : L.circleMarker([p.lat, p.lng], { color, fillColor: color, fillOpacity: .9, radius: p.size || 6 });
+                : L.circleMarker([p.lat, p.lng], { color: solid, fillColor: solid, fillOpacity: .9, radius: p.size || 6 });
             m.bindPopup(popup).addTo(map);
             markers[key] = m;
             all.push([p.lat, p.lng]);
         });
-        if ((DATA.legend || []).length) {
+        if (legend().length) {
             const lg = L.control({ position: 'bottomright' });
             lg.onAdd = () => {
                 const d = L.DomUtil.create('div', 'legend');
-                d.innerHTML = `<div class="lh" style="cursor:pointer">${ic('info')}Legende <span>▼</span></div><div class="lb" style="display:none;margin-top:4px">${DATA.legend.map(([c, sym, t]) => `<span style="color:${c}">${sym}</span> ${esc(t)}`).join('<br>')}</div>`;
+                d.innerHTML = `<div class="lh" style="cursor:pointer">${ic('info')}Legende <span>▼</span></div><div class="lb" style="display:none;margin-top:4px">${legend().map(([c, sym, t]) => `<span style="color:${c}">${sym}</span> ${esc(t)}`).join('<br>')}</div>`;
                 L.DomEvent.disableClickPropagation(d);
                 d.querySelector('.lh').onclick = () => {
                     const b = d.querySelector('.lb'), open = b.style.display === 'none';
@@ -557,7 +577,7 @@
                 const last = route[route.length - 1], p = P[k] || {};
                 const from = r.from, to = all.length > 1 ? null : (r.to || r.from);
                 if (last && last.k === k) { if (to) last.to = to; last.rows.push(r); return; }
-                route.push({ k, num: p.num, name: p.name || k, color: p.color, from: i === 0 ? from : null, to, rows: [r] });
+                route.push({ k, num: p.num, name: p.name || k, color: placeColor(k), from: i === 0 ? from : null, to, rows: [r] });
             }));
             route.forEach(x => {
                 const n = x.from && x.to ? dayNum(x.to) - dayNum(x.from) + 1 : 0;
@@ -570,7 +590,8 @@
         /* kurze Zusatzinfos unter den Kacheln */
         const tiles = {};
         if (DATA.places) tiles.mapview = { text: `${Object.keys(P).length} Orte` };
-        plans.forEach(p => { tiles[p.id] = { text: `${p.rows.length} Tage` }; });
+        /* Zeilen können mehrere Tage umfassen („Tag 33–38“) */
+        plans.forEach(p => { tiles[p.id] = { text: `${p.rows.reduce((n, r) => n + (r.from && r.to ? dayNum(r.to) - dayNum(r.from) + 1 : 1), 0)} Tage` }; });
         if ((DATA.persons || []).length) tiles.cal = { text: `${DATA.persons.length} Personen` };
         if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} Flüge` };
         if (DATA.climate) tiles.climate = { text: `${(DATA.climate.rows || []).length} Orte` };
