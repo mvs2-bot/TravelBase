@@ -80,6 +80,13 @@
         } catch (e) { return cacheGet(key) || []; }
     }
 
+    /* Vielleicht-Reise: Startdatum setzen (null = wieder offen). Das Ende rechnet die Datenbank aus dem Tagesplan. */
+    async function setTripStart(tripId, start) {
+        const res = check(await withTimeout(sb.rpc('travelbase_set_trip_start', { p_trip: tripId, p_start: start || null }), 10000));
+        clearCache();
+        return res && res[0];
+    }
+
     /* Inhalte einer Reise laden. Rückgabe:
        null            → nicht angemeldet
        { denied:true } → angemeldet, aber kein Mitglied dieser Reise
@@ -172,6 +179,6 @@
         return m;
     }
 
-    window.TB = { sb, configured, withTimeout, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, tripMembers, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
+    window.TB = { sb, configured, withTimeout, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, tripMembers, setTripStart, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();

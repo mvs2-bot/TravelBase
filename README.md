@@ -40,3 +40,6 @@ Profile in `overall_profiles`, Zugang zur App über `overall_app_access`.
 Admins von TravelBase sehen jede Reise als Admin.
 Admins sehen in der Übersicht unter jeder Reise, wer mit welcher Rolle freigeschaltet ist
 (RPC `travelbase_trip_members_overview()`, liefert nur Reisen, auf denen man selbst Admin ist).
+
+Bei Vielleicht-Reisen können Admins auf der Übersicht das Startdatum wählen (RPC `travelbase_set_trip_start`).
+Das Ende rechnet sich aus der Zahl der Tage im Tagesplan, die Reise-Seite macht aus „Tag 1, Tag 2 …“ echte Daten.
