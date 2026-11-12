@@ -427,7 +427,8 @@
             $('#linkRow').innerHTML = DATA.links.map(l => `<a class="btn ql" href="${esc(l.url)}" target="_blank" rel="noopener">${ic('toolbox')}Link zu den Quick Tools${l.label ? ` · ${esc(l.label)}` : ''} ↗</a>`).join('');
         }
         if ((DATA.flights || []).length) {
-            $('#flightList').innerHTML = DATA.flights.map(f => `
+            const fc = window.tbFlights;
+            $('#flightList').innerHTML = DATA.flights.map(f => fc && fc.isCard(f) ? fc.card(f) : `
                 <li>
                     <div class="fl-date">${esc(f.date)}</div>
                     <div class="fl-route">${esc(f.route)}</div>
