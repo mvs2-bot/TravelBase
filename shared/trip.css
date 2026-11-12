@@ -465,7 +465,7 @@ body.tb-guest .tabs { grid-template-columns: 1fr 1fr; }
 td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* ---------- Handy (< 768 px): Reise-Übersicht als gruppierte Liste und Zurück-Knopf (shared/trip-mobile.js) ---------- */
-.m-back, .m-home-view, .m-route-view { display: none; }
+.m-back, .m-home-view, .m-route-view, .m-tabbar { display: none; }
 @media (max-width: 767.98px) {
     .m-back { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: var(--card); color: var(--p1); box-shadow: var(--shadow); align-self: center; }
     :root[data-theme="dark"] .m-back { background: var(--well); }
@@ -514,5 +514,17 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
     .m-stop.now > div { background: var(--p1-soft); border-radius: 10px; padding: 4px 8px; margin: -4px 0 -4px -6px; flex: 1; }
     .m-now { font-size: 12px; font-weight: 600; color: var(--p1); margin-left: 4px; }
     .m-reload { margin-top: 10px; }
+
+    /* Schwebende Leiste in der Reise: Start · Karte · Route · Infos (wie auf „Alle Reisen“) */
+    body:not(.tb-loading) .m-tabbar { position: fixed; z-index: 1001; left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr);
+        height: 62px; padding: 0 6px; border-radius: 22px; background: var(--card);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, .16), 0 0 0 .5px rgba(0, 0, 0, .06); }
+    :root[data-theme="dark"] .m-tabbar { background: #2c2c2e; box-shadow: 0 8px 28px rgba(0, 0, 0, .6), 0 0 0 .5px rgba(255, 255, 255, .1); }
+    .m-tabbar button { position: relative; z-index: 0; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0; border: 0; background: none; font: inherit; font-size: 11px; font-weight: 500; color: var(--text); }
+    .m-tabbar button .ic { width: 24px; height: 24px; }
+    .m-tabbar button[aria-current="page"]::before { content: ""; position: absolute; inset: 7px 6px; z-index: -1; border-radius: 16px; background: var(--p1-soft); }
+    .m-tabbar button[aria-current="page"] { color: var(--p1); font-weight: 600; }
+    body:not(.tb-loading) { padding-bottom: calc(62px + 36px + env(safe-area-inset-bottom, 0px)); }
 }
 

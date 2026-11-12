@@ -3,7 +3,8 @@
      darunter gruppierte Listen (Reise · Organisation · Infos) mit der wichtigsten Zahl rechts
    - jede Zeile öffnet den Bereich wie bisher; „Route“ öffnet den Zeitstrahl der Stationen
    - oben links führt „‹“ einen Schritt zurück (Bereich → Übersicht der Reise → Alle Reisen), ebenso Wischgeste/App-Leiste
-   - in der Reise gibt es keine Leiste unten
+   - unten eine schwebende Leiste: Start (diese Übersicht) · Karte · Route · Infos; aktive Seite als Pille.
+     Bereiche, die man von Start aus öffnet, zählen zu „Start“
    Am Desktop ändert sich nichts (alles hängt an der Media Query in trip.css).
    Funktioniert mit jeder Reise-Seite, die .pop-btn[data-t] und .pane hat (Vorlage und Thailand).
    „Heute“, Route und Zahlen liefert die Seite über TBTripMobile.setData()/setTile(). */
@@ -13,7 +14,8 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const ic = n => window.tbIcon ? tbIcon(n) : '';
     const KEY = 'travelbase-trip-view:' + location.pathname;
-    let data = {}, home = null, routeView = null;
+    let data = {}, home = null, routeView = null, bar = null;
+    const TABS = [['home', 'Start', 'home'], ['mapview', 'Karte', 'map'], ['route', 'Route', 'pin'], ['misc', 'Infos', 'info']];
 
     /* Gruppen und Farben der Zeilen; unbekannte Bereiche (z. B. Tagespläne) landen bei „Reise“ */
     const GROUP = { mapview: 'trip', acc: 'trip', route: 'trip', flights: 'org', cal: 'org', todos: 'org', pack: 'org', climate: 'info', misc: 'info' };
@@ -29,22 +31,41 @@
         if (on) document.body.classList.remove('m-route');
         store(on ? 'home' : (location.hash.slice(1) || 'section'));
         if (on) { render(); window.scrollTo(0, 0); }
+        mark(on ? 'home' : null);
     }
-    function open(id) {
+    /* aktive Seite in der Leiste: Karte/Route/Infos oder sonst Start */
+    let current = 'home';
+    function mark(id) {
+        if (id) current = id;
+        if (!bar) return;
+        const t = TABS.some(x => x[0] === current) ? current : 'home';
+        bar.querySelectorAll('[data-tab]').forEach(b => b.dataset.tab === t ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+    }
+    function open(id, viaBar) {
+        /* Wechsel per Leiste zwischen Bereichen ersetzt den Verlaufseintrag, damit Zurück direkt zu Start führt */
+        const replace = viaBar && !document.body.classList.contains('m-home') && history.state && history.state.tbView;
         if (id === 'route') {
             document.body.classList.remove('m-home');
             document.body.classList.add('m-route');
-            store('home');
+            store('route');
             window.scrollTo(0, 0);
         } else {
             const b = document.querySelector(`.pop-btn[data-t="${CSS.escape(id)}"]`);
             if (!b) return;
             b.click();
+            document.body.classList.remove('m-route');
             setHome(false);
             store(id);
+            window.scrollTo(0, 0);
         }
+        current = id; mark();
         /* eigener Verlaufseintrag: Zurück (Knopf, Wischgeste, App-Leiste) führt einen Schritt zurück zur Übersicht der Reise */
-        if (mq.matches) history.pushState({ tbView: id }, '', location.pathname + location.search + (id === 'route' ? location.hash : '#' + id));
+        if (mq.matches) history[replace ? 'replaceState' : 'pushState']({ tbView: id }, '', location.pathname + location.search + (id === 'route' ? location.hash : '#' + id));
+    }
+    function tab(id) {
+        if (id === 'home') { if (document.body.classList.contains('m-home')) window.scrollTo({ top: 0, behavior: 'smooth' }); else stepBack(); return; }
+        if (id === current && !document.body.classList.contains('m-home')) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+        open(id, true);
     }
     /* einen Schritt zurück: Bereich → Übersicht der Reise → Alle Reisen */
     function stepBack() {
@@ -107,7 +128,7 @@
                 <div class="m-tl">${stops.map(s => `<div class="m-stop${s.now ? ' now' : ''}" style="--c:${esc(s.color || 'var(--p1)')}"><i>${esc(s.num ?? '')}</i>
                     <div><b>${esc(s.name)}${s.now ? ` <span class="m-now">${s.label || 'Jetzt'}</span>` : ''}</b>
                     ${s.when ? `<small>${esc(s.when)}</small>` : ''}</div></div>`).join('')}</div>
-            </div>` : '';
+            </div>` : `<div class="box m-route"><h2>${ic('pin')}Route</h2><p class="note">Für diese Reise sind noch keine Stationen hinterlegt.</p></div>`;
     }
 
     function init() {
@@ -128,9 +149,16 @@
         routeView = document.createElement('section');
         routeView.id = 'tripRoute'; routeView.className = 'm-route-view';
         sticky.after(home, routeView);
+        /* Schwebende Leiste unten (nur Handy, siehe trip.css) */
+        bar = document.createElement('nav');
+        bar.className = 'm-tabbar'; bar.setAttribute('aria-label', 'Reise');
+        bar.innerHTML = TABS.map(([id, label, icon]) => `<button type="button" data-tab="${id}">${ic(icon)}${label}</button>`).join('');
+        bar.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => tab(b.dataset.tab));
+        document.body.appendChild(bar);
         /* Start: Übersicht, außer beim Neuladen eines offenen Bereichs */
         const s = stored();
-        setHome(!s || s === 'home');
+        if (s === 'route') { setHome(false); document.body.classList.add('m-route'); store('route'); mark('route'); }
+        else { setHome(!s || s === 'home'); if (s && s !== 'home') mark(s); }
         /* Seite fertig geladen (tb-loading weg) oder Countdown aktualisiert → Übersicht neu zeichnen */
         new MutationObserver(render).observe(document.body, { attributes: true, attributeFilter: ['class'] });
         const cd = document.getElementById('countdown');
