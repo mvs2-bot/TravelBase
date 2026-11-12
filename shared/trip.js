@@ -32,9 +32,35 @@
         if (!res) { location.replace('../?next=' + encodeURIComponent(TRIP_SLUG)); return false; }
         if (res.denied) { gate(`<h2>${ic('lock')}Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>`); return false; }
         DATA = res.data; ROLE = res.role; TRIP_ID = res.trip.id; TRIP_FLAGS = res.trip.flags || []; TRIP_MAYBE = !!res.trip.tentative;
+        applyChosenStart(res.trip);
         $('#tbWho').innerHTML = ic('person') + esc(res.user.name || res.user.email);
         $('#tbOffline').hidden = !res.offline;
         return true;
+    }
+
+    /* ---------- Vielleicht-Reise mit gewähltem Startdatum ----------
+       Tagespläne ohne Datum („Tag 1, Tag 2 …“) bekommen echte Tage, sobald die Reise ein Startdatum hat
+       (auf der Übersicht wählbar). Zeitraum im Kopf, Countdown und Karten-Popups ziehen mit. */
+    function applyChosenStart(trip) {
+        if (!trip || !trip.start_date) return;
+        const s0 = trip.start_date, WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+        const add = n => { const d = new Date(Date.UTC(+s0.slice(0, 4), +s0.slice(5, 7) - 1, +s0.slice(8, 10) + n)); return d.toISOString().slice(0, 10); };
+        const label = iso => `${fmtDM(iso)} (${WD[new Date(iso + 'T12:00:00Z').getUTCDay()]})`;
+        const tagN = n => /^Tag (\d+)$/.exec(n || '');
+        (DATA.plans || []).forEach(p => (p.rows || []).forEach((r, i) => {
+            if (r.from) return;
+            const m = tagN(r.date), off = m ? +m[1] - 1 : i;
+            r.from = add(off); r.date = label(r.from);
+        }));
+        Object.values(DATA.places || {}).forEach(pl => {
+            if (pl.date) pl.date = pl.date.replace(/Tag (\d+)/g, (_, n) => label(add(+n - 1)));
+        });
+        const m = DATA.meta = DATA.meta || {};
+        if (!m.start) {
+            m.start = s0; m.end = trip.end_date || s0;
+            const range = `${fmtDM(m.start)} – ${fmtDM(m.end)}${m.end.slice(0, 4)}`;
+            m.period = m.period ? m.period.replace(/^Zeitraum offen/, range) : range;
+        }
     }
 
     /* ---------- Kopf ---------- */
