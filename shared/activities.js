@@ -133,6 +133,14 @@
                 <div class="act-head"><button type="button" class="act-dot" aria-label="Schließen"></button><h2 id="actModalTitle"></h2></div>
                 <div data-loc=""></div></div>`;
             modal.onclick = e => { if (e.target === modal || e.target.closest('.act-dot')) close(); };
+            /* seitlich wischen (links oder rechts) schließt; senkrechtes Scrollen in der Liste bleibt unberührt */
+            let t0 = null;
+            modal.addEventListener('touchstart', e => { const t = e.touches[0]; t0 = e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null; }, { passive: true });
+            modal.addEventListener('touchend', e => {
+                const t = e.changedTouches[0];
+                if (t0 && Math.abs(t.clientX - t0.x) > 70 && Math.abs(t.clientX - t0.x) > 2 * Math.abs(t.clientY - t0.y)) close();
+                t0 = null;
+            }, { passive: true });
             document.body.appendChild(modal);
         }
         const p = places.find(x => x.name === name) || { name, num };
@@ -191,6 +199,8 @@
         document.addEventListener('click', onClick);
         document.addEventListener('submit', onSubmit);
         document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal && modal.classList.contains('open')) { e.stopPropagation(); close(); } }, true);
+        /* Zurück-Geste/-Taste (Android, Browser) schließt das Modal mit */
+        window.addEventListener('popstate', () => close());
         window.TBActivities.ready = true;
         renderAll();
         load();
