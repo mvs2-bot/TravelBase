@@ -18,6 +18,7 @@
     <script src="../shared/travelbase.js"></script>
     <script src="../shared/overall-account.js"></script>
     <script src="../shared/trip-mobile.js"></script>
+    <script src="../shared/flights.js"></script>
     <script src="../shared/activities.js"></script>
     <script src="../shared/profile.js"></script>
     <script src="../shared/ios-nav.js" defer></script>
@@ -276,7 +277,7 @@
         <div id="flights" class="pane">
             <div class="box">
                 <h2><svg class="ic"><use href="#i-plane"></use></svg>Gebuchte Flüge (Übersicht)</h2>
-                <p class="note">Alle gebuchten Flugverbindungen und Zwischenstopps im Detail (inkl. direktem Link zur Flugstatusprüfung der Airline):</p>
+                <p class="note">Alle gebuchten Flüge mit Zeiten, Zwischenstopps und direktem Link zum Flugstatus der Airline.</p>
                 <ul class="fl-list" id="flightList"></ul>
             </div>
         </div>
@@ -555,7 +556,8 @@
 
         /* 3. Flüge & Infos */
         function renderFlights() {
-            $('#flightList').innerHTML = DATA.flights.map(f => `
+            const fc = window.tbFlights;
+            $('#flightList').innerHTML = DATA.flights.map(f => fc && fc.isCard(f) ? fc.card(f) : `
                     <li>
                         <div class="fl-date">${f.date}</div>
                         <div class="fl-route">${f.route}</div>
