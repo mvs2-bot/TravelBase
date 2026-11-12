@@ -43,6 +43,8 @@
        (auf der Übersicht wählbar). Zeitraum im Kopf, Countdown und Karten-Popups ziehen mit. */
     function applyChosenStart(trip) {
         if (!trip || !trip.start_date) return;
+        const m0 = DATA.meta || {};
+        if (m0.start && m0.start !== trip.start_date) return shiftTrip(m0.start, trip.start_date);
         const s0 = trip.start_date, WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
         const add = n => { const d = new Date(Date.UTC(+s0.slice(0, 4), +s0.slice(5, 7) - 1, +s0.slice(8, 10) + n)); return d.toISOString().slice(0, 10); };
         const label = iso => `${fmtDM(iso)} (${WD[new Date(iso + 'T12:00:00Z').getUTCDay()]})`;
@@ -61,6 +63,37 @@
             const range = `${fmtDM(m.start)} – ${fmtDM(m.end)}${m.end.slice(0, 4)}`;
             m.period = m.period ? m.period.replace(/^Zeitraum offen/, range) : range;
         }
+    }
+
+    /* Reise mit fertigem, datiertem Plan wurde auf der Übersicht verschoben (date_flexible):
+       alle Daten rücken um dieselbe Zahl Tage – ISO-Daten in den Daten und „25.03. (Do)“ / „Do 25.03.“ in Texten.
+       Feiertage (workdays.*.holidays) bleiben, wo sie sind. In der Datenbank bleibt der Plan unverändert. */
+    function shiftTrip(base, start) {
+        const off = dayNum(start) - dayNum(base);
+        if (!off) return;
+        const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+        const by = +base.slice(0, 4), bm = +base.slice(5, 7);
+        const shiftISO = iso => new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + off)).toISOString().slice(0, 10);
+        const wd = iso => WD[new Date(iso + 'T12:00:00Z').getUTCDay()];
+        const RX = /(?:\b(Mo|Di|Mi|Do|Fr|Sa|So),? )?\b(\d{2})\.(\d{2})\.(\d{4})?( \((?:Mo|Di|Mi|Do|Fr|Sa|So)\))?/g;
+        const shiftText = t => t.replace(RX, (all, pre, d, mo, y, post) => {
+            if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return all;
+            const yy = y ? +y : by + (+mo < bm - 6 ? 1 : +mo > bm + 6 ? -1 : 0);
+            const iso = shiftISO(`${yy}-${mo}-${d}`), w = wd(iso);
+            return (pre ? w + ' ' : '') + `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` + (y ? iso.slice(0, 4) : '') + (post ? ` (${w})` : '');
+        });
+        const walk = (v, key) => {
+            if (key === 'holidays') return v;
+            if (typeof v === 'string') {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return shiftISO(v);
+                if (/^\d{4}-\d{2}-\d{2}T/.test(v)) return shiftISO(v.slice(0, 10)) + v.slice(10);
+                return shiftText(v);
+            }
+            if (Array.isArray(v)) return v.map(x => walk(x, key));
+            if (v && typeof v === 'object') { for (const k of Object.keys(v)) v[k] = walk(v[k], k); return v; }
+            return v;
+        };
+        walk(DATA);
     }
 
     /* ---------- Kopf ---------- */
