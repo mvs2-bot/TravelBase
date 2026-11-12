@@ -120,10 +120,11 @@
         }
     }
 
-    /* Expanding Modal: wächst aus dem angetippten Routen-Punkt heraus. Derselbe Punkt sitzt im Modal an derselben Stelle
+    /* Expanding Modal: wächst aus dem angetippten Routen-Punkt heraus und fällt beim Schließen dorthin zurück.
+       Derselbe Punkt sitzt im Modal immer auf gleicher Höhe direkt unter der Kopfleiste, in der Spalte der Routen-Punkte,
        und schließt es wieder (ebenso ESC und Klick daneben). Ohne Ursprungs-Punkt öffnet es mittig. */
     const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let origin = null, closing = false;
+    let origin = null, from0 = null, closing = false;
     function open(name, num, from) {
         if (!modal) {
             modal = document.createElement('div');
@@ -143,11 +144,11 @@
         editing = null;
         origin = from || null;
         panel.removeAttribute('style');
+        from0 = null;
         if (origin) {
-            /* Punkt nach oben holen, damit unter ihm Platz für die Liste ist */
-            let r = origin.getBoundingClientRect();
-            if (r.top > innerHeight * .35 || r.top < 70) { scrollTo({ top: scrollY + r.top - 90, behavior: 'instant' }); r = origin.getBoundingClientRect(); }
-            panel.style.top = (r.top - 14) + 'px';
+            const r = origin.getBoundingClientRect(), hd = document.querySelector('.sticky-header');
+            from0 = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+            panel.style.top = ((hd ? hd.getBoundingClientRect().bottom : 0) + 8) + 'px';
             panel.style.setProperty('--dx', (r.left - 8) + 'px');
         }
         modal.classList.add('open');
@@ -159,7 +160,8 @@
     function animate(back) {
         const panel = modal.querySelector('.act-panel'), dot = modal.querySelector('.act-dot');
         const pr = panel.getBoundingClientRect(), dr = dot.getBoundingClientRect();
-        const cx = dr.left + dr.width / 2 - pr.left, cy = dr.top + dr.height / 2 - pr.top;
+        /* Kreis-Mitte: angetippter Routen-Punkt, sonst der Punkt im Modal */
+        const c = from0 || { x: dr.left + dr.width / 2, y: dr.top + dr.height / 2 }, cx = c.x - pr.left, cy = c.y - pr.top;
         const R = Math.hypot(Math.max(cx, pr.width - cx), Math.max(cy, pr.height - cy));
         const frames = [{ clipPath: `circle(${dr.width / 2}px at ${cx}px ${cy}px)` }, { clipPath: `circle(${R}px at ${cx}px ${cy}px)` }];
         const opt = { duration: reduced() ? 0 : back ? 260 : 380, easing: back ? 'cubic-bezier(.4,0,1,1)' : 'cubic-bezier(.2,.8,.2,1)', fill: 'both' };
