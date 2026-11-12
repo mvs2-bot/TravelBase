@@ -399,7 +399,7 @@
             <a class="trip-card${t.st.past ? ' past' : ''}${t.tentative ? ' tentative' : ''}" href="${encodeURIComponent(t.slug)}/">
                 <div class="trip-flags">${(t.flags || []).map(esc).join('')}</div>
                 <div class="trip-title">${esc(t.title)}</div>
-                <div class="trip-dates">${tbIcon('calendar')}${fmtDate(t.start_date)}${t.end_date ? ' – ' + fmtDate(t.end_date) : ''}</div>
+                <div class="trip-dates">${tbIcon('calendar')}${t.start_date ? fmtDate(t.start_date) + (t.end_date ? ' – ' + fmtDate(t.end_date) : '') : 'Zeitraum offen'}</div>
                 <div class="trip-meta">
                     <span class="chip ${t.st.cls}">${esc(t.st.text)}</span>
                     ${t.tentative ? '<span class="chip maybe">Vielleicht</span>' : ''}
