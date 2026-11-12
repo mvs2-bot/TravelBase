@@ -18,6 +18,7 @@
     <script src="../shared/travelbase.js"></script>
     <script src="../shared/overall-account.js"></script>
     <script src="../shared/trip-mobile.js"></script>
+    <script src="../shared/activities.js"></script>
     <script src="../shared/profile.js"></script>
     <script src="../shared/ios-nav.js" defer></script>
     
@@ -54,8 +55,8 @@
             <!-- Haupt-Tabs für Desktop/Tablet -->
             <div class="tabs" role="tablist">
                 <button class="tab on" data-t="mapview"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
-                <button class="tab" data-t="thailand" title="Tagesplan Thailand"><span>🇹🇭</span>Thailand</button>
-                <button class="tab" data-t="srilanka" title="Tagesplan Sri Lanka"><span>🇱🇰</span>Sri Lanka</button>
+                <button class="tab" data-t="thailand" title="Möglicher Ablauf Thailand"><span>🇹🇭</span>Thailand</button>
+                <button class="tab" data-t="srilanka" title="Möglicher Ablauf Sri Lanka"><span>🇱🇰</span>Sri Lanka</button>
                 <button class="tab" data-t="acc"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
                 <button class="tab tab-menu" id="menuBurger" type="button" aria-label="Menü öffnen"><span><svg class="ic"><use href="#i-list"></use></svg></span>Menü</button>
             </div>
@@ -73,9 +74,10 @@
                 </div>
                 <div class="popover-links">
                     <button data-t="mapview" class="pop-btn on"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
-                    <button data-t="thailand" class="pop-btn"><span>🇹🇭</span>Tagesplan Thailand</button>
-                    <button data-t="srilanka" class="pop-btn"><span>🇱🇰</span>Tagesplan Sri Lanka</button>
+                    <button data-t="thailand" class="pop-btn"><span>🇹🇭</span>Möglicher Ablauf Thailand</button>
+                    <button data-t="srilanka" class="pop-btn"><span>🇱🇰</span>Möglicher Ablauf Sri Lanka</button>
                     <button data-t="acc" class="pop-btn"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
+                    <button data-t="activities" class="pop-btn"><span><svg class="ic"><use href="#i-sparkles"></use></svg></span>Mögliche Aktivitäten</button>
                     <button data-t="todos" class="pop-btn"><span><svg class="ic"><use href="#i-checkCircle"></use></svg></span>To-Dos</button>
                     <button data-t="misc" class="pop-btn"><span><svg class="ic"><use href="#i-info"></use></svg></span>Infos &amp; mehr</button>
                     <button data-t="flights" class="pop-btn"><span><svg class="ic"><use href="#i-plane"></use></svg></span>Gebuchte Flüge</button>
@@ -108,11 +110,11 @@
             </div>
         </div>
 
-        <!-- Sektion 2: Tagesplan Thailand -->
+        <!-- Sektion 2: Möglicher Ablauf Thailand -->
         <div id="thailand" class="pane">
             <div class="box">
                 <div class="mh plan-head">
-                    <h2>🇹🇭 Tagesplan Thailand</h2>
+                    <h2>🇹🇭 Möglicher Ablauf Thailand</h2>
                     <p class="note" style="margin-bottom:0" id="planNoteTh"></p>
                 </div>
                 <div class="controls" id="filterControlsThailand"></div>
@@ -135,11 +137,11 @@
             </div>
         </div>
 
-        <!-- Sektion 3: Tagesplan Sri Lanka -->
+        <!-- Sektion 3: Möglicher Ablauf Sri Lanka -->
         <div id="srilanka" class="pane">
             <div class="box">
                 <div class="mh plan-head">
-                    <h2>🇱🇰 Tagesplan Sri Lanka</h2>
+                    <h2>🇱🇰 Möglicher Ablauf Sri Lanka</h2>
                     <p class="note" style="margin-bottom:0" id="planNoteSl"></p>
                 </div>
                 <div class="controls" id="filterControlsSriLanka"></div>
@@ -201,6 +203,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- Mögliche Aktivitäten pro Ort (Inhalt aus shared/activities.js) -->
+        <div id="activities" class="pane"></div>
 
         <!-- Sektion 5: Sonstiges & Statistiken -->
         <div id="misc" class="pane">
@@ -1343,6 +1348,7 @@
             if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} Flüge` };
             if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
             TBTripMobile.setData({ flags: TRIP_FLAGS, past, today, route, tiles, people: persons.map(p => p.name).join(', ') });
+            if (window.TBActivities) TBActivities.init({ tripId: TRIP_ID, slug: TRIP_SLUG, stops: route });
         }
     </script>
 <script>/* TravelBase PWA */if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("../sw.js").catch(function(){});});}</script>

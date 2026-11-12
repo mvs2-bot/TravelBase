@@ -1,7 +1,8 @@
 /* TravelBase – Reise-Seite am Handy (< 768 px)
    - Start ist eine Übersicht der Reise wie in den iPhone-Einstellungen: oben Status und „Heute“,
      darunter gruppierte Listen (Reise · Organisation · Infos) mit der wichtigsten Zahl rechts
-   - jede Zeile öffnet den Bereich wie bisher; „Route“ öffnet den Zeitstrahl der Stationen
+   - jede Zeile öffnet den Bereich wie bisher; „Route“ öffnet den Zeitstrahl der Stationen,
+     dort öffnet die Nummer eines Orts seine möglichen Aktivitäten (shared/activities.js)
    - oben links führt „‹“ einen Schritt zurück (Bereich → Übersicht der Reise → Alle Reisen), ebenso Wischgeste/App-Leiste
    - unten eine schwebende Leiste: Start (diese Übersicht) · Karte · Route · Infos; aktive Seite als Pille.
      Bereiche, die man von Start aus öffnet, zählen zu „Start“
@@ -18,8 +19,8 @@
     const TABS = [['home', 'Start', 'home'], ['mapview', 'Karte', 'map'], ['route', 'Route', 'pin'], ['misc', 'Infos', 'info']];
 
     /* Gruppen und Farben der Zeilen; unbekannte Bereiche (z. B. Tagespläne) landen bei „Reise“ */
-    const GROUP = { mapview: 'trip', acc: 'trip', route: 'trip', flights: 'org', cal: 'org', todos: 'org', pack: 'org', climate: 'info', misc: 'info' };
-    const COLOR = { mapview: '#15803d', route: '#0e7490', acc: '#b45309', flights: '#e11d48', cal: '#d97706', todos: '#248a3d', pack: '#5856d6', climate: '#0284c7', misc: '#8a5a00' };
+    const GROUP = { mapview: 'trip', acc: 'trip', activities: 'trip', route: 'trip', flights: 'org', cal: 'org', todos: 'org', pack: 'org', climate: 'info', misc: 'info' };
+    const COLOR = { mapview: '#15803d', route: '#0e7490', acc: '#b45309', activities: '#ff9500', flights: '#e11d48', cal: '#d97706', todos: '#248a3d', pack: '#5856d6', climate: '#0284c7', misc: '#8a5a00' };
     const PLAN_COLORS = ['#1f6fb2', '#7c3aed', '#0d9488', '#be185d'];
 
     /* Offene Ansicht pro Reise merken: Neuladen bleibt dort, ein neuer Aufruf startet auf der Übersicht */
@@ -123,12 +124,17 @@
             ${list('trip', 'Reise')}${list('org', 'Organisation')}${list('info', 'Infos')}`;
         home.querySelectorAll('[data-open]').forEach(b => b.onclick = () => open(b.dataset.open));
         const stops = data.route || [];
+        /* Nummern öffnen die möglichen Aktivitäten des Orts (shared/activities.js), sobald geladen */
+        const act = window.TBActivities && TBActivities.ready;
         if (routeView) routeView.innerHTML = stops.length ? `<div class="box m-route">
                 <h2>${ic('pin')}Route · ${stops.length} Stationen</h2>
-                <div class="m-tl">${stops.map(s => `<div class="m-stop${s.now ? ' now' : ''}" style="--c:${esc(s.color || 'var(--p1)')}"><i>${esc(s.num ?? '')}</i>
+                <div class="m-tl">${stops.map(s => `<div class="m-stop${s.now ? ' now' : ''}" style="--c:${esc(s.color || 'var(--p1)')}">${act
+                    ? `<button type="button" class="m-num" data-loc="${esc(s.name)}" data-num="${esc(s.num ?? '')}" aria-label="Mögliche Aktivitäten: ${esc(s.name)}" title="Mögliche Aktivitäten">${esc(s.num ?? '')}</button>`
+                    : `<i>${esc(s.num ?? '')}</i>`}
                     <div><b>${esc(s.name)}${s.now ? ` <span class="m-now">${s.label || 'Jetzt'}</span>` : ''}</b>
                     ${s.when ? `<small>${esc(s.when)}</small>` : ''}</div></div>`).join('')}</div>
             </div>` : `<div class="box m-route"><h2>${ic('pin')}Route</h2><p class="note">Für diese Reise sind noch keine Stationen hinterlegt.</p></div>`;
+        if (routeView) routeView.querySelectorAll('.m-num').forEach(b => b.onclick = () => TBActivities.open(b.dataset.loc, b.dataset.num));
     }
 
     function init() {

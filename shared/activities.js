@@ -1,0 +1,160 @@
+/* TravelBase – Mögliche Aktivitäten pro Ort (Supabase-Tabelle travelbase_activities)
+   - Unterseite #activities: eine Card pro Ort in Routen-Reihenfolge, Orte mehrfach in der Route nur einmal
+   - Modal (aus der Route am Handy): dieselben Aktivitäten eines Orts
+   - Verknüpfung über trip_id + location_name, damit doppelte Routen-Stopps (z. B. 2× Antigua) dieselben Aktivitäten teilen
+   Seite und Modal zeichnen aus derselben Liste, Änderungen erscheinen sofort in beiden.
+   Aufruf: TBActivities.init({ tripId, slug, stops: [{ num, name, color }] }), danach TBActivities.open(name, num). */
+(function () {
+    'use strict';
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const ic = n => window.tbIcon ? tbIcon(n) : '';
+    const FIELDS = 'id, location_name, title, description, duration, cost_info, sort_order';
+    let tripId = null, cacheKey = '', places = [], list = [], online = false, editing = null, modal = null;
+
+    const q = async p => { const { data, error } = await p; if (error) throw error; return data; };
+    const forLoc = name => list.filter(a => a.location_name === name);
+
+    async function load() {
+        try {
+            list = await q(TB.sb.from('travelbase_activities').select(FIELDS).eq('trip_id', tripId).order('sort_order').order('created_at'));
+            TB.cacheSet(cacheKey, list);
+            online = true;
+        } catch (e) {
+            list = TB.cacheGet(cacheKey) || [];
+            online = false;
+            if (!TB.isNetErr(e)) console.error('Aktivitäten laden', e);
+        }
+        renderAll();
+    }
+    function editable() {
+        if (online && navigator.onLine) return true;
+        alert('📴 Offline – Aktivitäten können gerade nicht bearbeitet werden. Bitte später erneut versuchen.');
+        return false;
+    }
+    async function write(fn) {
+        try { await fn(); TB.cacheSet(cacheKey, list); renderAll(); }
+        catch (e) { alert('⚠️ Speichern fehlgeschlagen: ' + TB.errorText(e)); await load(); }
+    }
+
+    /* Inhalt eines Orts: Liste + Formular (neu oder bearbeiten); gleiche Optik wie die To-Do-Liste */
+    function body(name) {
+        const items = forLoc(name);
+        const form = a => `<form class="pack-add-form act-form" data-id="${a ? esc(a.id) : ''}">
+                <input type="text" name="title" placeholder="Aktivität *" required maxlength="200" value="${esc(a && a.title)}">
+                <input type="text" name="duration" placeholder="Dauer (optional)" maxlength="80" value="${esc(a && a.duration)}">
+                <input type="text" name="cost_info" placeholder="Kosten (optional)" maxlength="80" value="${esc(a && a.cost_info)}">
+                <textarea name="description" rows="2" placeholder="Notiz (optional)" maxlength="2000">${esc(a && a.description)}</textarea>
+                <button class="f on" type="submit">${ic('check')}Speichern</button>
+                <button class="f" type="button" data-act="cancel">Abbrechen</button>
+            </form>`;
+        const row = a => editing && editing.id === a.id ? `<li class="act-edit">${form(a)}</li>` : `
+            <li class="todo-item act-item">
+                <div class="act-main">
+                    <b>${esc(a.title)}</b>
+                    ${a.duration || a.cost_info ? `<div class="act-meta">${a.duration ? `<span class="pill">${ic('clock')}${esc(a.duration)}</span>` : ''}${a.cost_info ? `<span class="pill">${esc(a.cost_info)}</span>` : ''}</div>` : ''}
+                    ${a.description ? `<p>${esc(a.description)}</p>` : ''}
+                </div>
+                <button type="button" data-act="edit" data-id="${esc(a.id)}" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button>
+                <button type="button" data-act="del" data-id="${esc(a.id)}" aria-label="Löschen" title="Löschen">${ic('trash')}</button>
+            </li>`;
+        const adding = editing && editing.loc === name && !editing.id;
+        return (items.length ? `<ul class="todo-list act-list">${items.map(row).join('')}</ul>` : (adding ? '' : '<p class="note act-empty">Noch keine Aktivitäten gespeichert.</p>'))
+            + (adding ? form(null) : `<button class="btn-action act-add" type="button" data-act="add">${ic('plus')}Aktivität hinzufügen</button>`);
+    }
+    const head = p => `<span class="act-num" style="--c:${esc(p.color || 'var(--p1)')}">${esc(p.num ?? '')}</span>${esc(p.name)}`;
+
+    function renderAll() {
+        const pane = document.getElementById('activities');
+        if (pane) pane.innerHTML = `<div class="box">
+                <h2>${ic('sparkles')}Mögliche Aktivitäten</h2>
+                <p class="note">Ideen pro Ort für alle Mitreisenden. Orte, die mehrfach in der Route vorkommen, teilen sich ihre Aktivitäten.</p>
+                ${online ? '' : `<div class="tb-banner">${ic('wifiOff')}<span>Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</span></div>`}
+            </div>` + places.map(p => `<div class="box act-card">
+                <div class="mh"><h2>${head(p)}</h2><small class="act-count">${forLoc(p.name).length || ''}</small></div>
+                <div data-loc="${esc(p.name)}">${body(p.name)}</div>
+            </div>`).join('');
+        if (modal && modal.classList.contains('open')) {
+            const box = modal.querySelector('[data-loc]');
+            box.innerHTML = body(box.dataset.loc);
+        }
+        if (window.TBTripMobile && TBTripMobile.setTile) TBTripMobile.setTile('activities', { text: `${list.length} ${list.length === 1 ? 'Aktivität' : 'Aktivitäten'}` });
+    }
+
+    /* Klicks und Formulare überall (Seite + Modal) über Delegation */
+    function onClick(e) {
+        const b = e.target.closest('[data-act]'), box = e.target.closest('[data-loc]');
+        if (!b || !box) return;
+        const loc = box.dataset.loc, act = b.dataset.act, a = list.find(x => x.id === b.dataset.id);
+        if (act === 'cancel') { editing = null; renderAll(); return; }
+        if (!editable()) return;
+        if (act === 'add') { editing = { loc }; renderAll(); focusForm(box); }
+        else if (act === 'edit' && a) { editing = { loc, id: a.id }; renderAll(); focusForm(box); }
+        else if (act === 'del' && a && confirm(`„${a.title}“ löschen?`)) {
+            list = list.filter(x => x !== a);
+            write(() => q(TB.sb.from('travelbase_activities').delete().eq('id', a.id)));
+        }
+    }
+    /* Seite und Modal zeigen das Formular beide; Fokus dorthin, wo geklickt wurde */
+    function focusForm(box) {
+        const scope = modal && modal.contains(box) ? modal : document.getElementById('activities');
+        const i = scope && scope.querySelector(`[data-loc="${CSS.escape(box.dataset.loc)}"] .act-form input`);
+        if (i) i.focus();
+    }
+    function onSubmit(e) {
+        const f = e.target.closest('.act-form');
+        if (!f) return;
+        e.preventDefault();
+        if (!editable()) return;
+        const loc = f.closest('[data-loc]').dataset.loc, val = n => f.elements[n].value.trim() || null;
+        const fields = { title: val('title'), description: val('description'), duration: val('duration'), cost_info: val('cost_info') };
+        if (!fields.title) return alert('Bitte einen Titel eingeben!');
+        const id = f.dataset.id;
+        editing = null;
+        if (id) {
+            const a = list.find(x => x.id === id);
+            Object.assign(a, fields);
+            write(() => q(TB.sb.from('travelbase_activities').update(fields).eq('id', id)));
+        } else {
+            const sort_order = forLoc(loc).reduce((m, x) => Math.max(m, x.sort_order || 0), -1) + 1;
+            write(async () => list.push(await q(TB.sb.from('travelbase_activities').insert({ trip_id: tripId, location_name: loc, sort_order, ...fields }).select(FIELDS).single())));
+        }
+    }
+
+    /* Modal im Stil des Navigations-Menüs; schließt über X, Klick daneben oder ESC */
+    function open(name, num) {
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'nav-popover act-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.innerHTML = `<div class="popover-content"><div class="popover-header"><div class="popover-title"><h2></h2></div>
+                <button type="button" class="act-x" aria-label="Schließen">${ic('x')}</button></div><div data-loc=""></div></div>`;
+            modal.onclick = e => { if (e.target === modal || e.target.closest('.act-x')) close(); };
+            document.body.appendChild(modal);
+        }
+        const p = places.find(x => x.name === name) || { name, num };
+        modal.querySelector('h2').innerHTML = `${ic('sparkles')}${num != null ? esc(num) + ' · ' : ''}${esc(name)}`;
+        modal.querySelector('[data-loc]').dataset.loc = p.name;
+        editing = null;
+        modal.classList.add('open');
+        renderAll();
+        modal.querySelector('.act-x').focus();
+    }
+    function close() { if (modal) { modal.classList.remove('open'); editing = null; renderAll(); } }
+
+    function init(o) {
+        if (tripId || !o || !o.tripId || !window.TB || !TB.sb) return;
+        tripId = o.tripId;
+        cacheKey = `lists_${o.slug}_activities`;
+        const seen = new Set();
+        places = (o.stops || []).filter(s => s.name && !seen.has(s.name) && seen.add(s.name));
+        document.addEventListener('click', onClick);
+        document.addEventListener('submit', onSubmit);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal && modal.classList.contains('open')) { e.stopPropagation(); close(); } }, true);
+        window.TBActivities.ready = true;
+        renderAll();
+        load();
+    }
+
+    window.TBActivities = { init, open, close, ready: false };
+})();

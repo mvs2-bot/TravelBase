@@ -146,7 +146,7 @@
 
     /* Backup (nur Admins): alle Tabellen der Reisen, in denen der Benutzer Admin ist, als ein JSON-Objekt.
        Läuft mit dem Login des Admins – die Zugriffsregeln der Datenbank gelten also wie sonst auch. */
-    const BACKUP_TABLES = ['travelbase_trips', 'travelbase_trip_sections', 'travelbase_trip_members', 'travelbase_todos', 'travelbase_packlist_items'];
+    const BACKUP_TABLES = ['travelbase_trips', 'travelbase_trip_sections', 'travelbase_trip_members', 'travelbase_todos', 'travelbase_packlist_items', 'travelbase_activities'];
     async function exportBackup() {
         const session = await getSession();
         if (!session) throw new Error('Bitte zuerst anmelden.');
