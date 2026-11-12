@@ -14,6 +14,7 @@ shared/overall-account.js  gemeinsames Konto-Modul aller Apps (Name, Bild, Gebur
                       Original im Repo supabase-core, hier nur eine Kopie
 shared/profile.js     Profil-Button oben rechts mit Menü (nutzt overall-account.js)
 shared/flags.css      Flaggen-Schrift (Fix für Windows)
+shared/activities.js  Mögliche Aktivitäten pro Ort (Unterseite + Modal aus der Route), Tabelle travelbase_activities
 shared/trip.*         Reise-Vorlage (trip.js/trip.css/trip-template.html) für alle Reisen außer Thailand
 sw.js, manifest.json  App/Offline für alle Reisen
 <reise-slug>/         eine Reise pro Ordner, Ordnername = slug in Supabase
@@ -43,3 +44,8 @@ Admins sehen in der Übersicht unter jeder Reise, wer mit welcher Rolle freigesc
 
 Bei Vielleicht-Reisen können Admins auf der Übersicht das Startdatum wählen (RPC `travelbase_set_trip_start`).
 Das Ende rechnet sich aus der Zahl der Tage im Tagesplan, die Reise-Seite macht aus „Tag 1, Tag 2 …“ echte Daten.
+
+Mögliche Aktivitäten: in der Reise-Vorlage per `"activities": true` in einem Abschnitt mit `min_role` `member` einschalten
+(Thailand hat sie fest eingebaut). Gespeichert in `travelbase_activities`, verknüpft über `trip_id` + `location_name`
+(= Ortsname der Route); kommt ein Ort mehrfach in der Route vor, teilen sich beide Stopps die Aktivitäten.
+Wird ein Ort in den Reisedaten umbenannt, müssen die Zeilen mit dem alten `location_name` mitgezogen werden.

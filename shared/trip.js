@@ -121,6 +121,8 @@
         const s = [];
         if (DATA.places) s.push({ id: 'mapview', icon: ic('map'), label: 'Karte', tab: true });
         (DATA.plans || []).forEach(p => s.push({ id: p.id, icon: p.icon ? esc(p.icon) : ic('calendar'), label: p.tabLabel || 'Tagesplan', tab: true }));
+        // Mögliche Aktivitäten: eingeschaltet über "activities": true in den Reisedaten (shared/activities.js)
+        if (DATA.activities) s.push({ id: 'activities', icon: ic('sparkles'), label: 'Mögliche Aktivitäten' });
         if (DATA.calendar && (DATA.persons || []).length) s.push({ id: 'cal', icon: ic('users'), label: 'Anwesenheit', tab: true });
         // To-Dos als eigener Bereich; eine ältere Seite aus dem Cache ohne #todos zeigt sie weiter unter „Infos & mehr“
         const todoPane = DATA.todos && !!$('#todos');
@@ -133,10 +135,11 @@
     let SECTIONS = [];
     function renderNav() {
         SECTIONS = sections();
+        if (DATA.activities && !$('#activities')) $('#planPanes').insertAdjacentHTML('afterend', '<div id="activities" class="pane"></div>');
         const tabs = SECTIONS.filter(s => s.tab);
         $('#tabs').style.setProperty('--tab-count', tabs.length + 1);
-        /* Schnellauswahl einzeilig: „Tagesplan Peru“ → „Peru“ (voller Name als Tooltip) */
-        $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${s.id}" title="${esc(s.label)}"><span>${s.icon}</span>${esc(s.label.replace(/^Tagesplan (?=\S)/, ''))}</button>`).join('')
+        /* Schnellauswahl einzeilig: „Tagesplan Peru“ / „Möglicher Ablauf Peru“ → „Peru“ (voller Name als Tooltip) */
+        $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${s.id}" title="${esc(s.label)}"><span>${s.icon}</span>${esc(s.label.replace(/^(Tagesplan|Möglicher Ablauf) (?=\S)/, ''))}</button>`).join('')
             + '<button class="tab tab-menu" id="menuTab" type="button" aria-label="Menü öffnen"><span>' + ic('list') + '</span>Menü</button>';
         $('#popLinks').innerHTML = SECTIONS.map(s => `<button data-t="${s.id}" class="pop-btn"><span>${s.icon}</span>${esc(s.label)}</button>`).join('');
         document.querySelectorAll('.tabs .tab[data-t]').forEach(b => b.onclick = () => switchTab(b.dataset.t));
@@ -574,6 +577,13 @@
         if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
         const people = (DATA.persons || []).map(p => p.name).join(', ');
         TBTripMobile.setData({ flags: TRIP_FLAGS, past, maybe: TRIP_MAYBE, today, route, tiles, people });
+        if (DATA.activities) {
+            const go = () => TBActivities.init({ tripId: TRIP_ID, slug: TRIP_SLUG, stops: route });
+            if (window.TBActivities) return go();
+            const sc = document.createElement('script');
+            sc.src = '../shared/activities.js'; sc.onload = go;
+            document.head.appendChild(sc);
+        }
     }
 
     /* ---------- Hell/Dunkel ---------- */
