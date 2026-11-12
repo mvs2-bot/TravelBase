@@ -134,7 +134,7 @@
                     <div><b>${esc(s.name)}${s.now ? ` <span class="m-now">${s.label || 'Jetzt'}</span>` : ''}</b>
                     ${s.when ? `<small>${esc(s.when)}</small>` : ''}</div></div>`).join('')}</div>
             </div>` : `<div class="box m-route"><h2>${ic('pin')}Route</h2><p class="note">Für diese Reise sind noch keine Stationen hinterlegt.</p></div>`;
-        if (routeView) routeView.querySelectorAll('.m-num').forEach(b => b.onclick = () => TBActivities.open(b.dataset.loc, b.dataset.num));
+        if (routeView) routeView.querySelectorAll('.m-num').forEach(b => b.onclick = () => TBActivities.open(b.dataset.loc, b.dataset.num, b));
     }
 
     function init() {

@@ -102,10 +102,10 @@ header p { font-size: 13px; font-weight: 500; color: var(--mute); }
 .popover-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .popover-header h2 { font-size: 17px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
 .popover-header h2 .ic { color: var(--p1); }
-#closePopover, .act-x { width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--well); color: var(--mute); display: grid; place-items: center; font-size: 15px; }
-#closePopover:hover, .act-x:hover { background: var(--hover); color: var(--ink); }
+#closePopover { width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--well); color: var(--mute); display: grid; place-items: center; font-size: 15px; }
+#closePopover:hover { background: var(--hover); color: var(--ink); }
 :root[data-theme="dark"] .popover-content { background: #1c1c1e; }
-:root[data-theme="dark"] #closePopover, :root[data-theme="dark"] .act-x, :root[data-theme="dark"] .theme-toggle-sm { background: #2c2c2e; }
+:root[data-theme="dark"] #closePopover, :root[data-theme="dark"] .theme-toggle-sm { background: #2c2c2e; }
 .popover-links { display: grid; grid-template-columns: 1fr; background: var(--card); border-radius: var(--radius-s); overflow: hidden; }
 :root[data-theme="dark"] .popover-links { background: #2c2c2e; }
 .popover-links button { display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 11px 14px; min-height: 44px; font-size: 14px; font-weight: 500; color: var(--ink); text-align: left; width: 100%; position: relative; transition: background .15s; }
@@ -553,13 +553,17 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
 .act-form textarea { flex: 1 1 100%; background: var(--card); border: 0; color: var(--ink); padding: 8px 10px; border-radius: 9px; font: inherit; font-size: 16px; resize: vertical; }
 .act-form textarea:focus { outline: 2px solid var(--p1); outline-offset: 0; }
 :root[data-theme="dark"] .act-form textarea { background: #3a3a3c; }
-.act-modal { z-index: 10001; }
-.act-modal .popover-content { min-height: 70vh; max-width: 640px; }
-.act-modal .popover-content > [data-loc] { background: var(--card); border-radius: var(--radius-s); padding: 12px; }
-:root[data-theme="dark"] .act-modal .popover-content > [data-loc] { background: #2c2c2e; }
-@media (min-width: 768px) {
-    .act-modal { align-items: center; }
-    .act-modal .popover-content { border-radius: 14px; max-height: 85vh; min-height: 0; }
-}
+/* Expanding Modal: Panel wächst aus dem Routen-Punkt; --dx = Abstand des Punkts vom linken Panelrand */
+.act-modal { display: none; position: fixed; inset: 0; z-index: 10001; background: rgba(0, 0, 0, .32); }
+.act-modal.open { display: block; }
+.act-panel { position: fixed; top: 12vh; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); max-width: 640px; margin: 0 auto; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); border-radius: 18px; padding: 14px 12px 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
+:root[data-theme="dark"] .act-panel { background: #1c1c1e; }
+.act-panel[style*="top"] { max-width: none; }
+.act-head { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 12px calc(var(--dx, 16px) - 12px); }
+.act-head h2 { font-size: 17px; font-weight: 600; color: var(--ink); line-height: 22px; }
+.act-dot { flex: 0 0 22px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: var(--c); color: #fff; font: inherit; font-size: 11px; font-weight: 700; display: grid; place-items: center; cursor: pointer; box-shadow: 0 0 0 3px var(--bg); transition: transform .15s; }
+.act-dot:hover, .act-dot:focus-visible { transform: scale(1.15); }
+.act-panel > [data-loc] { background: var(--card); border-radius: var(--radius-s); padding: 12px; }
+:root[data-theme="dark"] .act-panel > [data-loc] { background: #2c2c2e; }
 .m-stop > .m-num { border: 0; padding: 0; font-family: inherit; cursor: pointer; transition: transform .15s, box-shadow .15s; }
-.m-stop > .m-num:hover, .m-stop > .m-num:focus-visible { transform: scale(1.15); box-shadow: 0 0 0 3px var(--card), 0 0 0 5px color-mix(in srgb, var(--c) 45%, transparent); }
+.m-stop > .m-num:hover, .m-stop > .m-num:focus-visible { transform: scale(1.15); box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--line); }

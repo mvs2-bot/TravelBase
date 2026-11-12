@@ -3,7 +3,7 @@
    - Modal (aus der Route am Handy): dieselben Aktivitäten eines Orts
    - Verknüpfung über trip_id + location_name, damit doppelte Routen-Stopps (z. B. 2× Antigua) dieselben Aktivitäten teilen
    Seite und Modal zeichnen aus derselben Liste, Änderungen erscheinen sofort in beiden.
-   Aufruf: TBActivities.init({ tripId, slug, stops: [{ num, name, color }] }), danach TBActivities.open(name, num). */
+   Aufruf: TBActivities.init({ tripId, slug, stops: [{ num, name, color }] }), danach TBActivities.open(name, num, punktElement). */
 (function () {
     'use strict';
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -120,27 +120,65 @@
         }
     }
 
-    /* Modal im Stil des Navigations-Menüs; schließt über X, Klick daneben oder ESC */
-    function open(name, num) {
+    /* Expanding Modal: wächst aus dem angetippten Routen-Punkt heraus. Derselbe Punkt sitzt im Modal an derselben Stelle
+       und schließt es wieder (ebenso ESC und Klick daneben). Ohne Ursprungs-Punkt öffnet es mittig. */
+    const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let origin = null, closing = false;
+    function open(name, num, from) {
         if (!modal) {
             modal = document.createElement('div');
-            modal.className = 'nav-popover act-modal';
-            modal.setAttribute('role', 'dialog');
-            modal.setAttribute('aria-modal', 'true');
-            modal.innerHTML = `<div class="popover-content"><div class="popover-header"><div class="popover-title"><h2></h2></div>
-                <button type="button" class="act-x" aria-label="Schließen">${ic('x')}</button></div><div data-loc=""></div></div>`;
-            modal.onclick = e => { if (e.target === modal || e.target.closest('.act-x')) close(); };
+            modal.className = 'act-modal';
+            modal.innerHTML = `<div class="act-panel" role="dialog" aria-modal="true" aria-labelledby="actModalTitle">
+                <div class="act-head"><button type="button" class="act-dot" aria-label="Schließen"></button><h2 id="actModalTitle"></h2></div>
+                <div data-loc=""></div></div>`;
+            modal.onclick = e => { if (e.target === modal || e.target.closest('.act-dot')) close(); };
             document.body.appendChild(modal);
         }
         const p = places.find(x => x.name === name) || { name, num };
-        modal.querySelector('h2').innerHTML = `${ic('sparkles')}${num != null ? esc(num) + ' · ' : ''}${esc(name)}`;
+        const panel = modal.querySelector('.act-panel'), dot = modal.querySelector('.act-dot');
+        dot.textContent = num ?? '';
+        dot.style.setProperty('--c', p.color || 'var(--p1)');
+        modal.querySelector('h2').textContent = name;
         modal.querySelector('[data-loc]').dataset.loc = p.name;
         editing = null;
+        origin = from || null;
+        panel.removeAttribute('style');
+        if (origin) {
+            /* Punkt nach oben holen, damit unter ihm Platz für die Liste ist */
+            let r = origin.getBoundingClientRect();
+            if (r.top > innerHeight * .35 || r.top < 70) { scrollTo({ top: scrollY + r.top - 90, behavior: 'instant' }); r = origin.getBoundingClientRect(); }
+            panel.style.top = (r.top - 14) + 'px';
+            panel.style.setProperty('--dx', (r.left - 8) + 'px');
+        }
         modal.classList.add('open');
         renderAll();
-        modal.querySelector('.act-x').focus();
+        animate(false);
+        dot.focus({ preventScroll: true });
     }
-    function close() { if (modal) { modal.classList.remove('open'); editing = null; renderAll(); } }
+    /* Kreis um den Punkt öffnet sich bzw. schließt sich wieder */
+    function animate(back) {
+        const panel = modal.querySelector('.act-panel'), dot = modal.querySelector('.act-dot');
+        const pr = panel.getBoundingClientRect(), dr = dot.getBoundingClientRect();
+        const cx = dr.left + dr.width / 2 - pr.left, cy = dr.top + dr.height / 2 - pr.top;
+        const R = Math.hypot(Math.max(cx, pr.width - cx), Math.max(cy, pr.height - cy));
+        const frames = [{ clipPath: `circle(${dr.width / 2}px at ${cx}px ${cy}px)` }, { clipPath: `circle(${R}px at ${cx}px ${cy}px)` }];
+        const opt = { duration: reduced() ? 0 : back ? 260 : 380, easing: back ? 'cubic-bezier(.4,0,1,1)' : 'cubic-bezier(.2,.8,.2,1)', fill: 'both' };
+        modal.animate([{ backgroundColor: 'rgba(0,0,0,0)' }, { backgroundColor: 'rgba(0,0,0,.32)' }], { ...opt, direction: back ? 'reverse' : 'normal' });
+        return panel.animate(back ? frames.reverse() : frames, opt).finished;
+    }
+    async function close() {
+        if (!modal || !modal.classList.contains('open') || closing) return;
+        closing = true;
+        try { await animate(true); } catch (e) {}
+        modal.classList.remove('open');
+        modal.getAnimations({ subtree: true }).forEach(x => x.cancel());
+        closing = false;
+        editing = null;
+        renderAll();
+        /* Route wurde inzwischen neu gezeichnet: den Punkt desselben Orts wieder fokussieren */
+        const back = origin && document.querySelector(`#tripRoute .m-num[data-num="${CSS.escape(origin.dataset.num || '')}"][data-loc="${CSS.escape(origin.dataset.loc || '')}"]`);
+        if (back) back.focus({ preventScroll: true });
+    }
 
     function init(o) {
         if (tripId || !o || !o.tripId || !window.TB || !TB.sb) return;
