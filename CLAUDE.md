@@ -76,7 +76,7 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   als Segmente; alte Links `#acc`/`#flights` öffnen den Unterbereich). Thailand hat Etappen, aber weiter getrennte Unterkünfte/Flüge; dort ist **„Ablauf“** (`#ablauf`) ein Bereich mit den Unterbereichen
   `#thailand` / `#srilanka` (Segmente, alte Links öffnen den Unterbereich) und kompakter Filterleiste (Suche · Filter-Auswahl · Anzahl · „+“).
 - **Punktfarben = Reisende** (wie Südamerika): ohne `mapColors` färben `persons` (`{key,name,color}`, gepflegt über „Reisende“ in den Etappen)
-  die Punkte auf Karte, Etappen und Route; `places[k].who` schränkt ein (fehlt = alle). Ohne Reisende Blau. Stopps haben keine eigene Farbauswahl mehr.
+  die Punkte auf Karte, Etappen und Route; `places[k].who` schränkt ein (fehlt = alle, `[]` = bewusst niemand → Gelb `#eab308`). Ohne Reisende Blau. Stopps haben keine eigene Farbauswahl mehr.
   Alte Reisen mit `mapColors: "persons"` + `who` in Tagesplan-Zeilen bleiben unverändert.
   Thailand: Reisebeginn ohne `meta.start` = frühestes Datum aus `persons`, Unterkünften oder Ablauf-Tagen (`firstDate()`).
   Thailand: `thPlaceColor()` – Reisende (`persons` mit `start`/`end`) färben jeden Ort nach Zeitraum (Etappe → Unterkunft mit `focus` → Ablauf-Tag); `who` am Ort schränkt fest ein.

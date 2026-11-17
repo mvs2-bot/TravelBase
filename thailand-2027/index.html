@@ -726,7 +726,9 @@
             return (on.length ? on : ps).map(personKey);
         }
         function thPlaceColor(k, keys) {
-            const ps = DATA.persons || [], who = new Set();
+            const ps = DATA.persons || [], who = new Set(), P = DATA.places || {};
+            /* bewusst niemand angehakt ("who": []): gelb */
+            if (ps.length && (keys || [k]).every(x => P[x] && Array.isArray(P[x].who) && !P[x].who.length)) return '#eab308';
             (keys || [k]).forEach(x => thPlaceWho(x).forEach(w => who.add(w)));
             const cs = ps.filter(x => who.has(personKey(x))).map(x => col(x.color));
             if (!cs.length) return col(((DATA.places || {})[k] || {}).color);
@@ -1412,6 +1414,8 @@
             /* Kreisfarbe = Reisende im Zeitraum der Unterkunft (wie Karte und Etappen); ohne Zeitraum über den verknüpften Ort */
             const placeColor = (k, x) => {
                 const P = DATA.places || {}, ps = DATA.persons || [], ok = d => /^\d{4}-\d\d-\d\d$/.test(d || '');
+                const key0 = P[k] ? k : Object.keys(P).find(y => P[y] && P[y].name === k);
+                if (key0 && Array.isArray(P[key0].who) && !P[key0].who.length && ps.length) return '#eab308';
                 if (x && ok(x.from) && ps.length) {
                     const to = ok(x.to) && x.to > x.from ? x.to : nextISO(x.from);
                     const on = ps.filter(q => !q.start || !q.end || (q.start < to && q.end >= x.from));
