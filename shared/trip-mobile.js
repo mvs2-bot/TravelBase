@@ -15,7 +15,7 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const ic = n => window.tbIcon ? tbIcon(n) : '';
     const KEY = 'travelbase-trip-view:' + location.pathname;
-    let data = {}, home = null, routeView = null, bar = null;
+    let data = {}, home = null, routeView = null, bar = null, sideBuild = null;
     const ALL_TABS = [['home', 'Start', 'home'], ['stops', 'Etappen', 'route'], ['mapview', 'Karte', 'map'], ['route', 'Route', 'pin'], ['misc', 'Infos', 'info']];
     const MAIN_HINT = 'Hier planst du die Reise';
     /* Etappen nur, wenn die Seite den Bereich hat */
@@ -162,6 +162,7 @@
                     ${datesOf(s.when) ? `<small>${esc(datesOf(s.when))}</small>` : ''}</div></div>`).join('')}</div>
             </div>` : `<div class="box m-route"><h2>${ic('pin')}Route</h2><p class="note">Für diese Reise sind noch keine Stationen hinterlegt.</p></div>`;
         if (routeView) routeView.querySelectorAll('.m-num').forEach(b => b.onclick = () => TBActivities.open(b.dataset.loc, b.dataset.num, b));
+        if (sideBuild) sideBuild();
     }
 
     /* Desktop (ab 1200 px): alle Bereiche als Seitenleiste links – ein Klick statt Reiter + Menü.
@@ -173,23 +174,39 @@
         side.className = 'd-side'; side.setAttribute('aria-label', 'Bereiche der Reise');
         document.body.appendChild(side);
         let sig = '';
+        /* Route (Zeitstrahl der Stationen, wie am Handy) als eigener Eintrag direkt nach der Karte */
+        const hasRoute = () => (data.route || []).length > 0;
+        const routeBtn = () => `<button type="button" data-route="1">${ic('pin')}<span>Route</span></button>`;
         const build = () => {
             const bs = src(), txt = b => [...b.childNodes].filter(n => n !== b.querySelector('span')).map(n => n.textContent).join('').trim();
-            const now = bs.map(b => b.dataset.t + ':' + txt(b)).join('|');
+            const now = bs.map(b => b.dataset.t + ':' + txt(b)).join('|') + (hasRoute() ? '|route' : '');
             if (now !== sig) {
                 sig = now;
                 const title = (document.getElementById('tripTitle') || {}).textContent || '';
                 side.innerHTML = `<a class="d-side-home" href="../">${ic('chevronLeft')}Alle Reisen</a>${title ? `<div class="d-side-t">${esc(title)}</div>` : ''}`
                     + bs.map(b => b.dataset.t === 'stops'
                         ? `<button type="button" class="d-main" data-t="stops">${(b.querySelector('span') || {}).innerHTML || ''}<span><b>${esc(txt(b))}</b><small>${esc(MAIN_HINT)}</small></span></button>`
-                        : `<button type="button" data-t="${esc(b.dataset.t)}">${(b.querySelector('span') || {}).innerHTML || ''}<span>${esc(txt(b))}</span></button>`).join('');
+                        : `<button type="button" data-t="${esc(b.dataset.t)}">${(b.querySelector('span') || {}).innerHTML || ''}<span>${esc(txt(b))}</span></button>${b.dataset.t === 'mapview' && hasRoute() ? routeBtn() : ''}`).join('');
+                if (hasRoute() && !side.querySelector('[data-route]')) side.insertAdjacentHTML('beforeend', routeBtn());
             }
-            side.querySelectorAll('button[data-t]').forEach(x => { const o = bs.find(b => b.dataset.t === x.dataset.t); x.classList.toggle('on', !!(o && o.classList.contains('on'))); });
+            const inRoute = document.body.classList.contains('m-route');
+            if (inRoute && !hasRoute()) document.body.classList.remove('m-route');
+            side.querySelectorAll('button[data-t]').forEach(x => { const o = bs.find(b => b.dataset.t === x.dataset.t); x.classList.toggle('on', !inRoute && !!(o && o.classList.contains('on'))); });
+            const r = side.querySelector('[data-route]');
+            if (r) r.classList.toggle('on', inRoute);
             document.body.classList.toggle('d-sidebar', dq.matches && bs.length > 1);
         };
         side.addEventListener('click', e => {
+            if (e.target.closest('[data-route]')) {
+                document.body.classList.remove('m-home');
+                document.body.classList.add('m-route');
+                store('route'); mark('route'); window.scrollTo(0, 0);
+                build();
+                return;
+            }
             const x = e.target.closest('button[data-t]');
             if (!x) return;
+            document.body.classList.remove('m-route');
             const o = src().find(b => b.dataset.t === x.dataset.t);
             if (o) { o.click(); const pop = document.getElementById('navPopover'); if (pop) pop.classList.remove('open'); window.scrollTo(0, 0); }
             build();
@@ -201,6 +218,7 @@
         const tt = document.getElementById('tripTitle');
         if (tt) new MutationObserver(() => { sig = ''; later(); }).observe(tt, { childList: true, characterData: true, subtree: true });
         dq.addEventListener('change', build);
+        sideBuild = later;
         build();
     }
 
