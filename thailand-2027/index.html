@@ -1160,9 +1160,24 @@
             }, loadPacklist);
         }
 
+        /* Kategorien kommen aus den Einträgen der Person (Reihenfolge wie in der Liste); ohne Einträge die Vorgabe */
+        let PACK_CATS_DEFAULT = null;
+        const packCats = list => { const out = []; (list || []).forEach(i => { if (i.cat && !out.includes(i.cat)) out.push(i.cat); }); return out; };
+        const defaultCats = () => (Array.isArray(DATA.packCategories) && DATA.packCategories.length) ? DATA.packCategories : (PACK_CATS_DEFAULT || []);
+        const personCats = p => { const c = packCats(packlists[p]); return c.length ? c : defaultCats().slice(); };
+        function fillCatSelect() {
+            const el = $('#newItemCat');
+            if (!el) return;
+            if (!PACK_CATS_DEFAULT) PACK_CATS_DEFAULT = [...el.options].map(o => o.value);
+            const cats = personCats(currentPerson), prev = el.value;
+            el.innerHTML = cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+            if (cats.includes(prev)) el.value = prev;
+        }
+
         function renderPacklist() {
             const tbody = $('#packTableBody');
             if (!tbody) return;
+            fillCatSelect();
             tbody.innerHTML = '';
             const list = packlists[currentPerson] || [], categories = {};
             let packG = 0, wornG = 0, packedCount = 0;
@@ -1291,13 +1306,13 @@
 
         /* 9. Gewichtsanalyse & Chart.js Diagramme (nur eingepackte Gegenstände, wie oben in der Zusammenfassung) */
         const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js';
-        const chartColors = ['#3b82f6', '#ef4444', '#84cc16', '#a855f7', '#06b6d4', '#f97316', '#b91c1c', '#78350f', '#65a30d', '#4c1d95'];
+        const chartColors = ['#3b82f6', '#ef4444', '#84cc16', '#a855f7', '#06b6d4', '#f97316', '#b91c1c', '#78350f', '#65a30d', '#4c1d95', '#94a3b8'];
 
         function renderAnalysis() {
             const tbody = $('#analysisTableBody');
             if (!tbody) return;
             tbody.innerHTML = '';
-            const allCategories = DATA.packCategories;
+            const allCategories = [...new Set([...personCats('stefan'), ...personCats('ines')])];
             const sum = list => {
                 const t = {};
                 let all = 0;
@@ -1339,8 +1354,7 @@
                 }
                 return;
             }
-            const allCategories = DATA.packCategories;
-            const make = (canvasId, old, data) => {
+            const make = (canvasId, old, data, cats) => {
                 try {
                     const cs = getComputedStyle(document.documentElement);
                     Chart.defaults.color = cs.getPropertyValue('--text').trim() || '#666';
@@ -1352,8 +1366,8 @@
                 return new Chart(ctx, {
                     type: 'pie',
                     data: {
-                        labels: allCategories,
-                        datasets: [{ data: allCategories.map(c => data[c] || 0), backgroundColor: chartColors }]
+                        labels: cats,
+                        datasets: [{ data: cats.map(c => data[c] || 0), backgroundColor: cats.map((c, i) => chartColors[i % chartColors.length]) }]
                     },
                     options: {
                         responsive: true,
@@ -1362,8 +1376,8 @@
                     }
                 });
             };
-            chartStefanInstance = make('#chartStefan', chartStefanInstance, stefanData);
-            chartInesInstance = make('#chartInes', chartInesInstance, inesData);
+            chartStefanInstance = make('#chartStefan', chartStefanInstance, stefanData, personCats('stefan'));
+            chartInesInstance = make('#chartInes', chartInesInstance, inesData, personCats('ines'));
         }
 
         /* 10. Event-Handler & Tab-Steuerung */
