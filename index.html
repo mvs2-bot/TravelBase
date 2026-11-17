@@ -30,6 +30,7 @@
         --ok: #248a3d; --ok-soft: #e4f5e9; --warn: #8a5a00; --warn-soft: #fff4d6; --danger: #d70015; --danger-soft: #ffe6e8;
         --radius: 18px; --radius-s: 12px; --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 14px rgba(0, 0, 0, .04);
         --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        --scrim: rgba(0, 0, 0, .35); --shadow-lg: 0 10px 40px rgba(0, 0, 0, .25);
         color-scheme: light;
     }
     :root[data-theme="dark"] {
@@ -37,6 +38,7 @@
         --ink: #f5f5f7; --text: #d1d1d6; --mute: #98989f;
         --p1: #6cb4f0; --p1-soft: #0d2436; --p1-line: #1f4a6e; --on-p1: #04213a;
         --ok: #30d158; --ok-soft: #0f2a17; --warn: #ffd60a; --warn-soft: #332a05; --danger: #ff6961; --danger-soft: #3a1412; --shadow: none;
+        --scrim: rgba(0, 0, 0, .6); --shadow-lg: 0 10px 40px rgba(0, 0, 0, .7);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { background: var(--bg); -webkit-text-size-adjust: 100%; }
@@ -126,13 +128,63 @@
     .date-edit { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; border: 0; background: none; padding: 2px 6px; border-radius: 999px; font: inherit; font-size: 12px; color: var(--p1); cursor: pointer; }
     .date-edit:hover { background: var(--p1-soft); }
     .date-edit .ic { width: 12px; height: 12px; }
-    .date-dlg { margin: auto; border: 0; border-radius: var(--radius); padding: 20px; width: min(340px, calc(100vw - 32px)); background: var(--card); color: var(--text); box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
-    .date-dlg::backdrop { background: rgba(0, 0, 0, .35); }
+    .date-dlg { margin: auto; border: 0; border-radius: var(--radius); padding: 20px; width: min(340px, calc(100vw - 32px)); background: var(--card); color: var(--text); box-shadow: var(--shadow-lg); }
+    .date-dlg::backdrop { background: var(--scrim); }
     .date-dlg h2 { font-size: 17px; margin: 0 0 4px; color: var(--ink); }
     .date-dlg form { display: flex; flex-direction: column; gap: 12px; }
     .date-dlg .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
     .date-dlg .row .grow { margin-right: auto; }
-    .date-dlg .err { color: #c0392b; font-size: 13px; }
+    .date-dlg .err { color: var(--danger); font-size: 13px; }
+
+    /* Neue Reise / Variante klonen (nur TravelBase-Admins): gleicher Stil wie der Datums-Dialog, breiter */
+    .list-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin: -4px 0 14px; }
+    .list-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+    .date-dlg.wide { width: min(560px, calc(100vw - 32px)); max-height: 90vh; overflow-y: auto; }
+    .date-dlg input[type=text], .date-dlg select { background: var(--well); border: 0; border-radius: 10px; padding: 10px 12px; font-size: 16px; color: var(--ink); min-height: 44px; width: 100%; font-family: inherit; }
+    .date-dlg input[type=date] { width: 100%; min-height: 44px; }
+    .date-dlg input:focus, .date-dlg select:focus { outline: 2px solid var(--p1); outline-offset: 0; }
+    .f-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .f-row > label { flex: 1 1 140px; }
+    .f-check { flex-direction: row !important; align-items: center; gap: 8px !important; font-size: 14px !important; color: var(--ink) !important; min-height: 44px; cursor: pointer; }
+    .f-check input { width: 20px; height: 20px; accent-color: var(--p1); }
+    .f-hint { font-size: 12px; color: var(--mute); font-weight: 400; }
+    .flag-preview { font-size: 26px; line-height: 1; min-height: 26px; }
+    .mem-row { display: flex; gap: 6px; align-items: center; }
+    .mem-row input { flex: 1 1 auto; }
+    .mem-row select { flex: 0 0 130px; width: 130px !important; }
+    .mem-row .icon-btn { flex: 0 0 36px; box-shadow: none; background: var(--well); }
+    .mem-list { display: flex; flex-direction: column; gap: 6px; }
+    .cmd { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 6px; background: var(--well); border-radius: 10px; padding: 8px 8px 8px 12px; }
+    .cmd code { flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--ink); word-break: break-all; align-self: center; user-select: all; }
+    .cmd .btn-ghost { background: var(--card); flex: 0 0 auto; }
+    @media (max-width: 560px) { .cmd code { flex-basis: 100%; } .cmd .btn-ghost { margin-left: auto; } }
+    .steps { margin: 0 0 0 18px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+    .done-list { font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
+    .done-list .bad { color: var(--danger); }
+    .card-act { display: inline-flex; align-items: center; gap: 4px; border: 0; background: var(--well); color: var(--p1); font: inherit; font-size: 12px; font-weight: 500; border-radius: 999px; padding: 4px 10px; min-height: 28px; cursor: pointer; }
+    .card-act:hover { background: var(--p1-soft); }
+    .card-act .ic { width: 13px; height: 13px; }
+    .trip-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip.warn { background: var(--danger-soft); color: var(--danger); }
+    .chip.soft { background: transparent; box-shadow: inset 0 0 0 1px var(--sep); color: var(--mute); }
+    /* Varianten-Vergleich */
+    .cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cmp th, .cmp td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--sep); vertical-align: top; }
+    .cmp th { font-size: 12px; font-weight: 600; color: var(--mute); }
+    .cmp td b { color: var(--ink); font-weight: 600; }
+    .cmp a { color: var(--p1); text-decoration: none; font-weight: 600; }
+    .cmp-wrap { overflow-x: auto; }
+    .banner.danger { background: var(--danger-soft); color: var(--danger); }
+    .banner a { color: inherit; font-weight: 600; }
+    @media (max-width: 760px) {
+        .cmp thead { display: none; }
+        .cmp tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--sep); }
+        .cmp td { border: 0; padding: 0; }
+        .cmp td:first-child { grid-column: 1 / -1; font-size: 14px; margin-bottom: 4px; }
+        .cmp td[data-l]::before { content: attr(data-l) ": "; color: var(--mute); }
+        .date-dlg.wide { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 20px 20px 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+        .card-act { min-height: 36px; padding: 6px 12px; }
+    }
     .chip.maybe { background: transparent; color: var(--mute); box-shadow: inset 0 0 0 1px var(--sep); font-style: italic; }
 
     .account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
@@ -282,7 +334,78 @@
 
     <!-- Angemeldet -->
     <section id="viewLoggedIn" hidden>
+        <div id="cancelHint" class="banner danger" hidden></div>
+        <div class="list-actions" id="adminActions" hidden>
+            <button class="btn" type="button" id="newTripBtn"><svg class="ic"><use href="#i-plus"></use></svg>Neue Reise</button>
+        </div>
         <div id="tripList"></div>
+        <!-- Neue Reise anlegen (nur TravelBase-Admins) -->
+        <dialog id="newDlg" class="date-dlg wide">
+            <form id="newForm" novalidate>
+                <div>
+                    <h2>Neue Reise</h2>
+                    <p class="note" style="margin:0">Legt die Reise in Supabase an. Danach fehlt nur noch der Ordner auf GitHub.</p>
+                </div>
+                <label>Titel<input type="text" id="nTitle" maxlength="120" required placeholder="z. B. Japan 2028"></label>
+                <label>Kennung (Ordnername)<input type="text" id="nSlug" maxlength="60" required pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?" placeholder="japan-2028" autocapitalize="off" spellcheck="false">
+                    <span class="f-hint">Nur a–z, 0–9 und Bindestrich. Wird aus dem Titel vorgeschlagen.</span></label>
+                <label>Länder<input type="text" id="nFlags" maxlength="80" placeholder="JP, KR – oder Flaggen einfügen" autocapitalize="characters">
+                    <span class="flag-preview" id="nFlagPrev"></span></label>
+                <label class="f-check"><input type="checkbox" id="nMaybe"> Datum offen / Vielleicht-Reise</label>
+                <div class="f-row" id="nDates">
+                    <label>Start<input type="date" id="nStart"></label>
+                    <label>Ende<input type="date" id="nEnd"></label>
+                </div>
+                <div>
+                    <label style="margin-bottom:6px">Mitreisende (optional)<span class="f-hint">E-Mail eines bestehenden Kontos. Du selbst wirst automatisch Admin.</span></label>
+                    <div class="mem-list" id="nMembers"></div>
+                    <button class="link-btn" type="button" id="nAddMember" style="margin-top:6px"><svg class="ic"><use href="#i-plus"></use></svg>Person hinzufügen</button>
+                </div>
+                <p class="err" id="nErr" hidden></p>
+                <div class="row">
+                    <button class="btn-ghost" type="button" data-close>Abbrechen</button>
+                    <button class="btn" type="submit" id="nSave">Reise anlegen</button>
+                </div>
+            </form>
+        </dialog>
+        <!-- Variante klonen -->
+        <dialog id="cloneDlg" class="date-dlg wide">
+            <form id="cloneForm" novalidate>
+                <div>
+                    <h2>Variante klonen</h2>
+                    <p class="note" style="margin:0" id="cNote"></p>
+                </div>
+                <label>Titel der Variante<input type="text" id="cTitle" maxlength="120" required></label>
+                <label>Kennung (Ordnername)<input type="text" id="cSlug" maxlength="60" required autocapitalize="off" spellcheck="false"></label>
+                <p class="note" style="margin:0">Kopiert Route, Ablauf, Unterkünfte, Transporte, Aktivitäten, To-Dos und Mitreisende in eine neue Vielleicht-Reise. Das Original bleibt unverändert.</p>
+                <p class="err" id="cErr" hidden></p>
+                <div class="row">
+                    <button class="btn-ghost" type="button" data-close>Abbrechen</button>
+                    <button class="btn" type="submit" id="cSave">Variante anlegen</button>
+                </div>
+            </form>
+        </dialog>
+        <!-- Ergebnis: Ordner anlegen -->
+        <dialog id="doneDlg" class="date-dlg wide">
+            <div style="display:flex;flex-direction:column;gap:12px">
+                <div>
+                    <h2 id="dTitle"></h2>
+                    <p class="note" style="margin:0">Die Daten liegen in Supabase. Damit die Seite erreichbar ist, braucht das Repo einen Ordner mit einer unveränderten Kopie der Vorlage:</p>
+                </div>
+                <div class="cmd"><code id="dCmd"></code><button class="btn-ghost" type="button" id="dCopy"><svg class="ic"><use href="#i-copy"></use></svg>Kopieren</button></div>
+                <ol class="steps">
+                    <li>Im Repo <b>TravelBase</b> den Befehl ausführen (oder auf GitHub: <i>Add file → Create new file</i> mit dem Pfad <code id="dPath"></code> und dem Inhalt von <code>shared/trip-template.html</code>).</li>
+                    <li>Committen und pushen – GitHub Pages braucht danach etwa eine Minute.</li>
+                </ol>
+                <div class="done-list" id="dMembers"></div>
+                <p class="note" id="dState" style="margin:0"></p>
+                <div class="row">
+                    <button class="btn-ghost" type="button" id="dCheck"><svg class="ic"><use href="#i-refresh"></use></svg>Erneut prüfen</button>
+                    <button class="btn-ghost" type="button" data-close>Schließen</button>
+                    <a class="btn" id="dOpen" href="#" hidden style="text-decoration:none;display:inline-flex;align-items:center">Reise öffnen</a>
+                </div>
+            </div>
+        </dialog>
         <dialog id="dateDlg" class="date-dlg">
             <form id="dateForm">
                 <div>
@@ -421,6 +544,8 @@
         const next = new URLSearchParams(location.search).get('next');
         if (next && /^[a-z0-9-]+\/?$/i.test(next)) { location.replace(next.replace(/\/?$/, '/')); return; }
         let res;
+        if (TB.appRole) APP_ADMIN = (await TB.appRole()) === 'admin';
+        $('#adminActions').hidden = !APP_ADMIN;
         try { res = await TB.myTrips(); } catch (e) { $('#tripList').innerHTML = `<div class="box">${esc(TB.errorText(e))}</div>`; return; }
         show($('#offlineHint'), res.offline);
         show($('#backupBtn'), res.list.some(t => t.role === 'admin'));
@@ -437,7 +562,9 @@
                     <span class="chip ${t.st.cls}">${esc(t.st.text)}</span>
                     ${t.tentative ? '<span class="chip maybe">Vielleicht</span>' : ''}
                     <span class="chip">${ROLE_LABEL[t.role] || esc(t.role)}</span>
+                    <span class="trip-sum" data-sum="${esc(t.id)}" style="display:contents"></span>
                 </div>
+                ${APP_ADMIN && !t.st.past ? `<div class="trip-tools"><button type="button" class="card-act" data-clone="${esc(t.id)}">${tbIcon('copy')}Variante klonen</button></div>` : ''}
                 ${t.role === 'admin' ? `<div class="trip-people" data-trip="${esc(t.id)}"></div>` : ''}
             </a>`;
         const section = (title, items, cls) => items.length ? `
@@ -448,6 +575,7 @@
         const upcoming = list.filter(t => !t.st.past), past = list.filter(t => t.st.past);
         const sure = upcoming.filter(t => !t.tentative), maybe = upcoming.filter(t => t.tentative);
         const empty = (cls, text) => `<div class="box tab-empty ${cls}"><p class="note" style="margin:0">${text}</p></div>`;
+        TRIPS = list;
         renderStats(list);
         if (list.some(t => t.role === 'admin') && TB.tripMembers) renderPeople();
         $('#tripList').innerHTML = list.length ? section(tbIcon('compass') + 'Zukünftige Reisen', upcoming, 'upcoming d-only')
@@ -456,6 +584,165 @@
             + (sure.length ? '' : empty('upcoming', 'Gerade ist keine Reise fest geplant.')) + (maybe.length ? '' : empty('maybe', 'Keine Vielleicht-Reisen.'))
             + (past.length ? '' : empty('past', 'Noch keine abgeschlossenen Reisen.'))
             : '<div class="box"><h2>Noch keine Reisen</h2><p class="note" style="margin:0">Du bist noch keiner Reise zugeordnet. Bitte den Admin, dich freizuschalten.</p></div>';
+        if (list.length && TB.tripSummaries) renderSummaries(list);
+    }
+
+    /* ---------- Neue Reise, Varianten, Kennzahlen (Live-Planung) ---------- */
+    let APP_ADMIN = false, TRIPS = [];
+    const fmtDM = iso => iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : '';
+    document.querySelectorAll('dialog [data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+    /* Kennung aus dem Titel: „Japan Rundreise 2028“ → japan-rundreise-2028 */
+    const slugify = t => String(t || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+        .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
+    const slugOk = s => /^[a-z0-9]([a-z0-9-]{0,58}[a-z0-9])?$/.test(s) && !['shared', 'icons', 'admin', 'konto', 'verwaltung', 'index', 'sw', 'manifest'].includes(s);
+    /* Länder: „JP, KR“ oder eingefügte Flaggen → Flaggen-Emojis */
+    function parseFlags(v) {
+        const out = [];
+        String(v || '').replace(/\p{RI}\p{RI}/gu, m => { out.push(m); return ' '; }).split(/[\s,;]+/).forEach(c => {
+            if (/^[a-z]{2}$/i.test(c)) out.push(String.fromCodePoint(...[...c.toUpperCase()].map(ch => 0x1F1A5 + ch.charCodeAt(0))));
+        });
+        return [...new Set(out)].slice(0, 12);
+    }
+    let slugTouched = false;
+    function memberRow(email = '', role = 'member') {
+        const d = document.createElement('div');
+        d.className = 'mem-row';
+        d.innerHTML = `<input type="text" inputmode="email" autocomplete="off" placeholder="name@beispiel.de" value="${esc(email)}">
+            <select aria-label="Rolle"><option value="member">Mitreisend</option><option value="guest">Gast</option><option value="admin">Admin</option></select>
+            <button type="button" class="icon-btn" aria-label="Entfernen">${tbIcon('x')}</button>`;
+        d.querySelector('select').value = role;
+        d.querySelector('button').onclick = () => d.remove();
+        $('#nMembers').appendChild(d);
+    }
+    $('#newTripBtn').onclick = () => {
+        $('#newForm').reset(); slugTouched = false;
+        $('#nMembers').innerHTML = ''; $('#nFlagPrev').textContent = ''; $('#nErr').hidden = true; $('#nDates').hidden = false;
+        $('#newDlg').showModal();
+    };
+    const suggest = () => { if (!slugTouched) { const y = $('#nStart').value.slice(0, 4), b = slugify($('#nTitle').value); $('#nSlug').value = y && b && !b.includes(y) ? `${b}-${y}`.slice(0, 60) : b; } };
+    $('#nTitle').oninput = suggest; $('#nStart').oninput = () => { suggest(); if (!$('#nEnd').value || $('#nEnd').value < $('#nStart').value) $('#nEnd').value = $('#nStart').value; };
+    $('#nSlug').oninput = () => { slugTouched = true; };
+    $('#nFlags').oninput = () => { $('#nFlagPrev').textContent = parseFlags($('#nFlags').value).join(''); };
+    $('#nMaybe').onchange = () => { $('#nDates').hidden = $('#nMaybe').checked; };
+    $('#nAddMember').onclick = () => { memberRow(); $('#nMembers').lastElementChild.querySelector('input').focus(); };
+    function dlgErr(id, text) { $(id).textContent = text; $(id).hidden = !text; }
+    $('#newForm').onsubmit = async e => {
+        e.preventDefault();
+        const title = $('#nTitle').value.trim(), slug = $('#nSlug').value.trim().toLowerCase(), maybe = $('#nMaybe').checked;
+        const start = maybe ? '' : $('#nStart').value, end = maybe ? '' : $('#nEnd').value;
+        const members = [...$('#nMembers').querySelectorAll('.mem-row')].map(r => ({ email: r.querySelector('input').value.trim(), role: r.querySelector('select').value })).filter(m => m.email);
+        if (!title) return dlgErr('#nErr', 'Bitte einen Titel eingeben.');
+        if (!slugOk(slug)) return dlgErr('#nErr', 'Die Kennung darf nur a–z, 0–9 und Bindestriche enthalten (nicht am Anfang/Ende).');
+        if (TRIPS.some(t => t.slug === slug)) return dlgErr('#nErr', 'Diese Kennung gibt es schon.');
+        if (!maybe && !start) return dlgErr('#nErr', 'Bitte ein Startdatum wählen oder „Datum offen“ ankreuzen.');
+        if (end && start && end < start) return dlgErr('#nErr', 'Das Ende liegt vor dem Start.');
+        if (members.some(m => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))) return dlgErr('#nErr', 'Bitte gültige E-Mail-Adressen eingeben.');
+        if (!navigator.onLine) return dlgErr('#nErr', 'Offline – bitte mit Internet erneut versuchen.');
+        dlgErr('#nErr', ''); $('#nSave').disabled = true;
+        try {
+            const r = await TB.createTrip({ slug, title, flags: parseFlags($('#nFlags').value), start, end: end || start, tentative: maybe });
+            const results = [];
+            for (const m of members) {
+                try { await TB.inviteMember(r.id, m.email, m.role); results.push({ ok: true, text: `${m.email} · ${{ admin: 'Admin', member: 'Mitreisend', guest: 'Gast' }[m.role]}` }); }
+                catch (err) { results.push({ ok: false, text: `${m.email}: ${TB.errorText(err)}` }); }
+            }
+            $('#newDlg').close();
+            showDone(r.slug, title, results);
+            route();
+        } catch (err) { dlgErr('#nErr', TB.errorText(err)); }
+        finally { $('#nSave').disabled = false; }
+    };
+    /* Variante klonen */
+    let cloneSrc = null;
+    $('#tripList').addEventListener('click', e => {
+        const b = e.target.closest('[data-clone]');
+        if (!b) return;
+        e.preventDefault(); e.stopPropagation();
+        cloneSrc = TRIPS.find(t => t.id === b.dataset.clone);
+        if (!cloneSrc) return;
+        let n = 2, base = cloneSrc.slug.replace(/-(v\d+|plan-[a-z])$/, ''), slug;
+        do slug = `${base}-v${n++}`; while (TRIPS.some(t => t.slug === slug));
+        $('#cNote').textContent = `Kopie von „${cloneSrc.title}“ als Vielleicht-Reise, z. B. um Plan A und Plan B zu vergleichen.`;
+        $('#cTitle').value = `${cloneSrc.title} – Variante ${n - 1}`;
+        $('#cSlug').value = slug;
+        dlgErr('#cErr', '');
+        $('#cloneDlg').showModal();
+    }, true);
+    $('#cloneForm').onsubmit = async e => {
+        e.preventDefault();
+        const slug = $('#cSlug').value.trim().toLowerCase(), title = $('#cTitle').value.trim();
+        if (!slugOk(slug)) return dlgErr('#cErr', 'Die Kennung darf nur a–z, 0–9 und Bindestriche enthalten.');
+        if (TRIPS.some(t => t.slug === slug)) return dlgErr('#cErr', 'Diese Kennung gibt es schon.');
+        if (!navigator.onLine) return dlgErr('#cErr', 'Offline – bitte mit Internet erneut versuchen.');
+        $('#cSave').disabled = true;
+        try {
+            const r = await TB.duplicateTrip(cloneSrc.id, slug, title, true);
+            $('#cloneDlg').close();
+            showDone(r.slug, title, []);
+            route();
+        } catch (err) { dlgErr('#cErr', TB.errorText(err)); }
+        finally { $('#cSave').disabled = false; }
+    };
+    /* Ergebnis: Befehl zum Anlegen des Ordners + Öffnen, sobald er erreichbar ist */
+    let doneSlug = '';
+    function showDone(slug, title, results) {
+        doneSlug = slug;
+        $('#dTitle').textContent = `„${title}“ ist angelegt`;
+        $('#dCmd').textContent = `mkdir -p ${slug} && cp shared/trip-template.html ${slug}/index.html && git add ${slug} && git commit -m "Neue Reise ${slug}" && git push`;
+        $('#dPath').textContent = `${slug}/index.html`;
+        $('#dMembers').innerHTML = results.map(r => `<span class="${r.ok ? '' : 'bad'}">${tbIcon(r.ok ? 'check' : 'alert')} ${esc(r.text)}</span>`).join('');
+        $('#dOpen').href = encodeURIComponent(slug) + '/';
+        $('#doneDlg').showModal();
+        checkFolder();
+    }
+    async function checkFolder() {
+        $('#dState').textContent = 'Prüfe, ob der Ordner schon online ist …';
+        let ok = false;
+        try { const r = await TB.withTimeout(fetch(encodeURIComponent(doneSlug) + '/', { method: 'HEAD', cache: 'no-store' }), 6000); ok = r.ok; } catch (e) {}
+        $('#dOpen').hidden = !ok;
+        $('#dState').textContent = ok ? 'Der Ordner ist erreichbar – die Reise kann geöffnet werden.' : 'Der Ordner ist noch nicht online.';
+    }
+    $('#dCheck').onclick = checkFolder;
+    $('#dCopy').onclick = async () => { if (await TB.copyText($('#dCmd').textContent)) { $('#dCopy').innerHTML = tbIcon('check') + 'Kopiert'; setTimeout(() => { $('#dCopy').innerHTML = tbIcon('copy') + 'Kopieren'; }, 1600); } };
+
+    /* Kennzahlen je Reise (Stopps, Unterkünfte, Storno-Fristen) + Vergleich der Varianten */
+    async function renderSummaries(list) {
+        const rows = await TB.tripSummaries();
+        if (!rows.length) return;
+        const by = Object.fromEntries(rows.map(r => [r.trip_id, r]));
+        const nights = t => t.start_date ? dayNum(t.end_date || t.start_date) - dayNum(t.start_date) + 1 : (by[t.id] || {}).plan_days || 0;
+        document.querySelectorAll('[data-sum]').forEach(el => {
+            const r = by[el.dataset.sum], t = list.find(x => x.id === el.dataset.sum);
+            if (!r || !t || t.st.past) return;
+            const stays = r.stays_booked + r.stays_open;
+            el.innerHTML = (r.stops ? `<span class="chip soft">${tbIcon('pin')}${r.stops} Stopps</span>` : '')
+                + (stays ? `<span class="chip soft">${tbIcon('bed')}${r.stays_booked}/${stays} gebucht</span>` : '')
+                + (r.cancel_warn ? `<span class="chip warn">${tbIcon('alert')}Storno-Frist ${fmtDM(r.next_cancel)}</span>` : '');
+        });
+        /* Hinweis oben: Storno-Fristen in den nächsten 7 Tagen (oder abgelaufen) */
+        const warn = list.filter(t => !t.st.past && (by[t.id] || {}).cancel_warn);
+        $('#cancelHint').hidden = !warn.length;
+        $('#cancelHint').innerHTML = warn.length ? `${tbIcon('alert')}<span><b>Storno-Fristen prüfen:</b> ${warn.map(t => `<a href="${encodeURIComponent(t.slug)}/#acc">${esc(t.title)}</a> (bis ${fmtDM(by[t.id].next_cancel)})`).join(' · ')}</span>` : '';
+        /* Varianten-Gruppen: Original + alle Kopien (variant_of), sobald eine davon „Vielleicht“ ist */
+        const groups = {};
+        list.filter(t => !t.st.past).forEach(t => { const k = t.variant_of || t.id; (groups[k] = groups[k] || []).push(t); });
+        const cmp = Object.values(groups).filter(g => g.length > 1 && g.some(t => t.tentative));
+        document.querySelectorAll('.trip-section.compare').forEach(x => x.remove());
+        if (!cmp.length) return;
+        const table = g => {
+            return `<div class="cmp-wrap"><table class="cmp"><thead><tr><th>Variante</th><th>Dauer</th><th>Stopps</th><th>Unterkünfte</th><th>Storno</th></tr></thead><tbody>${g.map(t => {
+                const r = by[t.id] || {}, n = nights(t), stays = (r.stays_booked || 0) + (r.stays_open || 0);
+                return `<tr><td><a href="${encodeURIComponent(t.slug)}/">${esc(t.title)}</a>${t.tentative ? ' <span class="chip maybe">Vielleicht</span>' : ''}</td>
+                    <td data-l="Dauer"><b>${n ? n + ' Tage' : '–'}</b>${t.start_date ? `<br><small>${fmtDM(t.start_date)}–${fmtDM(t.end_date || t.start_date)}</small>` : ''}</td>
+                    <td data-l="Stopps"><b>${r.stops ?? '–'}</b></td>
+                    <td data-l="Unterkünfte"><b>${stays ? `${r.stays_booked} gebucht · ${r.stays_open} offen` : '–'}</b></td>
+                    <td data-l="Storno">${r.next_cancel ? `${r.cancel_warn ? '<b style="color:var(--danger)">' : '<b>'}bis ${fmtDM(r.next_cancel)}</b>` : '–'}</td></tr>`;
+            }).join('')}</tbody></table></div>`;
+        };
+        const html = `<section class="trip-section compare maybe"><h2 class="trip-section-title">${tbIcon('layers')}Varianten vergleichen<span class="count">${cmp.length}</span></h2>
+            ${cmp.map(g => `<div class="box">${table(g)}</div>`).join('')}</section>`;
+        const past = document.querySelector('#tripList .trip-section.past');
+        if (past) past.insertAdjacentHTML('beforebegin', html); else $('#tripList').insertAdjacentHTML('beforeend', html);
     }
 
     /* Vielleicht-Reisen: Startdatum wählen (nur Admins, Knopf auf der Karte → Dialog) */

@@ -27,9 +27,10 @@ sw.js, manifest.json  ein Service Worker / eine PWA für Übersicht und alle Rei
 icons/                PWA-Icons
 ```
 
-Neue Reise: Zeile in `travelbase_trips` + `travelbase_trip_sections` anlegen, Ordner `<slug>/` mit einer **unveränderten Kopie**
-von `shared/trip-template.html` als `index.html`, Mitglieder per `travelbase_add_trip_member('<slug>', '<email>', '<rolle>')`.
-Änderungen an der Vorlage in alle Vorlagen-Ordner kopieren (`suedamerika-2027*` sind derzeit ältere Kopien, z. B. fehlt `#calMonth`).
+Neue Reise: in der Übersicht (`index.html`, nur TravelBase-App-Admins) über **„Neue Reise“** bzw. **„Variante klonen“**
+(RPCs `travelbase_create_trip` / `travelbase_duplicate_trip`, Mitreisende per `travelbase_invite_member`). Danach Ordner `<slug>/` mit einer
+**unveränderten Kopie** von `shared/trip-template.html` als `index.html` anlegen (der Dialog zeigt den Befehl zum Kopieren).
+Änderungen an der Vorlage in **alle** Vorlagen-Ordner kopieren (alle Ordner außer `thailand-2027/` sind identische Kopien).
 Import-Skripte mit Reisedaten gehören **nicht** ins Repo.
 
 ## Module unter `shared/`
@@ -37,19 +38,20 @@ Import-Skripte mit Reisedaten gehören **nicht** ins Repo.
 | Datei | Aufgabe |
 |---|---|
 | `config.js` | `window.TB_CONFIG = { url, key }` – Project-URL + **Publishable Key**. Öffentlich. |
-| `travelbase.js` | `window.TB`: Supabase-Client (`TB.sb`), Login/Logout/Passwort, `loadTrip(slug)`, `myTrips()`, `publicFlags()`, `tripMembers()`, `setTripStart()`, `exportBackup()`, `errorText()`, `withTimeout()`, `isNetErr()`, Offline-Cache `cacheGet/cacheSet/clearCache`. |
-| `trip.js` | Reise-Vorlage: baut die ganze Seite aus `data` (Karte/Leaflet, Tagespläne, Kalender, Flüge, Infos, To-Dos, Klima …), Tabs/Hash-Navigation, Theme-Umschalter, SW-Registrierung. Lädt `activities.js` bei Bedarf nach. |
+| `travelbase.js` | `window.TB`: Supabase-Client (`TB.sb`), Login/Logout/Passwort, `loadTrip(slug)`, `myTrips()`, `publicFlags()`, `tripMembers()`, `setTripStart()`, `exportBackup()`, `errorText()`, `withTimeout()`, `isNetErr()`, Offline-Cache `cacheGet/cacheSet/clearCache/clearCacheKey`, Live-Planung `saveSection()`, `createTrip()`, `duplicateTrip()`, `inviteMember()`, `tripSummaries()`, `appRole()`, Sanitizer `safeHtml()/safeColor()/safeUrl()`, `copyText()`. |
+| `trip.js` | Reise-Vorlage: baut die ganze Seite aus `data` (Karte/Leaflet, Tagespläne, Kalender, Flüge, Infos, To-Dos, Klima …), Tabs/Hash-Navigation, Theme-Umschalter, SW-Registrierung. Lädt `activities.js` und `planner.js` bei Bedarf nach. Hält `RAW` (DB-Stand, wird bearbeitet) und `DATA` (abgeleitet, z. B. verschobene Daten) getrennt. |
+| `planner.js` | `TBPlanner.init(host)`: Live-Planung für Vorlage **und** Thailand (die Seite liefert über `host` ihre Daten-Zugriffe). Stopps (Nominatim-Suche, Reihenfolge, km), Tagesplan-Zeilen + „leere Tage anlegen“, Unterkünfte (`stations`, Storno-Wächter, Lücken), Flüge & Transporte (`flights` mit `mode`). Bottom-Sheet `<dialog class="pl-sheet">`, Speichern über `TB.saveSection`. |
 | `trip.css` | Design-System + Layout für Vorlage **und** Thailand, inkl. Mobile-Ansicht (< 768 px). |
 | `trip-mobile.js` | `TBTripMobile`: Handy-Ansicht im iOS-Einstellungen-Stil (Start-Übersicht, Route-Zeitstrahl, Zurück-Button) + schwebende Tabbar *Start · Karte · Route · Infos*. Daten kommen per `setData()/setTile()` von der Seite. Braucht `.pop-btn[data-t]` und `.pane`. Desktop unverändert. |
-| `activities.js` | `TBActivities.init({ tripId, slug, stops })` / `open(name, num, el)`: mögliche Aktivitäten pro Ort (Unterseite `#activities` + Modal), Tabelle `travelbase_activities`, verknüpft über `trip_id + location_name`. |
-| `flights.js` | `tbFlights.isCard(f)` / `card(f)`: strukturierte Flugkarten (Schema im Dateikopf); alte Text-Einträge bleiben kompatibel. |
+| `activities.js` | `TBActivities.init({ tripId, slug, stops })` / `open(name, num, el)`: mögliche Aktivitäten pro Ort (Unterseite `#activities` + Modal), Tabelle `travelbase_activities`, verknüpft über `trip_id + location_name`. Kategorien (`tags`), `done`, „In Ablauf übernehmen“ (`planned_day`, über `TBPlanner.addToDay`); ohne die neuen Spalten läuft es im alten Umfang. `setStops()` nach Änderungen. |
+| `flights.js` | `tbFlights.isCard(f)` / `card(f)`: strukturierte Karten für Flug/Zug/Fähre/Bus/Mietwagen (`mode`, Schema im Dateikopf); alte Text-Einträge bleiben kompatibel. |
 | `icons.js` | SVG-Sprite + `tbIcon(name, cls)`. |
 | `profile.js` | Profil-Button `#tbProfileBtn` + Menü (Name, Rolle, Cloud-Sync-Status, Dashboard, `/konto.html`, `/admin.html`, Abmelden). Liest `overall_profiles` und RPC `overall_app_role`. |
 | `overall-account.js` | **Kopie** – Original in `supabase-core`. Gemeinsames Konto-Modul (Profilbild, Passwort inkl. Pwned-Check). Hier nicht ändern, sondern im Original und dann kopieren. |
 | `ios-nav.js` | **Kopie** – Original in `mvs2-bot.github.io`. Zurück/Neu-laden-Leiste nur für installierte iOS-Web-Apps (`navigator.standalone`), Test mit `?iosnav=1`. |
 | `flags.css` | Flaggen-Emoji-Schrift (Windows-Fix). |
 
-Ladereihenfolge in jeder Seite: supabase-js → `icons.js` → `config.js` → `travelbase.js` → `overall-account.js` → (`trip-mobile.js`, `flights.js`) → `profile.js` → `trip.js`/Inline-Code; `ios-nav.js` mit `defer`.
+Ladereihenfolge in jeder Seite: supabase-js → `icons.js` → `config.js` → `travelbase.js` → `overall-account.js` → (`trip-mobile.js`, `flights.js`, `planner.js`) → `profile.js` → `trip.js`/Inline-Code; `ios-nav.js` mit `defer`.
 Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil ältere Seiten aus dem Cache Teile evtl. nicht haben.
 
 ## Daten & Offline
@@ -64,6 +66,14 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
 - **Service Worker `sw.js`:** eigene Dateien network-first (4 s, `no-cache`) mit Cache-Fallback; CDN/Schriften cache-first;
   Kartenkacheln gecacht (max. 500); **Supabase-Requests werden nie gecacht**. Bei neuen/umbenannten shared-Dateien `CORE` anpassen
   und die Version `V` (`travelbase-vNN`) hochzählen.
+- **Live-Planung speichern:** nie direkt in `travelbase_trip_sections` schreiben, sondern `TB.saveSection(tripId, key, patch, minRole, expectedUpdatedAt)`
+  → RPC `travelbase_save_trip_section`: ersetzt die genannten Top-Level-Schlüssel (`null` löscht), Konfliktschutz über `updated_at`.
+  Mitglieder dürfen nur `places, routes, plans, stations, flights, days`; alles andere nur Admins. `planner.js` bearbeitet nur `RAW`
+  und schreibt jeden Schlüssel in den Abschnitt, aus dem er kam (sonst `guest` für `places/routes`, `member` für den Rest).
+- **Von Mitgliedern geschriebene Inhalte gelten als unsicher:** HTML-Felder nur über `rich()`/`TB.safeHtml`, Farben über `TB.safeColor`, Links über `TB.safeUrl`.
+- Unterkünfte `stations`: Array (Vorlage) oder Objekt aus Arrays (Thailand: `th`/`sl`). Felder u. a. `name|title`, `checkin|from`, `checkout|to`,
+  `hotel`, `status` (`booked`/`open`), `code`, `price`+`currency`, `address`, `maps`, `cancel_until`, `cancel_checked`, `transfer`, `note`.
+  `TB.tripSummaries()` (RPC `travelbase_trip_summaries`) liefert Stopps/Unterkünfte/Storno-Warnungen für die Übersicht.
 - `exportBackup()` (nur Admins): JSON aller `BACKUP_TABLES` der Reisen, auf denen man Admin ist – läuft mit dem Login des Admins, RLS gilt.
   Neue `travelbase_`-Tabellen dort ergänzen.
 - Test-Hilfe: `?heute=YYYY-MM-DD` überschreibt „heute“ in der Vorlage.

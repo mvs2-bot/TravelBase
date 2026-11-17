@@ -87,6 +87,8 @@
         return res && res[0];
     }
 
+    const SECTION_ORDER = { guest: 0, member: 1, admin: 2 };
+
     /* Inhalte einer Reise laden. Rückgabe:
        null            → nicht angemeldet
        { denied:true } → angemeldet, aber kein Mitglied dieser Reise
@@ -100,13 +102,14 @@
             const trip = check(await withTimeout(sb.from('travelbase_trips').select('id, slug, title, flags, start_date, end_date, tentative').eq('slug', slug).maybeSingle(), 12000));
             if (!trip) return { denied: true };
             const myRole = check(await withTimeout(sb.rpc('travelbase_trip_role', { p_trip: trip.id }), 10000));
-            const [secsRes, name] = await withTimeout(Promise.all([sb.from('travelbase_trip_sections').select('key, data').eq('trip_id', trip.id), displayName(session)]), 12000);
+            const [secsRes, name] = await withTimeout(Promise.all([sb.from('travelbase_trip_sections').select('key, min_role, updated_at, data').eq('trip_id', trip.id), displayName(session)]), 12000);
             const secs = check(secsRes);
-            const order = { guest: 0, member: 1, admin: 2 };
-            secs.sort((a, b) => (order[a.key] ?? 9) - (order[b.key] ?? 9));
+            secs.sort((a, b) => (SECTION_ORDER[a.key] ?? 9) - (SECTION_ORDER[b.key] ?? 9));
             const result = {
                 trip, role: myRole || 'guest',
                 data: Object.assign({}, ...secs.map(s => s.data)),
+                /* Wo welcher Schlüssel liegt (für das Speichern einzelner Bereiche, siehe saveSection) */
+                sections: secs.map(s => ({ key: s.key, min_role: s.min_role, updated_at: s.updated_at, keys: Object.keys(s.data || {}) })),
                 user: { email: session.user.email, name }, userId: session.user.id, savedAt: Date.now()
             };
             cacheSet('trip_' + slug, result);
@@ -115,6 +118,111 @@
         } catch (e) {
             if (cached && cached.userId === session.user.id && isNetErr(e)) return { ...cached, offline: true };
             throw e;
+        }
+    }
+
+    /* ---------- Live-Planung: Reisen anlegen, Bereiche speichern ---------- */
+
+    /* Eigene Rolle in der App TravelBase (admin/member/guest/null); offline aus dem Cache */
+    async function appRole() {
+        const session = await getSession();
+        if (!session) return null;
+        const key = 'approle_' + session.user.id;
+        try {
+            const r = check(await withTimeout(sb.rpc('overall_app_role', { p_app: 'travelbase' }), 8000));
+            cacheSet(key, r || null);
+            return r || null;
+        } catch (e) { return cacheGet(key); }
+    }
+
+    /* Teil-Update eines Abschnitts: patch = { places: …, plans: … } ersetzt diese Schlüssel, null entfernt sie.
+       expected = updated_at des geladenen Stands → Konflikt, falls jemand anderes inzwischen gespeichert hat. */
+    async function saveSection(tripId, key, patch, minRole, expected) {
+        const res = check(await withTimeout(sb.rpc('travelbase_save_trip_section', {
+            p_trip_id: tripId, p_key: key, p_patch: patch, p_min_role: minRole || null, p_expected: expected || null
+        }), 15000));
+        TB.lastSync = new Date();
+        return res;
+    }
+    /* Zuletzt geladenen Stand einer Reise im Offline-Cache nachziehen (nach dem Speichern) */
+    function updateTripCache(slug, fn) {
+        const c = cacheGet('trip_' + slug);
+        if (!c) return;
+        try { fn(c); cacheSet('trip_' + slug, c); } catch (e) {}
+    }
+
+    const rpc = (name, args, ms) => withTimeout(sb.rpc(name, args), ms || 15000).then(check);
+    async function createTrip(o) {
+        const r = await rpc('travelbase_create_trip', { p_slug: o.slug, p_title: o.title, p_flags: o.flags || [],
+            p_start_date: o.start || null, p_end_date: o.end || null, p_tentative: !!o.tentative });
+        clearCacheKey('trips_');
+        return r;
+    }
+    async function duplicateTrip(sourceId, slug, title, tentative = true) {
+        const r = await rpc('travelbase_duplicate_trip', { p_source_trip_id: sourceId, p_new_slug: slug, p_new_title: title, p_tentative: tentative });
+        clearCacheKey('trips_');
+        return r;
+    }
+    const inviteMember = (tripId, email, role) => rpc('travelbase_invite_member', { p_trip: tripId, p_email: email, p_role: role });
+    /* Kennzahlen je Reise (Stopps, Unterkünfte, Storno-Fristen); ohne die RPC (SQL noch nicht eingespielt) → leer */
+    async function tripSummaries() {
+        const session = await getSession();
+        if (!session) return [];
+        const key = 'summaries_' + session.user.id;
+        try { const l = await rpc('travelbase_trip_summaries', {}, 10000); cacheSet(key, l); return l; }
+        catch (e) { return cacheGet(key) || []; }
+    }
+    function clearCacheKey(prefix) {
+        try { Object.keys(localStorage).filter(k => k.startsWith(CACHE + prefix)).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    }
+
+    /* ---------- Sicheres HTML für Inhalte, die Mitreisende schreiben ----------
+       Erlaubt einfache Formatierung (b, i, br, a, Listen …) aus älteren Reisedaten, entfernt alles andere
+       (Skripte, Event-Attribute, javascript:-Links). Reiner Text: Zeilenumbrüche werden <br>. */
+    const OK_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'BR', 'SMALL', 'SPAN', 'A', 'UL', 'OL', 'LI', 'P', 'DIV', 'SUB', 'SUP', 'CODE', 'MARK', 'svg', 'use']);
+    const DROP_TAGS = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE', 'NOSCRIPT', 'TEXTAREA', 'FORM', 'INPUT', 'BUTTON', 'SELECT', 'LINK', 'META', 'BASE', 'IMG', 'VIDEO', 'AUDIO', 'math', 'script', 'style', 'foreignObject', 'iframe']);
+    const SAFE_STYLE = /^\s*((color|background|background-color|font-weight|font-style|text-decoration|white-space)\s*:\s*[#\w\s.,%()-]+;?\s*)*$/i;
+    function clean(node) {
+        [...node.childNodes].forEach(n => {
+            if (n.nodeType === 3) return;
+            if (n.nodeType !== 1) { n.remove(); return; }
+            if (DROP_TAGS.has(n.tagName)) { n.remove(); return; }
+            clean(n);
+            if (!OK_TAGS.has(n.tagName)) { n.replaceWith(...n.childNodes); return; }
+            [...n.attributes].forEach(a => {
+                const name = a.name.toLowerCase(), v = a.value;
+                const ok = name === 'class' ? /^[\w\s-]*$/.test(v)
+                    : name === 'style' ? SAFE_STYLE.test(v) && !/url|expression|image/i.test(v)
+                    : name === 'href' ? (n.tagName === 'use' ? /^#i-[\w-]+$/.test(v) : /^(https?:|mailto:|tel:|#)/i.test(v.trim()))
+                    : n.tagName === 'A' && (name === 'target' || name === 'rel') || name === 'aria-hidden';
+                if (!ok) n.removeAttribute(a.name);
+            });
+            if (n.tagName === 'A') { n.setAttribute('rel', 'noopener noreferrer'); if (!/^#/.test(n.getAttribute('href') || '')) n.setAttribute('target', '_blank'); }
+        });
+    }
+    function safeHtml(s) {
+        if (s == null || s === '') return '';
+        s = String(s);
+        if (!/[<>]/.test(s)) return s.replace(/\n/g, '<br>');
+        const t = document.createElement('template');
+        t.innerHTML = s;
+        clean(t.content);
+        return t.innerHTML;
+    }
+    /* Farben aus Reisedaten nur als #rgb/#rrggbb(aa) oder var(--…) durchlassen */
+    const safeColor = (c, fallback = 'var(--p1)') => /^#[0-9a-f]{3,8}$/i.test(String(c || '').trim()) || /^var\(--[\w-]+\)$/.test(String(c || '').trim()) ? String(c).trim() : fallback;
+    const safeUrl = u => /^https?:\/\//i.test(String(u || '').trim()) ? String(u).trim() : '';
+
+    /* In die Zwischenablage (Buchungscode, Befehle); gibt true/false zurück */
+    async function copyText(text) {
+        try { await navigator.clipboard.writeText(text); return true; }
+        catch (e) {
+            const ta = Object.assign(document.createElement('textarea'), { value: text });
+            ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+            document.body.appendChild(ta); ta.select();
+            let ok = false; try { ok = document.execCommand('copy'); } catch (x) {}
+            ta.remove();
+            return ok;
         }
     }
 
@@ -176,9 +284,11 @@
         if (/password should be at least|weak password/i.test(m)) return 'Das Passwort ist zu kurz oder zu einfach (mind. 8 Zeichen empfohlen).';
         if (/rate limit|too many/i.test(m)) return 'Zu viele Versuche – bitte kurz warten.';
         if (isNetErr(e)) return 'Keine Verbindung zum Server. Bist du online?';
+        if (/could not find the function|PGRST202/i.test(m)) return 'Diese Funktion ist in der Datenbank noch nicht eingerichtet (SQL-Update für supabase-core fehlt).';
         return m;
     }
 
     window.TB = { sb, configured, withTimeout, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, tripMembers, setTripStart, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
+        appRole, saveSection, updateTripCache, createTrip, duplicateTrip, inviteMember, tripSummaries, safeHtml, safeColor, safeUrl, copyText,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();
