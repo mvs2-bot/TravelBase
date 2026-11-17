@@ -1398,7 +1398,10 @@
         function mobileData() {
             if (!window.TBTripMobile) return;
             const days = [...(DATA.days.th || []), ...(DATA.days.sl || [])];
-            const st = [...(DATA.stations.th || []), ...(DATA.stations.sl || [])];
+            /* Route nach Datum (z. B. Flughafen-Nacht am Anfang), Einträge ohne Datum behalten ihre Stelle relativ zueinander */
+            const st0 = [...(DATA.stations.th || []), ...(DATA.stations.sl || [])];
+            const dated = st0.filter(x => /^\d{4}-\d\d-\d\d$/.test(x.from || '')).sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
+            let di = 0; const st = st0.map(x => /^\d{4}-\d\d-\d\d$/.test(x.from || '') ? dated[di++] : x);
             const m = DATA.meta || {}, persons = DATA.persons || [];
             const start = persons.reduce((a, p) => !a || p.start < a ? p.start : a, ''), end = persons.reduce((a, p) => p.end > a ? p.end : a, '');
             const past = !!end && TODAY > end;
@@ -1406,9 +1409,20 @@
             const tr = days.find(d => d.rawDate === TODAY);
             if (tr) today = { ...tr, label: 'Heute' };
             else if (start && TODAY < start && days[0]) today = { ...days[0], label: 'Los geht’s' };
-            const placeColor = k => (DATA.places || {})[k] ? thPlaceColor(k) : (Object.values(DATA.places || {}).find(p => p.name === k) || {}).color;
+            /* Kreisfarbe = Reisende im Zeitraum der Unterkunft (wie Karte und Etappen); ohne Zeitraum über den verknüpften Ort */
+            const placeColor = (k, x) => {
+                const P = DATA.places || {}, ps = DATA.persons || [], ok = d => /^\d{4}-\d\d-\d\d$/.test(d || '');
+                if (x && ok(x.from) && ps.length) {
+                    const to = ok(x.to) && x.to > x.from ? x.to : nextISO(x.from);
+                    const on = ps.filter(q => !q.start || !q.end || (q.start < to && q.end >= x.from));
+                    const cs = (on.length ? on : ps).map(q => col(q.color));
+                    return cs.length === 1 ? cs[0] : `conic-gradient(${cs.map((c, i) => `${c} ${i / cs.length * 360}deg ${(i + 1) / cs.length * 360}deg`).join(', ')})`;
+                }
+                const key = P[k] ? k : Object.keys(P).find(y => P[y] && P[y].name === k);
+                return key ? thPlaceColor(key) : 'var(--p1)';
+            };
             const route = st.map((x, i) => ({
-                num: i + 1, name: String(x.title || x.name || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus),
+                num: i + 1, name: String(x.title || x.name || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus, x),
                 when: `${x.period || ''}${x.nights ? ` · ${x.nights} ${x.nights === 1 ? 'Nacht' : 'Nächte'}` : ''}`,
                 now: !!(x.from && x.to && TODAY >= x.from && TODAY < x.to), label: 'Heute hier'
             }));
