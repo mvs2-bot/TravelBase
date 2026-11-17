@@ -56,8 +56,8 @@
             
             <!-- Haupt-Tabs für Desktop/Tablet -->
             <div class="tabs" role="tablist" style="--tab-count:5">
+                <button class="tab tab-main" data-t="stops"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
                 <button class="tab on" data-t="mapview"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
-                <button class="tab" data-t="stops"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
                 <button class="tab" data-t="ablauf" title="Möglicher Ablauf Thailand &amp; Sri Lanka"><span><svg class="ic"><use href="#i-calendar"></use></svg></span>Ablauf</button>
                 <button class="tab" data-t="acc"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
                 <button class="tab tab-menu" id="menuBurger" type="button" aria-label="Menü öffnen"><span><svg class="ic"><use href="#i-list"></use></svg></span>Menü</button>
@@ -75,15 +75,15 @@
                     <button id="closePopover" type="button" aria-label="Menü schließen"><svg class="ic"><use href="#i-x"></use></svg></button>
                 </div>
                 <div class="popover-links">
+                    <button data-t="stops" class="pop-btn pop-main"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
                     <button data-t="mapview" class="pop-btn on"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
-                    <button data-t="stops" class="pop-btn"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
                     <button data-t="ablauf" class="pop-btn"><span><svg class="ic"><use href="#i-calendar"></use></svg></span>Möglicher Ablauf</button>
                     <button data-t="acc" class="pop-btn"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
                     <button data-t="cal" class="pop-btn"><span><svg class="ic"><use href="#i-users"></use></svg></span>Anwesenheit</button>
                     <button data-t="activities" class="pop-btn"><span><svg class="ic"><use href="#i-sparkles"></use></svg></span>Mögliche Aktivitäten</button>
                     <button data-t="todos" class="pop-btn"><span><svg class="ic"><use href="#i-checkCircle"></use></svg></span>To-Dos</button>
                     <button data-t="misc" class="pop-btn"><span><svg class="ic"><use href="#i-info"></use></svg></span>Infos &amp; mehr</button>
-                    <button data-t="flights" class="pop-btn"><span><svg class="ic"><use href="#i-plane"></use></svg></span>Gebuchte Flüge</button>
+                    <button data-t="flights" class="pop-btn"><span><svg class="ic"><use href="#i-plane"></use></svg></span>Flüge &amp; Transporte</button>
                     <button data-t="pack" class="pop-btn"><span><svg class="ic"><use href="#i-backpack"></use></svg></span>Packliste &amp; Gewicht</button>
                     <button data-t="climate" class="pop-btn"><span><svg class="ic"><use href="#i-cloudSun"></use></svg></span>Klima &amp; Wetter</button>
                 </div>
@@ -253,10 +253,10 @@
             </div>
         </div>
 
-        <!-- Popover-Ansichten: Gebuchte Flüge -->
+        <!-- Popover-Ansichten: Flüge & Transporte -->
         <div id="flights" class="pane">
             <div class="box">
-                <h2><svg class="ic"><use href="#i-plane"></use></svg>Gebuchte Flüge (Übersicht)</h2>
+                <h2><svg class="ic"><use href="#i-plane"></use></svg>Flüge &amp; Transporte</h2>
                 <ul class="fl-list" id="flightList"></ul>
             </div>
         </div>
