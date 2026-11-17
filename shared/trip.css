@@ -1213,3 +1213,87 @@ button.pl-stop-main:hover b { color: var(--p1); }
     #pack td { font-size: 13.5px; }
     .chart-container { height: 200px; }
 }
+
+/* ---------- Konsistenz (Stefan, 17.11.2026): Wischen, Ablauf aus Etappen, offene Unterkünfte, Stopp-Sheet ---------- */
+/* Zeilen-Aktionen: Desktop in der Zeile, Handy per Wischen nach links (shared/trip-mobile.js) */
+.sw-acts { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.todo-item .sw-acts button { border: 0; background: none; color: var(--mute); padding: 5px; border-radius: 6px; display: inline-grid; place-items: center; cursor: pointer; }
+.todo-item .sw-acts button:hover { color: var(--ink); background: var(--hover); }
+.todo-item .sw-acts .sw-del:hover { color: var(--danger); }
+.todo-item .sw-acts .ic { width: 17px; height: 17px; }
+#pack td.sw-acts { display: table-cell; text-align: center; white-space: nowrap; }
+@media (max-width: 767.98px) {
+    .sw-row { position: relative; overflow: hidden; touch-action: pan-y; }
+    .sw-row > * { transform: translateX(var(--sx, 0)); }
+    .sw-row.sw-anim > * { transition: transform .22s cubic-bezier(.2, .8, .2, 1); }
+    .sw-row > .sw-acts, #pack .sw-row > td.sw-acts { position: absolute; top: 0; bottom: 0; left: 100%; display: flex; gap: 0; padding: 0; margin: 0; }
+    .sw-row > .sw-acts button, #pack .sw-row > td.sw-acts button { width: 58px; height: 100%; border-radius: 0; padding: 0; margin: 0 !important; display: grid; place-items: center; border: 0; color: var(--on-p1) !important; }
+    .sw-row > .sw-acts .sw-edit { background: var(--p1) !important; }
+    .sw-row > .sw-acts .sw-del { background: var(--danger) !important; }
+    .sw-row > .sw-acts .ic { width: 19px; height: 19px; }
+    #pack tr.sw-row { padding-right: 10px; }
+}
+
+/* Ablauf: Etappen-Tage ohne Eintrag, Ideen aus „Mögliche Aktivitäten“ */
+tr.ab-virt td, .card.ab-virt { color: var(--mute); }
+tr.ab-virt .tt, .card.ab-virt .card-title { color: var(--text); font-weight: 500; }
+.card.ab-virt { background: transparent; border: 1.5px dashed var(--line); box-shadow: none; }
+tr.ab-virt { background: color-mix(in srgb, var(--well) 45%, transparent); }
+.ab-plan { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 3px 10px; min-height: 28px; border: 0; border-radius: 999px; background: var(--p1-soft); color: var(--p1); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.ab-plan .ic { width: 13px; height: 13px; }
+.ab-ideas { display: flex; align-items: flex-start; gap: 5px; margin-top: 4px; font-size: 12px; color: var(--mute); line-height: 1.35; }
+.ab-ideas .ic { flex: 0 0 auto; width: 13px; height: 13px; margin-top: 1px; color: var(--p1); }
+.ab-ideas b { font-weight: 600; color: var(--text); }
+
+/* Offene Unterkünfte: dezent rot markiert */
+.bk-card.st-open { border-left: 3px solid var(--danger); padding-left: 8px; }
+.bk-card.st-open .bk-ic { background: var(--danger-soft); color: var(--danger); }
+.bk-tags .pl-st.warn { color: var(--danger); background: var(--danger-soft); }
+.bk-missing { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.bk-missing > .ic { color: var(--danger); }
+
+/* Stopp-Sheet: „Etappe bearbeiten“ als eigener Knopf, Reisende sichtbar */
+.pl-d-edit { display: flex; align-items: center; gap: 10px; width: 100%; margin: 10px 0 2px; padding: 9px 12px; border: 0; border-radius: 12px; background: var(--p1-soft); color: var(--p1); font: inherit; text-align: left; cursor: pointer; }
+.pl-d-edit > .ic { width: 18px; height: 18px; flex: 0 0 auto; }
+.pl-d-edit > span { flex: 1; min-width: 0; }
+.pl-d-edit b { display: block; font-size: 14px; font-weight: 600; }
+.pl-d-edit small { display: block; font-size: 11.5px; color: var(--text); opacity: .8; }
+.pl-d-edit:hover { filter: brightness(.97); }
+.pl-d-who { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 8px 0 0; font-size: 12.5px; color: var(--text); }
+.pl-d-who span { display: inline-flex; align-items: center; gap: 5px; }
+.pl-d-who i { width: 10px; height: 10px; border-radius: 50%; }
+
+/* Arbeitstage: Urlaubstage eintragen */
+.wd-vac { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; font-size: 11.5px; color: var(--mute); }
+.wd-vac input { width: 56px; min-height: 30px; border: 0; border-radius: 8px; background: var(--card); color: var(--ink); padding: 4px 8px; font: inherit; font-size: 16px; text-align: center; }
+.wd-vac input:focus { outline: 2px solid var(--p1); outline-offset: 0; }
+#workStats .stat small { display: block; font-size: 11px; color: var(--mute); margin-top: 2px; }
+
+/* Formulare im Bottom-Sheet kompakter (u. a. Transport): Kürzel neben dem Ort, Verkehrsmittel in einer Zeile */
+.pl-body { gap: 10px; }
+.pl-field { gap: 3px; font-size: 11.5px; }
+.pl-field input, .pl-field select, .pl-field textarea { min-height: 40px; padding: 8px 10px; }
+.pl-field:has(> .pl-short) { flex: 0 0 96px; }
+.pl-field.grow { flex: 1 1 150px; }
+.pl-row { gap: 8px; }
+.pl-end { gap: 6px; padding: 8px 10px 10px; }
+.pl-end .pl-row { flex-wrap: nowrap; }
+.pl-end legend { margin-bottom: 2px; font-weight: 600; color: var(--text); }
+.pl-modes { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 5px; margin: 0 -18px; padding: 0 18px 2px; }
+.pl-modes::-webkit-scrollbar { display: none; }
+.pl-modes .pl-chip { flex: 0 0 auto; }
+@media (max-width: 767.98px) {
+    .pl-foot { flex-wrap: nowrap; gap: 6px; padding-top: 10px; }
+    .pl-foot .btn-action { min-height: 44px; }
+    .pl-foot .pl-save { flex: 1 1 auto; order: 0; }
+    .pl-foot .pl-sp { display: none; }
+    .pl-foot .pl-del { font-size: 0; gap: 0; width: 44px; padding: 0; justify-content: center; }
+    .pl-foot .pl-del .ic { width: 18px; height: 18px; margin: 0; }
+}
+.card.ab-virt { padding: 7px 10px; margin-bottom: 6px; }
+.ab-vline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ab-vline .card-date { flex: 0 0 auto; font-size: 12px; }
+.ab-vline b { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab-plan.ic-only { flex: 0 0 auto; width: 30px; height: 28px; padding: 0; margin: 0; justify-content: center; }
+.ab-plan.ic-only .ic { width: 15px; height: 15px; }
+.card.ab-virt .ab-ideas { margin: 4px 0 0 2px; }

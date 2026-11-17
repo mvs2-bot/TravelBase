@@ -115,19 +115,15 @@
         <!-- Etappen: Stopps mit Nächten (Inhalt aus shared/planner.js) -->
         <div id="stops" class="pane"></div>
 
-        <!-- Sektion 2: Möglicher Ablauf – Thailand und Sri Lanka als Unterbereiche (alte Links #thailand / #srilanka öffnen den Unterbereich) -->
+        <!-- Sektion 2: Möglicher Ablauf – Thailand und Sri Lanka in einer Liste, nach Datum, ergänzt um die Tage aus den Etappen
+             (alte Links #thailand / #srilanka öffnen den Ablauf) -->
         <div id="ablauf" class="pane">
-        <div class="bk-bar plan-bar" role="tablist" aria-label="Land">
-            <button type="button" role="tab" data-sub="thailand" aria-selected="true"><span>🇹🇭</span><span>Thailand</span><small id="planCountTh"></small></button>
-            <button type="button" role="tab" data-sub="srilanka" aria-selected="false"><span>🇱🇰</span><span>Sri Lanka</span><small id="planCountSl"></small></button>
-        </div>
-        <div id="thailand" class="bk-sub on">
             <div class="box">
                 <div class="mh plan-head">
-                    <h2>Möglicher Ablauf Thailand</h2>
-                    <p class="note" style="margin-bottom:0" id="planNoteTh"></p>
+                    <h2>Möglicher Ablauf</h2>
+                    <p class="note" style="margin-bottom:0" id="planNote"></p>
                 </div>
-                <div class="controls" id="filterControlsThailand"></div>
+                <div class="controls" id="filterControlsAblauf"></div>
                 <div class="tw tw-route">
                     <table>
                         <thead>
@@ -140,38 +136,11 @@
                                 <th>Unterkunft</th>
                             </tr>
                         </thead>
-                        <tbody id="planTableBodyThailand"></tbody>
+                        <tbody id="planTableBody"></tbody>
                     </table>
                 </div>
-                <div class="cards" id="mobileCardsThailand"></div>
+                <div class="cards" id="mobileCards"></div>
             </div>
-        </div>
-
-        <div id="srilanka" class="bk-sub">
-            <div class="box">
-                <div class="mh plan-head">
-                    <h2>Möglicher Ablauf Sri Lanka</h2>
-                    <p class="note" style="margin-bottom:0" id="planNoteSl"></p>
-                </div>
-                <div class="controls" id="filterControlsSriLanka"></div>
-                <div class="tw tw-route">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Tag / Datum</th>
-                                <th>Region</th>
-                                <th>Ort &amp; Aktivität</th>
-                                <th>Details &amp; Programm</th>
-                                <th>Transportmittel</th>
-                                <th>Unterkunft</th>
-                            </tr>
-                        </thead>
-                        <tbody id="planTableBodySriLanka"></tbody>
-                    </table>
-                </div>
-                <div class="cards" id="mobileCardsSriLanka"></div>
-            </div>
-        </div>
         </div>
 
         <!-- Sektion 4: Unterkünfte -->
@@ -226,18 +195,9 @@
             </div>
             
             <div class="box">
-                <h2><svg class="ic"><use href="#i-briefcase"></use></svg>Verbleibende Arbeitstage bis Abflug</h2>
-                <p class="note">Verbleibende Werktage (Mo–Fr) ab heute bis zum Abflug am <span class="depLong"></span>. Gesetzliche Feiertage und persönliche Urlaubstage sind bereits abgezogen.</p>
-                <div class="stats" id="workStats">
-                    <div class="stat">
-                        <span style="color:#2563eb">●</span> Arbeitstage Stefan
-                        <b id="workDaysBayern">0 Tage</b>bis Abflug <span class="depShort"></span>
-                    </div>
-                    <div class="stat">
-                        <span style="color:#dc2626">●</span> Arbeitstage Ines
-                        <b id="workDaysWien">0 Tage</b>bis Abflug <span class="depShort"></span>
-                    </div>
-                </div>
+                <h2><svg class="ic"><use href="#i-briefcase"></use></svg>Verbleibende Arbeitstage bis zur Reise</h2>
+                <p class="note">Werktage (Mo–Fr) ab heute bis zum Reisebeginn laut Etappen. Gesetzliche Feiertage und die eingetragenen Urlaubstage sind abgezogen.</p>
+                <div class="stats" id="workStats"></div>
                 <small id="workHolidays">* Berücksichtigte Feiertage in diesem Zeitraum: Tag der Dt. Einheit, Nationalfeiertag (AT), Allerheiligen, Maria Empfängnis (AT), 1. &amp; 2. Weihnachtsfeiertag, Neujahr.</small>
             </div>
             
@@ -469,7 +429,7 @@
             document.title = (m.title || 'Reise') + ' · TravelBase';
             set('#tripTitle', (m.title || ''));
             set('#tripPeriod', m.period);
-            set('#planNoteTh', t.planNoteTh); set('#planNoteSl', t.planNoteSl);
+            set('#planNote', [t.planNoteTh, t.planNoteSl].filter(Boolean).join(' '));
             set('#accHeadTh', t.accHeadTh); set('#accHeadSl', t.accHeadSl);
             set('.depShort', t.departureShort); set('.depLong', t.departureLong);
             const pn = DATA.packNames || {};
@@ -507,20 +467,26 @@
         })();
         function getTodayISO() { return TODAY; }
 
-        let currentRegionThailand = 'all',
-            currentRegionSriLanka = 'all',
-            currentPerson = 'stefan',
+        let currentPerson = 'stefan',
             map;
         const markers = {};
         let chartStefanInstance = null,
             chartInesInstance = null;
 
+        /* Reisezeitraum je Person: aus den Etappen (erster bis letzter Stopp, bei dem sie dabei ist), sonst die alten Angaben */
+        function personRange(p) {
+            const r = window.TBPlanner && TBPlanner.ready && TBPlanner.personRanges ? TBPlanner.personRanges().get(personKey(p)) : null;
+            return r && r.start ? r : { start: p.start || '', end: p.end || '' };
+        }
         function renderStats() {
-            $('#stats').innerHTML = DATA.persons.map(p => `
-                    <div class="stat">
-                        <span style="color:${p.color}">●</span> ${p.name}
-                        <b>${daysBetween(p.start, p.end) + 1} Tage</b>${fmtISO(p.start)} – ${fmtISO(p.end)}
-                    </div>`).join('');
+            const ok = d => /^\d{4}-\d\d-\d\d$/.test(d || '');
+            $('#stats').innerHTML = (DATA.persons || []).map(p => {
+                const r = personRange(p);
+                return `<div class="stat">
+                        <span style="color:${col(p.color)}">●</span> ${esc(p.name)}
+                        ${ok(r.start) && ok(r.end) ? `<b>${daysBetween(r.start, r.end) + 1} Tage</b>${fmtISO(r.start)} – ${fmtISO(r.end)}` : '<b>–</b>Noch keine Etappen'}
+                    </div>`;
+            }).join('');
         }
 
         /* 2. Unterkünfte (aus DATA.stations) */
@@ -591,43 +557,63 @@
             $('#infoList').innerHTML = DATA.infos.map(i => `<li><strong>${esc(i.title)}:</strong> ${rich(i.text)}</li>`).join('');
         }
 
-        /* 4. Filter, Tagespläne & Mobile Karten */
-        /* Kompakte Leiste: Suche + Filter als Auswahl (statt vieler Knöpfe) + Anzahl; „Tag hinzufügen“ hängt sich an (renderPlanTable) */
-        function renderFilters() {
-            [['th', '#filterControlsThailand', 'qTH'], ['sl', '#filterControlsSriLanka', 'qSL']].forEach(([k, sel, id]) => {
-                const f = (DATA.filters || {})[k] || [];
-                $(sel).innerHTML = `<input type="search" id="${id}" class="q-input" placeholder="Suchen …" aria-label="Ablauf durchsuchen">
-                    ${f.length ? `<label class="f-sel">${ic('filter')}<select aria-label="Filter"><option value="all">Alle</option>${f.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select></label>` : ''}
-                    <span class="f-count note"></span><span class="pl-slot"></span>`;
-                $(sel).querySelector('input').oninput = () => filterPlan(k);
-                const s = $(sel).querySelector('select');
-                if (s) s.onchange = () => { if (k === 'th') currentRegionThailand = s.value; else currentRegionSriLanka = s.value; filterPlan(k); };
-            });
-        }
-
-        function renderTableAndCards() {
-            renderPlanTable('th');
-            renderPlanTable('sl');
-        }
-
-        /* Gemeinsame Logik für Tagesplan Thailand (th) und Sri Lanka (sl) */
-        const planCfg = {
-            th: { body: '#planTableBodyThailand', cards: '#mobileCardsThailand', search: '#qTH', region: () => currentRegionThailand },
-            sl: { body: '#planTableBodySriLanka', cards: '#mobileCardsSriLanka', search: '#qSL', region: () => currentRegionSriLanka }
-        };
-
+        /* 4. Möglicher Ablauf: Thailand und Sri Lanka als eine Liste (nach Datum), dazu die Tage aus den Etappen,
+           die noch keinen Eintrag haben, und die Ideen aus „Mögliche Aktivitäten“ am ersten Tag eines Orts.
+           Gespeichert wird weiter in days.th / days.sl (der Planer wählt den Teil nach Datum). */
         const PLAN_ID = { th: 'thailand', sl: 'srilanka' };
-        function renderPlanTable(k) {
-            const cfg = planCfg[k], todayStr = getTodayISO(), tbody = $(cfg.body);
+        const PLAN_KEY = { thailand: 'th', srilanka: 'sl' };
+        let currentRegion = 'all';
+        function renderFilters() {
+            const seen = new Set(), f = [...((DATA.filters || {}).th || []), ...((DATA.filters || {}).sl || [])].filter(([v]) => !seen.has(v) && seen.add(v));
+            const el = $('#filterControlsAblauf');
+            el.innerHTML = `<input type="search" id="qAblauf" class="q-input" placeholder="Suchen …" aria-label="Ablauf durchsuchen">
+                ${f.length ? `<label class="f-sel">${ic('filter')}<select aria-label="Filter"><option value="all">Alle</option>${f.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select></label>` : ''}
+                <span class="f-count note"></span><span class="pl-slot"></span>`;
+            el.querySelector('input').oninput = filterPlan;
+            const sel = el.querySelector('select');
+            if (sel) sel.onchange = () => { currentRegion = sel.value; filterPlan(); };
+        }
+
+        function renderTableAndCards() { renderPlanTable(); }
+
+        function ablaufItems() {
+            if (window.TBPlanner && TBPlanner.ready && TBPlanner.ablauf) return TBPlanner.ablauf();
+            const items = [];
+            ['th', 'sl'].forEach(k => (DATA.days[k] || []).forEach((r, i) => items.push({ r, plan: PLAN_ID[k], i, iso: r.rawDate || '' })));
+            return items.sort((a, b) => (a.iso || '9') < (b.iso || '9') ? -1 : (a.iso || '9') > (b.iso || '9') ? 1 : 0);
+        }
+        function renderPlanTable() {
+            const todayStr = getTodayISO(), tbody = $('#planTableBody');
             tbody.innerHTML = '';
-            /* Werkzeugleiste der Live-Planung über der Tabelle */
             const PL = window.TBPlanner && TBPlanner.ready ? TBPlanner : null;
-            const box = tbody.closest('.box');
-            let slot = box.querySelector('.pl-slot');
-            if (!slot) { slot = document.createElement('span'); slot.className = 'pl-slot'; box.querySelector('.controls').appendChild(slot); }
-            slot.innerHTML = PL ? PL.planToolbar(PLAN_ID[k]) : '';
-            (DATA.days[k] || []).forEach((item, idx) => {
+            const slot = $('#filterControlsAblauf .pl-slot');
+            /* „+ Tag“: neue Tage landen nach Datum im passenden Teil */
+            if (slot) slot.innerHTML = PL ? PL.planToolbar('thailand') : '';
+            const A = window.TBActivities && TBActivities.ideas ? TBActivities : null, shownIdeas = new Set(), edit = PL && PL.canEdit();
+            const ideasFor = name => {
+                if (!A || !name || shownIdeas.has(name)) return '';
+                shownIdeas.add(name);
+                const xs = A.ideas(name);
+                return xs.length ? `<div class="ab-ideas">${ic('sparkles')}<span><b>Ideen:</b> ${xs.slice(0, 6).map(a => esc(a.title)).join(' · ')}${xs.length > 6 ? ` · +${xs.length - 6}` : ''}</span></div>` : '';
+            };
+            ablaufItems().forEach(x => {
                 const tr = document.createElement('tr');
+                if (x.virtual) {
+                    const names = x.v.keys.map(k => (DATA.places[k] || {}).name).filter(Boolean), loc = names[names.length - 1] || '';
+                    tr.className = 'row ab-virt' + (x.iso === todayStr ? ' today-row' : '');
+                    tr.setAttribute('data-location', names.join(' '));
+                    tr.setAttribute('data-rawdate', x.iso);
+                    tr.onclick = e => { if (!e.target.closest('[data-pl], a')) focusMap(loc); };
+                    tr.innerHTML = `
+                        <td><span class="dn">Tag ${x.v.day}</span><div class="dt">${esc(fmtISO(x.iso))}</div></td>
+                        <td></td>
+                        <td><div class="tt">${esc(x.name || 'Reisetag')}</div></td>
+                        <td>${names.map(ideasFor).join('')}${edit ? `<button type="button" class="ab-plan" data-pl="row-add" data-plan="${esc(x.plan)}" data-iso="${esc(x.iso)}">${ic('plus')}Tag planen</button>` : `<span class="note">Noch nichts geplant.</span>`}</td>
+                        <td></td><td></td>`;
+                    tbody.appendChild(tr);
+                    return;
+                }
+                const item = x.r, idx = x.i;
                 const isToday = item.rawDate === todayStr;
                 tr.className = 'row' + (isToday ? ' today-row' : '');
                 tr.setAttribute('data-region', item.region || '');
@@ -642,47 +628,53 @@
                 const regTag = /^[\w-]+$/.test(item.regTag || '') ? item.regTag : '';
                 tr.innerHTML = `
                     <td>
-                        <span class="dn">${esc(item.day)}</span>${PL ? PL.rowEditBtn(PLAN_ID[k], idx) : ''}
+                        <span class="dn">${esc(item.day)}</span>${PL ? PL.rowEditBtn(x.plan, idx) : ''}
                         <div class="dt">${esc(item.date)}</div>${groupBadge}
                     </td>
                     <td>${item.region ? `<span class="rg ${regTag}">${esc(item.region)}</span>` : ''}</td>
                     <td><div class="tt">${esc(item.title)} ${isToday ? `<span class="today-tag">${ic('star')}Heute</span>` : ''}</div></td>
-                    <td>${rich(item.details)}</td>
+                    <td>${rich(item.details)}${ideasFor(item.locName)}</td>
                     <td>${item.transport ? `<span class="pill">${rich(item.transport)}</span>` : ''}</td>
                     <td>${item.hotel ? `<span class="pill hotel-pill${/noch offen/i.test(item.hotel) ? ' hotel-open' : ''}">${rich(item.hotel)}</span>` : ''}</td>`;
                 tbody.appendChild(tr);
             });
-            filterPlan(k);
+            filterPlan();
         }
 
-        function filterPlan(k) {
-            const cfg = planCfg[k], reg = cfg.region();
-            const q = $(cfg.search) ? $(cfg.search).value.toLowerCase() : '';
-            document.querySelectorAll(cfg.body + ' tr').forEach(row => {
+        function filterPlan() {
+            const reg = currentRegion;
+            const q = $('#qAblauf') ? $('#qAblauf').value.toLowerCase() : '';
+            const rows = [...document.querySelectorAll('#planTableBody tr')];
+            rows.forEach(row => {
                 const okSearch = row.textContent.toLowerCase().includes(q);
                 const okFilter = reg === 'all' || ['data-location', 'data-region', 'data-group'].some(a => (row.getAttribute(a) || '').includes(reg));
                 row.style.display = (okSearch && okFilter) ? '' : 'none';
             });
-            const rows = document.querySelectorAll(cfg.body + ' tr'), shown = [...rows].filter(r => r.style.display !== 'none').length;
-            const box = $(cfg.body).closest('.box'), cnt = box && box.querySelector('.f-count');
+            const shown = rows.filter(r => r.style.display !== 'none').length;
+            const cnt = $('#filterControlsAblauf .f-count');
             if (cnt) cnt.textContent = shown === rows.length ? `${rows.length} Tage` : `${shown} von ${rows.length}`;
-            const tab = $(k === 'th' ? '#planCountTh' : '#planCountSl');
-            if (tab) tab.textContent = rows.length || '';
-            renderMobileCards(k);
+            renderMobileCards();
         }
 
-        function renderMobileCards(k) {
-            const cfg = planCfg[k], container = $(cfg.cards), todayStr = getTodayISO();
+        function renderMobileCards() {
+            const container = $('#mobileCards'), todayStr = getTodayISO();
             container.innerHTML = '';
-            document.querySelectorAll(cfg.body + ' tr').forEach(row => {
+            document.querySelectorAll('#planTableBody tr').forEach(row => {
                 if (row.style.display === 'none') return;
                 const c = row.querySelectorAll('td'),
                     loc = row.getAttribute('data-location'),
                     rawDate = row.getAttribute('data-rawdate');
                 const isToday = rawDate === todayStr;
                 const card = document.createElement('div');
-                card.className = 'card' + (isToday ? ' today-card' : '');
-                card.onclick = e => { if (!e.target.closest('.row-edit, a')) focusMap(loc); };
+                card.className = 'card' + (isToday ? ' today-card' : '') + (row.classList.contains('ab-virt') ? ' ab-virt' : '');
+                card.onclick = e => { if (!e.target.closest('.row-edit, a, [data-pl]')) focusMap(loc.split(' ').pop()); };
+                /* Etappen-Tag ohne Eintrag: eine kompakte Zeile */
+                if (row.classList.contains('ab-virt')) {
+                    const add = c[3].querySelector('.ab-plan'), ideas = [...c[3].querySelectorAll('.ab-ideas')].map(x => x.outerHTML).join('');
+                    card.innerHTML = `<div class="ab-vline">${c[0].querySelector('.dn').outerHTML}<span class="card-date">${esc(c[0].querySelector('.dt').textContent)}</span><b>${esc(c[2].textContent)}</b>${add ? `<button type="button" class="ab-plan ic-only" data-pl="row-add" data-plan="${esc(add.dataset.plan)}" data-iso="${esc(add.dataset.iso)}" aria-label="Tag planen" title="Tag planen">${ic('plus')}</button>` : ''}</div>${ideas}`;
+                    container.appendChild(card);
+                    return;
+                }
                 const dayBadge = (c[0].querySelector('.dn') ? c[0].querySelector('.dn').outerHTML : '') + (c[0].querySelector('.row-edit') ? c[0].querySelector('.row-edit').outerHTML : '');
                 const dateText = c[0].querySelector('.dt') ? c[0].querySelector('.dt').textContent : '';
                 const groupBadge = c[0].querySelector('.group-badge') ? c[0].querySelector('.group-badge').outerHTML : '';
@@ -694,7 +686,7 @@
                     </div>
                     <div class="card-title">${esc(c[2].textContent)}</div>
                     <div class="card-details">${c[3].innerHTML}</div>
-                    <div class="card-footer">${c[4].innerHTML} ${c[5].innerHTML}</div>`;
+                    ${c[4].innerHTML.trim() || c[5].innerHTML.trim() ? `<div class="card-footer">${c[4].innerHTML} ${c[5].innerHTML}</div>` : ''}`;
                 container.appendChild(card);
             });
         }
@@ -840,24 +832,45 @@
             el.innerHTML = ic('clock') + `Noch <b>${Math.floor(t / 86400)}</b> T., <b>${Math.floor(t / 3600) % 24}</b> Std., <b>${Math.floor(t / 60) % 60}</b> Min.`;
         }
 
+        /* Arbeitstage bis zum eigenen Reisebeginn (aus den Etappen), abzüglich Feiertagen und eingetragener Urlaubstage
+           (workdays.vacation = { bayern: n, wien: n }, eintragen dürfen Admins) */
+        const WD_ROWS = [['bayern', 'stefan', 'Stefan'], ['wien', 'ines', 'Ines']];
         function calculateWorkDays() {
-            const wd = DATA.workdays;
-            let cur = new Date();
-            cur.setHours(0, 0, 0, 0);
-            const [y, m, d] = wd.until.split('-').map(Number);
-            const end = new Date(y, m - 1, d);
-            let countBayern = 0, countWien = 0;
-            while (cur < end) {
-                const dayOfWeek = cur.getDay();
-                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                    const iso = localISO(cur); // lokales Datum (nicht UTC) – sonst verrutschen Feiertage um einen Tag
-                    if (!wd.holidays.bayern.includes(iso)) countBayern++;
-                    if (!wd.holidays.wien.includes(iso)) countWien++;
+            const wd = DATA.workdays, el = $('#workStats');
+            if (!wd || !el) return;
+            const ok = d => /^\d{4}-\d\d-\d\d$/.test(d || '');
+            const ps = DATA.persons || [], vac = wd.vacation || {};
+            const admin = ROLE === 'admin' && window.TBPlanner && TBPlanner.ready && TBPlanner.saveKeys;
+            el.innerHTML = WD_ROWS.map(([reg, key, label]) => {
+                const p = ps.find(x => String(personKey(x)).toLowerCase() === key || String(x.name || '').toLowerCase() === key) || { name: label, color: '' };
+                const start = personRange(p).start || (window.TBPlanner && TBPlanner.ready ? (TBPlanner.legs().start || '') : '') || firstDate() || wd.until || '';
+                let n = 0;
+                if (ok(start)) {
+                    const cur = new Date(TODAY + 'T12:00:00'), end = new Date(start + 'T12:00:00');
+                    const hol = (wd.holidays || {})[reg] || [];
+                    while (cur < end) {
+                        const dow = cur.getDay();
+                        if (dow !== 0 && dow !== 6 && !hol.includes(localISO(cur))) n++;
+                        cur.setDate(cur.getDate() + 1);
+                    }
                 }
-                cur.setDate(cur.getDate() + 1);
-            }
-            $('#workDaysBayern').innerText = `${countBayern} Tage`;
-            $('#workDaysWien').innerText = `${countWien} Tage`;
+                const v = Math.max(0, parseInt(vac[reg], 10) || 0);
+                return `<div class="stat">
+                        <span style="color:${col(p.color, '#64748b')}">●</span> Arbeitstage ${esc(p.name || label)}
+                        <b>${ok(start) ? Math.max(0, n - v) : '–'} Tage</b>${ok(start) ? `bis ${fmtISO(start)}` : 'Noch kein Reisebeginn'}
+                        ${admin ? `<label class="wd-vac">Urlaubstage bis dahin <input type="number" min="0" max="99" inputmode="numeric" data-wd-vac="${reg}" value="${v || ''}" placeholder="0"></label>`
+                            : v ? `<small>abzgl. ${v} Urlaubstag${v === 1 ? '' : 'e'}</small>` : ''}
+                    </div>`;
+            }).join('');
+            el.querySelectorAll('[data-wd-vac]').forEach(i => i.onchange = () => {
+                const reg = i.dataset.wdVac, v = Math.max(0, Math.min(99, parseInt(i.value, 10) || 0));
+                if (v === (parseInt(((DATA.workdays || {}).vacation || {})[reg], 10) || 0)) return;
+                TBPlanner.saveKeys(['workdays'], () => {
+                    const w = DATA.workdays, o = { ...(w.vacation || {}) };
+                    if (v) o[reg] = v; else delete o[reg];
+                    if (Object.keys(o).length) w.vacation = o; else delete w.vacation;
+                }).then(() => calculateWorkDays());
+            });
         }
 
         /* 7. Gemeinsame Listen (To-Dos & Packlisten) über Supabase
@@ -929,7 +942,7 @@
                 if (term && !`${item.text} ${item.tag}`.toLowerCase().includes(term)) return;
                 shown++;
                 const li = document.createElement('li');
-                li.className = `todo-item ${item.done ? 'done' : ''}`;
+                li.className = `todo-item sw-row ${item.done ? 'done' : ''}`;
                 let tagClass = '';
                 if (item.tag === 'Thailand') tagClass = 'tag-th';
                 if (item.tag === 'Sri Lanka') tagClass = 'tag-sl';
@@ -939,7 +952,7 @@
                         <span></span>
                     </label>
                     <span class="todo-tag ${tagClass}"></span>
-                    <button type="button" onclick="deleteTodo(${idx})" aria-label="Löschen" title="Löschen">${ic('trash')}</button>`;
+                    <span class="sw-acts"><button type="button" class="sw-edit" onclick="editTodo(${idx})" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button><button type="button" class="sw-del" onclick="deleteTodo(${idx})" aria-label="Löschen" title="Löschen">${ic('trash')}</button></span>`;
                 li.querySelector('label span').textContent = item.text;
                 li.querySelector('.todo-tag').textContent = item.tag;
                 ul.appendChild(li);
@@ -972,6 +985,28 @@
             }, loadTodos);
         }
 
+        /* To-Do bearbeiten (Text und Kategorie) – Bottom-Sheet der Live-Planung, sonst einfache Abfrage */
+        function editTodo(idx) {
+            const item = todoList[idx];
+            if (!item || !listsEditable()) return;
+            const save = (text, tag) => {
+                text = String(text || '').trim();
+                if (!text) return;
+                Object.assign(item, { text, tag });
+                renderTodos();
+                dbWrite(() => q(TB.sb.from('travelbase_todos').update({ text, tag }).eq('id', item.id)), loadTodos);
+            };
+            const PL = window.TBPlanner && TBPlanner.sheet ? TBPlanner : null;
+            if (!PL) { const t = prompt('To-Do:', item.text); if (t !== null) save(t, item.tag); return; }
+            const tags = [...$('#newTodoTag').options].map(o => [o.value, o.textContent]);
+            if (item.tag && !tags.some(t => t[0] === item.tag)) tags.push([item.tag, item.tag]);
+            const u = PL.ui;
+            PL.sheet({
+                title: 'To-Do bearbeiten',
+                body: u.field('Aufgabe', u.area('text', item.text, 'rows="2" maxlength="500" required')) + u.field('Kategorie', u.sel('tag', item.tag, tags)),
+                done: f => { const t = u.val(f, 'text'); if (!t) { alert('Bitte einen Text eingeben.'); return false; } save(t, u.val(f, 'tag')); }
+            });
+        }
         function deleteTodo(idx) {
             const item = todoList[idx];
             if (!listsEditable()) return;
@@ -1098,6 +1133,7 @@
                 tbody.appendChild(catRow);
                 categories[cat].forEach(item => {
                     const idx = item._origIndex, total = (item.weight || 0) * (item.qty || 1), tr = document.createElement('tr');
+                    tr.className = 'sw-row';
                     tr.innerHTML = `
                         <td style="text-align:center">
                             <input type="checkbox" ${item.packed ? 'checked' : ''} onchange="togglePacked(${idx})" class="pack-check" aria-label="Eingepackt">
@@ -1112,9 +1148,9 @@
                         </td>
                         <td style="text-align:right">${item.weight || 0} g</td>
                         <td style="text-align:right;font-weight:700;color:var(--p1)">${total} g</td>
-                        <td style="text-align:center">
-                            <button class="icon-act" type="button" onclick="editPackItem(${idx})" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button>
-                            <button class="icon-act del" type="button" onclick="deletePackItem(${idx})" aria-label="Löschen" title="Löschen">${ic('trash')}</button>
+                        <td class="sw-acts">
+                            <button class="icon-act sw-edit" type="button" onclick="editPackItem(${idx})" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button>
+                            <button class="icon-act del sw-del" type="button" onclick="deletePackItem(${idx})" aria-label="Löschen" title="Löschen">${ic('trash')}</button>
                         </td>`;
                     tr.querySelector('td:nth-child(2) strong').textContent = item.name;
                     tbody.appendChild(tr);
@@ -1168,14 +1204,33 @@
             dbWrite(() => q(TB.sb.from('travelbase_packlist_items').delete().eq('id', item.id)), loadPacklist);
         }
 
+        /* Gegenstand bearbeiten: alle Felder in einem Bottom-Sheet (auf dem Handy per Wischen nach links erreichbar) */
         function editPackItem(idx) {
             const item = packlists[currentPerson][idx];
-            if (!listsEditable()) return;
-            const name = prompt("Name des Gegenstands:", item.name);
-            if (name === null) return;
-            const w = prompt("Gewicht in Gramm (Stück):", item.weight);
-            if (w === null) return;
-            updateItem(item, { name: name.trim() || item.name, weight: parseInt(w) || 0 });
+            if (!item || !listsEditable()) return;
+            const PL = window.TBPlanner && TBPlanner.sheet ? TBPlanner : null;
+            if (!PL) {
+                const name = prompt("Name des Gegenstands:", item.name);
+                if (name === null) return;
+                const w = prompt("Gewicht in Gramm (Stück):", item.weight);
+                if (w === null) return;
+                updateItem(item, { name: name.trim() || item.name, weight: parseInt(w) || 0 });
+                return;
+            }
+            const u = PL.ui, opts = sel => { const o = [...$(sel).options].map(x => [x.value, x.textContent]); return o; };
+            const cats = opts('#newItemCat'); if (item.cat && !cats.some(c => c[0] === item.cat)) cats.unshift([item.cat, item.cat]);
+            PL.sheet({
+                title: 'Gegenstand bearbeiten',
+                body: u.field('Name', u.inp('name', item.name, 'required maxlength="120"'))
+                    + u.field('Kategorie', u.sel('cat', item.cat, cats))
+                    + `<div class="pl-row">${u.field('Gewicht (g/Stück)', u.inp('weight', item.weight || '', 'type="number" min="0" inputmode="numeric"'))}${u.field('Anzahl', u.inp('qty', item.qty || 1, 'type="number" min="1" inputmode="numeric"'))}</div>`
+                    + `<div class="pl-row">${u.field('Typ', u.sel('type', item.type, opts('#newItemType')))}${u.field('Wo', u.sel('loc', item.loc, opts('#newItemLoc')))}</div>`,
+                done: f => {
+                    const name = u.val(f, 'name');
+                    if (!name) { alert('Bitte einen Namen eingeben.'); return false; }
+                    updateItem(item, { name, cat: u.val(f, 'cat'), weight: Math.max(0, parseInt(u.val(f, 'weight'), 10) || 0), qty: Math.max(1, parseInt(u.val(f, 'qty'), 10) || 1), type: u.val(f, 'type'), loc: u.val(f, 'loc') });
+                }
+            });
         }
 
         /* 9. Gewichtsanalyse & Chart.js Diagramme (nur eingepackte Gegenstände, wie oben in der Zusammenfassung) */
@@ -1256,18 +1311,11 @@
         }
 
         /* 10. Event-Handler & Tab-Steuerung */
-        /* Ablauf: Thailand und Sri Lanka sind Unterbereiche von #ablauf */
-        let PLAN_SUB = 'thailand';
+        /* alte Links #thailand / #srilanka öffnen den gemeinsamen Ablauf */
         const PLAN_SUBS = ['thailand', 'srilanka'];
-        function showPlanSub() {
-            PLAN_SUBS.forEach(id => $('#' + id).classList.toggle('on', id === PLAN_SUB));
-            document.querySelectorAll('#ablauf .plan-bar [data-sub]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.sub === PLAN_SUB)));
-        }
-        document.querySelectorAll('#ablauf .plan-bar [data-sub]').forEach(b => b.onclick = () => switchTab(b.dataset.sub));
         function switchTab(targetId) {
-            if (PLAN_SUBS.includes(targetId)) { PLAN_SUB = targetId; targetId = 'ablauf'; }
-            const hashId = targetId === 'ablauf' ? PLAN_SUB : targetId;
-            if (targetId === 'ablauf') showPlanSub();
+            if (PLAN_SUBS.includes(targetId)) targetId = 'ablauf';
+            const hashId = targetId;
             document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.t === targetId));
             document.querySelectorAll('.pane').forEach(x => x.classList.toggle('on', x.id === targetId));
             document.querySelectorAll('.pop-btn').forEach(x => x.classList.toggle('on', x.dataset.t === targetId));
@@ -1380,8 +1428,8 @@
                 updateCountdown();
                 setInterval(updateCountdown, 1000);
             });
-            safe(renderStats);
             safe(initPlanner);
+            safe(renderStats);
             safe(renderAccommodations);
             safe(renderFlights);
             safe(renderInfos);
@@ -1405,7 +1453,9 @@
             const dated = st0.filter(x => /^\d{4}-\d\d-\d\d$/.test(x.from || '')).sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
             let di = 0; const st = st0.map(x => /^\d{4}-\d\d-\d\d$/.test(x.from || '') ? dated[di++] : x);
             const m = DATA.meta || {}, persons = DATA.persons || [];
-            const start = persons.reduce((a, p) => !a || p.start < a ? p.start : a, ''), end = persons.reduce((a, p) => p.end > a ? p.end : a, '');
+            const PL = window.TBPlanner && TBPlanner.ready ? TBPlanner : null, LG = PL ? PL.legs() : { on: false, list: [] };
+            const rs = persons.map(personRange);
+            const start = LG.start || rs.reduce((a, p) => p.start && (!a || p.start < a) ? p.start : a, ''), end = LG.end || rs.reduce((a, p) => p.end > a ? p.end : a, '');
             const past = !!end && TODAY > end;
             let today = null;
             const tr = days.find(d => d.rawDate === TODAY);
@@ -1425,22 +1475,32 @@
                 const key = P[k] ? k : Object.keys(P).find(y => P[y] && P[y].name === k);
                 return key ? thPlaceColor(key) : 'var(--p1)';
             };
-            const route = st.map((x, i) => ({
+            /* Route = Etappen (gleiche Nummern und Farben wie im Bereich Etappen); ohne Etappen wie bisher aus den Unterkünften */
+            const lab = PL ? PL.labels() : new Map(), dm = iso => `${iso.slice(8)}.${iso.slice(5, 7)}.`;
+            const legRoute = LG.on && LG.list.length ? LG.list.map(g => ({
+                k: g.k, num: lab.get(g.k) ?? g.p.num, name: g.p.name || g.k, color: thPlaceColor(g.k),
+                when: [g.from ? (g.n ? `${dm(g.from)}–${dm(g.to)}` : dm(g.from)) : '', g.n ? `${g.n} ${g.n === 1 ? 'Nacht' : 'Nächte'}` : 'Zwischenstopp'].filter(Boolean).join(' · '),
+                now: !!(g.from && TODAY >= g.from && TODAY < (g.n ? g.to : nextISO(g.from))), label: 'Heute hier'
+            })) : null;
+            const route = legRoute || st.map((x, i) => ({
                 num: i + 1, name: String(x.title || x.name || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus, x),
                 when: [x.period || (/^\d{4}-\d\d-\d\d$/.test(x.from || '') ? `${x.from.slice(8)}.${x.from.slice(5, 7)}.${/^\d{4}-\d\d-\d\d$/.test(x.to || '') ? `–${x.to.slice(8)}.${x.to.slice(5, 7)}.` : ''}` : ''),
                     x.nights ? `${x.nights} ${x.nights === 1 ? 'Nacht' : 'Nächte'}` : ''].filter(Boolean).join(' · '),
                 now: !!(x.from && x.to && TODAY >= x.from && TODAY < x.to), label: 'Heute hier'
             }));
             const tiles = {
-                ablauf: { text: `${(DATA.days.th || []).length} + ${(DATA.days.sl || []).length} Tage` },
+                ablauf: { text: `${ablaufItems().length} Tage` },
                 acc: { text: `${st.length} Stationen` }, mapview: { text: `${Object.keys(DATA.places || {}).length} Orte` }
             };
             if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} ${DATA.flights.some(f => f.mode && f.mode !== 'flight') ? 'Einträge' : 'Flüge'}` };
             if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
             if (window.TBPlanner && TBPlanner.ready) { const w = TBPlanner.warnings().length, ss = TBPlanner.stationStats(); tiles.acc = { text: w ? `${w}× Storno-Frist!` : `${ss.booked}/${ss.total} gebucht` }; }
             TBTripMobile.setData({ flags: TRIP_FLAGS, past, today, route, tiles, people: persons.map(p => p.name).join(', ') });
-            if (window.TBActivities && TBActivities.ready && TBActivities.setStops) TBActivities.setStops(route);
-            else if (window.TBActivities) TBActivities.init({ tripId: TRIP_ID, slug: TRIP_SLUG, stops: route });
+            /* Aktivitäten: je Ort einmal, Farbe wie der Kartenpunkt (alle Besuche) */
+            const P = DATA.places || {};
+            const actStops = legRoute ? legRoute.map(x => { const k0 = P[x.k] && P[x.k].same && P[P[x.k].same] ? P[x.k].same : x.k; return { num: x.num, name: x.name, color: thPlaceColor(k0, [k0, ...Object.keys(P).filter(y => P[y] && P[y].same === k0)]) }; }) : route;
+            if (window.TBActivities && TBActivities.ready && TBActivities.setStops) TBActivities.setStops(actStops);
+            else if (window.TBActivities) TBActivities.init({ tripId: TRIP_ID, slug: TRIP_SLUG, stops: actStops });
         }
 
         /* Live-Planung (shared/planner.js): Thailand speichert Tage unter "days" ({th, sl}) und Unterkünfte unter "stations" ({th, sl}) */
@@ -1469,6 +1529,9 @@
                                       { id: 'sl', label: (DATA.texts || {}).accHeadSl || 'Sri Lanka', list: DATA.stations.sl = DATA.stations.sl || [] }],
                 refresh: rerenderAll,
                 placeColor: k => thPlaceColor(k),
+                placeWho: k => thPlaceWho(k),
+                /* neue Ablauf-Tage: ab dem ersten Sri-Lanka-Datum in den Sri-Lanka-Teil */
+                planFor: iso => { const sl = [...(DATA.days.sl || []).map(d => d.rawDate), ...(DATA.stations.sl || []).map(x => x.from)].filter(d => /^\d{4}-\d\d-\d\d$/.test(d || '')).sort()[0]; return sl && iso >= sl ? 'srilanka' : 'thailand'; },
                 focusPlace: k => { const p = (DATA.places || {})[k]; focusMap(p && p.same && DATA.places[p.same] ? p.same : k); }
             });
         }
@@ -1483,13 +1546,19 @@
             if (b) b.onclick = () => { const x = document.querySelector('.pop-btn[data-t="acc"]'); if (x) x.click(); document.body.classList.remove('m-home'); };
         }
         /* Nach jeder Änderung neu zeichnen; die Karte behält ihren Ausschnitt */
+        /* Ideen aus „Mögliche Aktivitäten“ erscheinen im Ablauf */
+        let actTimer = 0;
+        document.addEventListener('tb:activities', () => { clearTimeout(actTimer); actTimer = setTimeout(() => { if (DATA) safe(renderTableAndCards); }, 50); });
         function rerenderAll() {
             const y = window.scrollY;
+            safe(renderStats);
+            safe(calculateWorkDays);
             safe(renderAccommodations);
             safe(renderFlights);
             safe(renderTableAndCards);
             safe(() => {
-                const view = map ? { c: map.getCenter(), z: map.getZoom() } : null;
+                let view = null;
+                try { view = map ? { c: map.getCenter(), z: map.getZoom() } : null; } catch (e) { view = null; }
                 if (map) { map.remove(); map = null; }
                 Object.keys(markers).forEach(k => delete markers[k]);
                 const fitted = mapFitted; mapFitted = true;

@@ -106,7 +106,19 @@
             const h = pane.querySelector('[data-act-hide]');
             if (h) h.onchange = () => { filter.hideDone = h.checked; renderAll(); };
         }
+        /* Ablauf zeigt die Ideen je Ort mit an */
+        document.dispatchEvent(new CustomEvent('tb:activities'));
     }
+    /* Ort umbenannt (Etappen): Aktivitäten hängen am Ortsnamen und ziehen mit */
+    async function renameLocation(from, to) {
+        if (!tripId || !from || !to || from === to || !list.some(a => a.location_name === from)) return;
+        list.forEach(a => { if (a.location_name === from) a.location_name = to; });
+        renderAll();
+        try { await q(TB.sb.from('travelbase_activities').update({ location_name: to }).eq('trip_id', tripId).eq('location_name', from)); TB.cacheSet(cacheKey, list); }
+        catch (e) { alert('⚠️ Aktivitäten konnten nicht mit umbenannt werden: ' + TB.errorText(e)); load(); }
+    }
+    /* Ideen eines Orts (nicht erledigt, noch keinem Tag zugeordnet) für den Ablauf */
+    const ideas = name => list.filter(a => a.location_name === name && !a.done && !a.planned_day);
 
     /* Klicks und Formulare überall (Seite + Modal) über Delegation */
     function onClick(e) {
@@ -139,9 +151,12 @@
         const a = list.find(x => x.id === f.dataset.id), ref = f.elements.day.value, pl = planner();
         if (!a || !ref || !pl || !editable()) return;
         editing = null;
-        if (!await pl.addToDay(ref, a.title)) { renderAll(); return; }
-        a.planned_day = ref;
-        write(() => q(TB.sb.from('travelbase_activities').update({ planned_day: ref }).eq('id', a.id)));
+        const got = await pl.addToDay(ref, a.title);
+        if (!got) { renderAll(); return; }
+        /* Etappen-Tag ohne Eintrag: der Planer legt ihn an und gibt die echte Referenz zurück */
+        const real = typeof got === 'string' ? got : ref;
+        a.planned_day = real;
+        write(() => q(TB.sb.from('travelbase_activities').update({ planned_day: real }).eq('id', a.id)));
     }
     function onSubmit(e) {
         const pick = e.target.closest('.act-pick');
@@ -258,5 +273,5 @@
         load();
     }
 
-    window.TBActivities = { init, open, close, setStops, ready: false };
+    window.TBActivities = { init, open, close, setStops, renameLocation, ideas, forLocation: name => forLoc(name), ready: false };
 })();

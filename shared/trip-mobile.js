@@ -195,6 +195,41 @@
         }, 8000);
     }
 
+    /* Nach links wischen (nur Handy): Zeilen mit .sw-row schieben rechts ihre Aktionen (.sw-acts, z. B. Bearbeiten / Löschen) herein.
+       Auf dem Desktop stehen die Aktionen normal in der Zeile. */
+    (function swipe() {
+        const small = window.matchMedia('(max-width: 767.98px)');
+        let row = null, x0 = 0, y0 = 0, base = 0, cur = 0, mode = 0, open = null;
+        const width = r => { const a = r.querySelector('.sw-acts'); return a ? a.offsetWidth : 0; };
+        const set = (r, v, anim) => { cur = v; r.classList.toggle('sw-anim', !!anim); r.style.setProperty('--sx', v + 'px'); };
+        const close = r => { if (!r) return; set(r, 0, true); r.classList.remove('sw-open'); if (open === r) open = null; };
+        document.addEventListener('touchstart', e => {
+            const r = e.target.closest && e.target.closest('.sw-row');
+            if (open && open !== r) close(open);
+            row = null;
+            if (!r || !small.matches || e.target.closest('.sw-acts') || e.target.closest('input, select, textarea')) return;
+            row = r; mode = 0; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+            base = r.classList.contains('sw-open') ? -width(r) : 0; cur = base;
+        }, { passive: true });
+        document.addEventListener('touchmove', e => {
+            if (!row) return;
+            const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+            if (!mode) { if (Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my) * 1.2) mode = 1; else if (Math.abs(my) > 8) { mode = 2; row = null; return; } else return; }
+            if (e.cancelable) e.preventDefault();
+            const w = width(row);
+            set(row, Math.max(-w - 24, Math.min(0, base + mx)), false);
+        }, { passive: false });
+        document.addEventListener('touchend', () => {
+            if (!row) return;
+            const r = row; row = null;
+            if (mode !== 1) { if (r.classList.contains('sw-open')) close(r); return; }
+            const w = width(r);
+            if (cur < -w / 2) { set(r, -w, true); r.classList.add('sw-open'); open = r; } else close(r);
+        });
+        /* nach einer Aktion wieder zu */
+        document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('.sw-acts button'); if (a) close(a.closest('.sw-row')); });
+    })();
+
     window.TBTripMobile = {
         setData(d) { const tiles = Object.assign({}, data.tiles, d && d.tiles); data = Object.assign(data, d || {}, { tiles }); render(); },
         setTile(id, t) { data.tiles = Object.assign({}, data.tiles, { [id]: t }); render(); },

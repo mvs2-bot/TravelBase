@@ -73,13 +73,22 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
 - **Von Mitgliedern geschriebene Inhalte gelten als unsicher:** HTML-Felder nur über `rich()`/`TB.safeHtml`, Farben über `TB.safeColor`, Links über `TB.safeUrl`.
 - **Unterkünfte-Ansicht** (`renderAcc`): je Etappe ein Abschnitt mit „x/y Nächte gebucht“ und kompakten Karten (`.bk-sec`, `.bk-card`), fehlende als „Unterkunft fehlt“; Unterkünfte ohne Etappe darunter (Gruppen, z. B. Thailand/Sri Lanka). Keine Tabelle mehr.
 - **Bereiche der Vorlage:** Karte · Etappen (`#stops`) · Tagespläne · **Buchungen** (`#bookings`, Unterbereiche `#acc` Unterkünfte und `#flights` Transporte
-  als Segmente; alte Links `#acc`/`#flights` öffnen den Unterbereich). Thailand hat Etappen, aber weiter getrennte Unterkünfte/Flüge; dort ist **„Ablauf“** (`#ablauf`) ein Bereich mit den Unterbereichen
-  `#thailand` / `#srilanka` (Segmente, alte Links öffnen den Unterbereich) und kompakter Filterleiste (Suche · Filter-Auswahl · Anzahl · „+“).
+  als Segmente; alte Links `#acc`/`#flights` öffnen den Unterbereich). Thailand hat Etappen, aber weiter getrennte Unterkünfte/Flüge; dort ist **„Ablauf“** (`#ablauf`) **eine** Liste aus `days.th` und `days.sl`
+  nach Datum (alte Links `#thailand`/`#srilanka` öffnen sie; neue Tage landen per `planFor(iso)` im passenden Teil) mit kompakter Filterleiste.
+- **Ablauf aus den Etappen** (Vorlage und Thailand): `TBPlanner.legDays()` liefert jeden Reisetag mit seinen Orten; Tage ohne Eintrag erscheinen
+  als gestrichelte Zeile „Tag planen“ (legt den Tag mit Datum/Ort an, `editRow(plan, null, preset)`), daher füllt sich der Ablauf einer neuen Reise
+  allein durch die Etappen. Ideen aus „Mögliche Aktivitäten“ (`TBActivities.ideas(name)`, Ereignis `tb:activities`) stehen am ersten Tag eines Orts;
+  „In Ablauf übernehmen“ geht auch auf Etappen-Tage ohne Eintrag (`<plan>:@YYYY-MM-DD`, `addToDay` gibt die echte Referenz zurück).
+- **Route (Handy) und Aktivitäten-Orte** = Etappen (gleiche Nummern/Farben); ohne Nächte wie bisher (Vorlage: Tagesplan, Thailand: Unterkünfte).
+- **Wischen:** Zeilen mit `.sw-row` + `.sw-acts` (To-Dos, Packliste) zeigen auf dem Handy per Wischen nach links Bearbeiten/Löschen
+  (`shared/trip-mobile.js`); Bearbeiten über `TBPlanner.sheet` / `TBPlanner.ui`.
 - **Punktfarben = Reisende** (wie Südamerika): ohne `mapColors` färben `persons` (`{key,name,color}`, gepflegt über „Reisende“ in den Etappen)
   die Punkte auf Karte, Etappen und Route; `places[k].who` schränkt ein (fehlt = alle, `[]` = bewusst niemand → Gelb `#eab308`). Ohne Reisende Blau. Stopps haben keine eigene Farbauswahl mehr.
   Alte Reisen mit `mapColors: "persons"` + `who` in Tagesplan-Zeilen bleiben unverändert.
   Thailand: Reisebeginn ohne `meta.start` = frühestes Datum aus `persons`, Unterkünften oder Ablauf-Tagen (`firstDate()`).
-  Thailand: `thPlaceColor()` – Reisende (`persons` mit `start`/`end`) färben jeden Ort nach Zeitraum (Etappe → Unterkunft mit `focus` → Ablauf-Tag); `who` am Ort schränkt fest ein.
+  Thailand: `thPlaceColor()` – `who` am Ort gilt fest; sonst färben die alten `persons.start/end` nach Zeitraum der Etappe (Vorgabe).
+  Überall (Karte, Etappen, Route, Aktivitäten) dieselbe Funktion. Reisezeiträume der Personen kommen aus den Etappen (`TBPlanner.personRanges()`).
+  Thailand-Arbeitstage: bis zum eigenen Reisebeginn, minus Feiertage und `workdays.vacation` (`{ bayern, wien }`, Admins tragen ein).
 - **Etappen** (zentrale Planung, wie Stippl): `places[k].nights` je nummeriertem Stopp (− / + in der Stoppliste). Ankunft = Reisebeginn + Nächte davor.
   Unterkünfte mit `place` (Vorlage) bzw. `focus` (Thailand) übernehmen die Daten der Etappe, fehlende erscheinen als „Unterkunft fehlt“;
   ein Ablauf mit `legs: true` (nach „Tage aus den Etappen anlegen“) wird bei jeder Änderung neu angeordnet (Zeilen mit `auto: true` tragen
@@ -91,6 +100,9 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   eigene `num`-Position, `nights`, `who`, `desc`, Unterkunft). Angezeigt wird die Nummer des ersten Besuchs (`TBPlanner.labels()`,
   in `DATA.places[k].label`); auf der Karte kein eigener Punkt (der erste Besuch zeigt alle Zeiträume). Anlegen über „Neuer Stopp“ →
   „erneut besuchen“ oder „Erneut besuchen“ im Stopp-Sheet. Löschen des ersten Besuchs entfernt die erneuten Besuche.
+- Unterkunft ↔ Etappe: `place` (Vorlage) bzw. `focus` (Thailand) enthält den **Schlüssel** des Stopps (Formularfeld „Etappe“); ältere Einträge
+  mit Ortsnamen werden über den Namen (bei mehreren Besuchen nach Datum, sonst Präfix wie „Bangkok Stadtzentrum“ → „Bangkok“) zugeordnet.
+  Umbenennen eines Stopps zieht Unterkünfte, Thailand-Tage (`locName`) und Aktivitäten (`location_name`) mit. Offene Unterkünfte sind rot markiert.
 - Unterkünfte `stations`: Array (Vorlage) oder Objekt aus Arrays (Thailand: `th`/`sl`). Felder u. a. `name|title`, `checkin|from`, `checkout|to`,
   `hotel`, `status` (`booked`/`open`), `code`, `price`+`currency`, `address`, `maps`, `cancel_until`, `cancel_checked`, `transfer`, `note`.
   `TB.tripSummaries()` (RPC `travelbase_trip_summaries`) liefert Stopps/Unterkünfte/Storno-Warnungen für die Übersicht.
