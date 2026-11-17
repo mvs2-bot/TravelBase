@@ -130,6 +130,12 @@
         if (first && matchMedia('(pointer: fine)').matches) first.focus();
         return f;
     }
+    /* Aufräumen erst, wenn das Sheet wirklich zu ist: dlg.close() feuert „close“ verzögert. Öffnet ein Sheet direkt das nächste
+       (z. B. „Hier einfügen“ → „Neuer Stopp“), käme das alte close-Ereignis sonst beim neuen Sheet an und entfernte dessen Karte. */
+    function onSheetClose(fn) {
+        const h = () => { if (dlg.open) return; dlg.removeEventListener('close', h); fn(); };
+        dlg.addEventListener('close', h);
+    }
     const field = (lab, input, cls = '') => `<label class="pl-field ${cls}"><span>${lab}</span>${input}</label>`;
     const inp = (name, v, attrs = '') => `<input name="${name}" value="${esc(v ?? '')}" ${attrs}>`;
     const area = (name, v, attrs = '') => `<textarea name="${name}" rows="3" ${attrs}>${esc(v ?? '')}</textarea>`;
@@ -468,7 +474,7 @@
         if (!p) return;
         detailK = k;
         sheet({ title: p.name || k, body: '<div class="pl-detail"></div>', submit: 'Fertig', done: () => true });
-        dlg.addEventListener('close', () => { detailK = null; }, { once: true });
+        onSheetClose(() => { detailK = null; });
         renderDetail();
     }
     function renderDetail() {
@@ -718,7 +724,7 @@
             else if (pts.length) map.setView(pts[0], 7);
             else map.setView([30, 10], 2);
         }, 60);
-        dlg.addEventListener('close', () => map.remove(), { once: true });
+        onSheetClose(() => map.remove());
         return { set };
     }
     async function reverseGeocode(lat, lng) {
