@@ -263,7 +263,7 @@
 
         <!-- Popover-Ansichten: Packliste & Gewicht -->
         <div id="pack" class="pane">
-            <div class="box">
+            <div class="box pk-box">
                 <div class="sub-tabs">
                     <button id="btnPackStefan" class="tab on" onclick="switchPerson(&quot;stefan&quot;)"><span><svg class="ic"><use href="#i-backpack"></use></svg></span><span class="pn-stefan"></span></button>
                     <button id="btnPackInes" class="tab" onclick="switchPerson(&quot;ines&quot;)"><span><svg class="ic"><use href="#i-backpack"></use></svg></span><span class="pn-ines"></span></button>
@@ -1087,7 +1087,27 @@
             $('#btnPackStefan').classList.toggle('on', person === 'stefan');
             $('#btnPackInes').classList.toggle('on', person === 'ines');
             $('#packlistTitle').innerHTML = ic('backpack') + `Interaktive Packliste (${personName()})`;
+            paintPack();
             renderPacklist();
+        }
+
+        /* Farbe der Packliste = Farbe der Person aus „Reisende“ in den Etappen (ändert sich dort mit) */
+        function packColor(p) {
+            const pn = (DATA.packNames || {})[p], x = (DATA.persons || []).find(o => o.key === p || (pn && o.name === pn));
+            return x && x.color ? col(x.color, '') : '';
+        }
+        function paintPack() {
+            const pane = $('#pack');
+            if (!pane) return;
+            const c = packColor(currentPerson);
+            pane.classList.toggle('pk-c', !!c);
+            if (c) pane.style.setProperty('--pc', c); else pane.style.removeProperty('--pc');
+            [['stefan', '#btnPackStefan'], ['ines', '#btnPackInes']].forEach(([p, sel]) => {
+                const b = $(sel), bc = packColor(p);
+                if (!b) return;
+                if (bc) b.style.setProperty('--pc', bc); else b.style.removeProperty('--pc');
+                b.classList.toggle('pk-c', !!bc);
+            });
         }
 
         async function fetchPack() {
@@ -1177,6 +1197,7 @@
         function renderPacklist() {
             const tbody = $('#packTableBody');
             if (!tbody) return;
+            try { paintPack(); } catch (e) {}
             fillCatSelect();
             tbody.innerHTML = '';
             const list = packlists[currentPerson] || [], categories = {};
@@ -1647,6 +1668,7 @@
                 else { mapFitted = false; fitStartView(); }
             });
             safe(mobileData);
+            safe(paintPack);
             window.scrollTo(0, y);
         }
     </script>
