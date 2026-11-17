@@ -72,8 +72,9 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   und schreibt jeden Schlüssel in den Abschnitt, aus dem er kam (sonst `guest` für `places/routes`, `member` für den Rest).
 - **Von Mitgliedern geschriebene Inhalte gelten als unsicher:** HTML-Felder nur über `rich()`/`TB.safeHtml`, Farben über `TB.safeColor`, Links über `TB.safeUrl`.
 - **Unterkünfte-Ansicht** (`renderAcc`): je Etappe ein Abschnitt mit „x/y Nächte gebucht“ und kompakten Karten (`.bk-sec`, `.bk-card`), fehlende als „Unterkunft fehlt“ (Zähler „n fehlt“ oben, Filter „Fehlt“; Details per Knopf `.bk-det` rechts unter dem Stift; kein Adressfeld mehr – Adressen stehen in der Notiz); Unterkünfte ohne Etappe darunter (Gruppen, z. B. Thailand/Sri Lanka). Keine Tabelle mehr.
-- **Bereiche der Vorlage:** Karte · Etappen (`#stops`) · Tagespläne · **Buchungen** (`#bookings`, Unterbereiche `#acc` Unterkünfte und `#flights` Transporte
-  als Segmente; alte Links `#acc`/`#flights` öffnen den Unterbereich). Thailand hat Etappen, aber weiter getrennte Unterkünfte/Flüge; dort ist **„Ablauf“** (`#ablauf`) **eine** Liste aus `days.th` und `days.sl`
+- **Bereiche der Vorlage** (wie Thailand): Karte · Etappen (`#stops`) · Tagespläne · **Unterkünfte** (`#acc`, eigener Bereich, sobald es Unterkünfte gibt
+  oder man sie anlegen darf; `stations` als Array oder Gruppen `{ "Peru": [...] }`) · … · Flüge & Transporte (`#flights`); alter Link `#bookings` öffnet `#acc`.
+  Symbol der Tagespläne ist immer `calendar` (ein Emoji in `plans[].icon` wird ignoriert). Thailand hat Etappen und getrennte Unterkünfte/Flüge; dort ist **„Ablauf“** (`#ablauf`) **eine** Liste aus `days.th` und `days.sl`
   nach Datum (alte Links `#thailand`/`#srilanka` öffnen sie; neue Tage landen per `planFor(iso)` im passenden Teil) mit kompakter Filterleiste.
 - **Ablauf aus den Etappen** (Vorlage und Thailand): `TBPlanner.legDays()` liefert jeden Reisetag mit seinen Orten; Tage ohne Eintrag erscheinen
   als gestrichelte Zeile „Tag planen“ (legt den Tag mit Datum/Ort an, `editRow(plan, null, preset)`), daher füllt sich der Ablauf einer neuen Reise
@@ -102,9 +103,11 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   „Aus den Etappen“ (Knopf `go-stops`); „Transport hinzufügen“ dort nur ohne `#stops`. `places[k].kind` (Anreise/Abreise) ist abgelöst,
   die Auswahl erscheint nur noch bei Etappen, die sie schon haben.
 - **Kartenlinien:** sobald die Etappen Nächte haben, zeichnet `TBPlanner.drawRoute(map, places)` (`routeSegments()`) Linien zwischen aufeinanderfolgenden
-  Stopps (ohne `noRoute`, gleiche Koordinaten übersprungen; keine geschätzte Strecke, wenn eingetragene Transporte etwas anderes sagen: Transport von a woandershin,
-  Ankunft in b von woanders, a Abreise/b Anreise, oder ab 800 km zu einem reinen Abflugort bzw. von einem reinen Ankunftsort). Stil nach eingetragenem Transport dazwischen (`transportBetween`), sonst ab 800 km Flug,
-  darunter Straße (`SEG_STYLE`). Zusätzlich eine Linie je eingetragenem Transport zwischen den passenden Orten (`transportSegments`, Code/Name), doppelte Strecken einmal. Ohne Etappen-Nächte wie bisher gespeicherte `routes` (`{via:[Schlüssel], style}`) bzw. automatische Linie.
+  Stopps (ohne `noRoute`, gleiche Koordinaten übersprungen; keine geschätzte Strecke, wenn eingetragene Transporte etwas anderes sagen: Transport von a woandershin
+  bzw. Ankunft in b von woanders – außer jemand aus `who` von a und b reist nicht mit diesem Transport –, a Abreise/b Anreise, oder ab 800 km zu einem reinen
+  Abflugort bzw. von einem reinen Ankunftsort). Stil nach eingetragenem Transport dazwischen (`transportBetween`), sonst ab 800 km Flug,
+  darunter Straße (`SEG_STYLE`). Zusätzlich eine Linie je eingetragenem Transport zwischen den passenden Orten (`transportSegments`, Code/Name; passt ein Ende zu keinem Ort, z. B. „GUA“ bei
+  der Etappe „Antigua“, gilt die Etappe, an der die Reisenden des Transports am Abflug- bzw. Ankunftstag sind; Flüge von/nach zu Hause ohne Linie), doppelte Strecken einmal. Ohne Etappen-Nächte wie bisher gespeicherte `routes` (`{via:[Schlüssel], style}`) bzw. automatische Linie.
 - **Ablauf-Tag bearbeiten** (`editRow`): Auswahl „Etappe / Ort auf der Karte“ (Dropdown; setzt `focus`/`locName`, verschiebt das Datum in den
   Zeitraum der Etappe und die Tag-Nummer), Datum, „Mögliche Aktivität übernehmen“ (`TBActivities.forLocation`, füllt Titel bzw. hängt an Details an).
   Thailand: Klick auf eine Zeile springt über `data-focus` + `focusMap(name, iso)` (Schlüssel → Name → Präfix → Etappe am Datum) zur Karte.

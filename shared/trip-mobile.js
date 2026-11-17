@@ -166,12 +166,13 @@
         document.body.appendChild(side);
         let sig = '';
         const build = () => {
-            const bs = src(), now = bs.map(b => b.dataset.t + ':' + b.textContent.trim()).join('|');
+            const bs = src(), txt = b => [...b.childNodes].filter(n => n !== b.querySelector('span')).map(n => n.textContent).join('').trim();
+            const now = bs.map(b => b.dataset.t + ':' + txt(b)).join('|');
             if (now !== sig) {
                 sig = now;
                 const title = (document.getElementById('tripTitle') || {}).textContent || '';
                 side.innerHTML = `<a class="d-side-home" href="../">${ic('chevronLeft')}Alle Reisen</a>${title ? `<div class="d-side-t">${esc(title)}</div>` : ''}`
-                    + bs.map(b => `<button type="button" data-t="${esc(b.dataset.t)}">${(b.querySelector('span') || {}).innerHTML || ''}<span>${esc(b.textContent.trim())}</span></button>`).join('');
+                    + bs.map(b => `<button type="button" data-t="${esc(b.dataset.t)}">${(b.querySelector('span') || {}).innerHTML || ''}<span>${esc(txt(b))}</span></button>`).join('');
             }
             side.querySelectorAll('button[data-t]').forEach(x => { const o = bs.find(b => b.dataset.t === x.dataset.t); x.classList.toggle('on', !!(o && o.classList.contains('on'))); });
             document.body.classList.toggle('d-sidebar', dq.matches && bs.length > 1);

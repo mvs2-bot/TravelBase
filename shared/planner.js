@@ -184,14 +184,21 @@
         /* ein Transport-Ende gehört nur zu den am besten passenden Orten (Flughafen-Code schlägt Stadtname) */
         const top = end => Math.max(0, ...l.map(x => endScore(end, base(x))));
         const at = (end, x) => { const sc = endScore(end, base(x)); return sc > 0 && sc >= top(end); };
-        const leaves = (a, b) => FL.some(f => at(f.from, a) && near(f.from.date, lg.get(a.k)) && !at(f.to, b));
-        const arrives = (a, b) => FL.some(f => at(f.to, b) && near(f.to.date || f.from.date, lg.get(b.k)) && !at(f.from, a));
+        const leaving = (a, b) => FL.filter(f => at(f.from, a) && near(f.from.date, lg.get(a.k)) && !at(f.to, b));
+        const arriving = (a, b) => FL.filter(f => at(f.to, b) && near(f.to.date || f.from.date, lg.get(b.k)) && !at(f.from, a));
         const dep = x => FL.some(f => at(f.from, x) && near(f.from.date, lg.get(x.k))), arr = x => FL.some(f => at(f.to, x) && near(f.to.date || f.from.date, lg.get(x.k)));
         const onlyDep = x => dep(x) && !arr(x), onlyArr = x => arr(x) && !dep(x);
         for (let i = 1; i < l.length; i++) {
             const a = l[i - 1], b = l[i];
             if (+a.p.lat === +b.p.lat && +a.p.lng === +b.p.lng) continue;
-            if (a.p.kind === 'depart' || b.p.kind === 'arrive' || leaves(a, b) || arrives(a, b)) continue;
+            if (a.p.kind === 'depart' || b.p.kind === 'arrive') continue;
+            /* ein Transport geht von a woandershin bzw. kommt in b von woanders an: Strecke nur, wenn jemand anderes von a nach b weiterreist
+               (z. B. eine Person fliegt heim, die anderen fahren weiter; eine Person reist nach, die anderen kommen über Land) */
+            const other = [...leaving(a, b), ...arriving(a, b)];
+            if (other.length) {
+                const ab = whoAt(a.k).filter(x => whoAt(b.k).includes(x));
+                if (!ab.filter(x => !other.some(f => flightWho(f).includes(x))).length) continue;
+            }
             /* weite Strecke zu einem Ort, an dem nur abgeflogen wird (Startpunkt), oder von einem, an dem nur angekommen wird (Endpunkt) */
             if (km(a.p, b.p) >= 800 && (onlyArr(a) || onlyDep(b))) continue;
             const tr = transportBetween(a.p, b.p);
@@ -200,11 +207,44 @@
         return out;
     }
     /* Linien aus eingetragenen Transporten: Start und Ziel über Flughafen-Code („Flughafen Wien (VIE)“) bzw. Ortsnamen */
+    /* Reisende eines Stopps (Schlüssel) und eines Transports (who mit Namen oder Schlüsseln, leer = alle); ohne Reisende ein Platzhalter */
+    function whoAt(k) {
+        const ps = persons();
+        if (!ps.length) return ['*'];
+        if (H.placeWho) return H.placeWho(k) || [];
+        const p = places()[k] || {};
+        return Array.isArray(p.who) ? p.who : ps.map(pkey);
+    }
+    function flightWho(f) {
+        const ps = persons();
+        if (!ps.length) return ['*'];
+        return !Array.isArray(f.who) || !f.who.length ? ps.map(pkey) : ps.filter(x => f.who.some(w => w === x.name || w === pkey(x))).map(pkey);
+    }
+    /* Linien aus eingetragenen Transporten: Start und Ziel über Flughafen-Code („Flughafen Wien (VIE)“) bzw. Ortsnamen.
+       Passt ein Ende zu keinem Ort (z. B. Flug ab „GUA“, Etappe heißt „Antigua“), gilt der Stopp, an dem die Reisenden des Transports
+       an diesem Tag sind: Abflug = Etappe, die am Abflugtag endet bzw. läuft, Ankunft = Etappe, die am Ankunftstag beginnt.
+       Kommt ein Ende von außerhalb (Flug von zu Hause), gibt es keine Linie. */
     function transportSegments(P) {
         P = P || places();
         const cand = Object.entries(P).filter(([, p]) => valid(p) && !p.same);
         const best = end => { let b = null, bs = 0; cand.forEach(([k, p]) => { const sc = endScore(end, p); if (sc > bs) { bs = sc; b = p; } }); return b; };
-        return (raw().flights || []).filter(f => f && f.from && f.to).map(f => { const a = best(f.from), b = best(f.to); return a && b && a !== b ? { from: [+a.lat, +a.lng], to: [+b.lat, +b.lng], mode: f.mode || 'flight' } : null; }).filter(Boolean);
+        const L = legs(P).list.filter(g => g.from && valid(g.p));
+        const geo = g => g.p.same && P[g.p.same] ? P[g.p.same] : g.p;
+        const by = (f, ok, dist) => {
+            const fw = flightWho(f);
+            let b = null, bd = 1e9;
+            L.forEach(g => { if (!ok(g) || !whoAt(g.k).some(x => fw.includes(x))) return; const d = dist(g); if (d < bd) { bd = d; b = geo(g); } });
+            return b;
+        };
+        const dep = f => { const d = f.from.date; return ISO.test(d || '') ? by(f, g => g.from <= d && d <= g.to, g => dn(g.to) - dn(d)) : null; };
+        const arr = f => {
+            const d0 = f.from.date, d = ISO.test((f.to && f.to.date) || '') ? f.to.date : d0;
+            return ISO.test(d0 || '') ? by(f, g => g.from >= d0 && dn(g.from) <= dn(d) + 1, g => Math.abs(dn(g.from) - dn(d))) : null;
+        };
+        return (raw().flights || []).filter(f => f && f.from && f.to).map(f => {
+            const a = best(f.from) || dep(f), b = best(f.to) || arr(f);
+            return a && b && a !== b && !(+a.lat === +b.lat && +a.lng === +b.lng) ? { from: [+a.lat, +a.lng], to: [+b.lat, +b.lng], mode: f.mode || 'flight' } : null;
+        }).filter(Boolean);
     }
     const SEG_STYLE = { flight: { color: '#059669', weight: 2.5, opacity: .85, dashArray: '6, 6' }, ferry: { color: '#0d9488', weight: 3, opacity: .9, dashArray: '2, 7' },
         train: { color: '#dc2626', weight: 3, opacity: .9, dashArray: '4, 4' }, road: { color: '#0d9488', weight: 3.5, opacity: .9 }, bus: { color: '#0d9488', weight: 3.5, opacity: .9 }, car: { color: '#0d9488', weight: 3.5, opacity: .9 } };
