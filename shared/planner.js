@@ -164,13 +164,6 @@
         return Math.round(s);
     }
     const kmText = n => n.toLocaleString('de-DE') + ' km';
-    /* Fahrzeit grob geschätzt: Straße ≈ Luftlinie × 1,3 bei im Schnitt 60 km/h; ab 800 km eher Flug */
-    function driveText(k) {
-        if (k >= 800) return 'eher Flug';
-        const h = k * 1.3 / 60;
-        if (h < 1) return `ca. ${Math.max(10, Math.round(h * 6) * 10)} min`;
-        return `ca. ${(h < 10 ? Math.round(h * 2) / 2 : Math.round(h)).toLocaleString('de-DE')} h`;
-    }
 
     /* ---------- Etappen: Nächte je Stopp ---------- */
     const pendingN = {};
@@ -241,35 +234,108 @@
             </div>`;
         };
         const next = new Map();
-        for (let i = 1; i < rs.length; i++) next.set(rs[i - 1].k, Math.round(km(rs[i - 1].p, rs[i].p)));
+        for (let i = 1; i < rs.length; i++) next.set(rs[i - 1].k, { km: Math.round(km(rs[i - 1].p, rs[i].p)), to: rs[i].p });
         el.hidden = !l.length && !edit;
         const total = totalKm(P);
         /* Reiseende: fester Zeitraum, sonst die Summe der Nächte */
         const end = m.end && !(H.legEnd && H.legEnd()) ? m.end : L.end;
         const drag = edit && l.length > 1;
+        const dayLong = iso => ISO.test(iso || '') ? `${WD[new Date(iso + 'T12:00:00Z').getUTCDay()]}. ${fmtY(iso)}` : '';
+        /* Pille „Nächte geplant“ wie bei Polarsteps (oben rechts neben „Reise beginnt“) */
+        const pct = goal ? Math.min(100, Math.round(L.total / goal * 100)) : 100;
+        const pill = L.on ? `<span class="pl-npill${goal && L.total > goal ? ' over' : ''}" title="${goal && L.total > goal ? `${L.total - goal} mehr als der Reisezeitraum` : goal && L.total < goal ? `noch ${goal - L.total} offen` : ''}">
+                <i class="pl-ring sm" style="--pct:${pct}"></i><span><b>${L.total}${goal ? `/${goal}` : ''}</b> Nächte geplant</span></span>` : '';
+        /* Lücke zwischen zwei Stopps: „+“ zum Einfügen und das Verkehrsmittel */
+        const ins = at => edit ? `<button type="button" class="pl-ins" data-pl="stop-add" data-at="${at}" aria-label="Hier einen Stopp einfügen">${ic('plus')}</button>` : '<span class="pl-ins-sp"></span>';
+        const gap = (at, k) => {
+            const x = k && next.get(k), tr = x && transportBetween(P[k], x.to);
+            const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr && tr.mode))}</span>` : '';
+            return `<li class="pl-tl-gap">${ins(at)}${chip}</li>`;
+        };
+        const nums = l.filter(x => x.p.num != null);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
-                <span class="pl-head-acts">${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}
-                ${edit && l.length ? `<button type="button" data-pl="stop-add">${ic('plus')}Stopp</button>` : ''}</span></div>
-            ${ring}
-            ${rs.length > 1 ? `<p class="note pl-total">${ic('route')}${kmText(total)} Luftlinie entlang der Route${drag ? ' · Reihenfolge per Ziehen am Griff ändern' : ''}</p>` : ''}
-            ${l.length ? `<ol class="pl-stops">${l.map(({ k, p }) => `
-                <li class="pl-stop" data-k="${esc(k)}" data-sort="stops">
+                <span class="pl-head-acts">${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}</span></div>
+            ${!L.on && edit && nums.length ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : ''}
+            ${l.length ? `<ol class="pl-tl">
+                <li class="pl-tl-row"><span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen')}</small></div>${pill}</li>
+                ${gap(0, null)}
+                ${l.map(({ k, p }, i) => {
+                    const g = lg.get(k), when = g ? (g.from && g.n ? legShort(g) : legText(g)) : p.date || '';
+                    return `<li class="pl-stop" data-k="${esc(k)}" data-sort="stops">
                     <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(p.num) : ic('pin')}</button>
-                    <div class="pl-stop-main">
-                        <b>${esc(p.name || k)}</b>
-                        ${lg.has(k) ? `<small>${esc(legText(lg.get(k)))}</small>` : p.date ? `<small>${esc(p.date)}</small>` : ''}
-                    </div>
+                    <button type="button" class="pl-stop-main" data-pl="stop-open" data-k="${esc(k)}">
+                        <b>${esc(p.name || k)}${ic('chevronRight')}</b>
+                        ${when ? `<small>${esc(when)}</small>` : ''}
+                    </button>
                     ${p.num != null ? stepper(k, p) : ''}
-                    ${edit ? `<div class="pl-acts">
-                        <button type="button" data-pl="stop-edit" data-k="${esc(k)}" aria-label="Bearbeiten">${ic('pencil')}</button>
-                        ${drag ? `<button type="button" class="pl-handle" data-drag="stops" data-k="${esc(k)}" aria-label="Verschieben: ${esc(p.name || k)} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button>` : ''}
-                    </div>` : ''}
-                    ${next.has(k) ? `<span class="pl-leg" title="Luftlinie · Fahrzeit grob geschätzt">${ic('route')}${kmText(next.get(k))}<i>·</i>${esc(driveText(next.get(k)))}</span>` : ''}
-                </li>`).join('')}</ol>
-            ${edit ? `<button type="button" class="pl-next" data-pl="stop-add"><span>${ic('plus')}</span>Nächsten Stopp hinzufügen</button>` : ''}
-            ${end && L.on ? `<div class="pl-finish"><span>${ic('flag')}</span><div><b>Reiseende</b><small>${esc(fmtY(end))}</small></div></div>` : ''}`
+                    ${drag ? `<div class="pl-acts"><button type="button" class="pl-handle" data-drag="stops" data-k="${esc(k)}" aria-label="Verschieben: ${esc(p.name || k)} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button></div>` : ''}
+                </li>${gap(i + 1, k)}`;
+                }).join('')}
+                ${end && L.on ? `<li class="pl-tl-row end"><span class="pl-tl-ic">${ic('flag')}</span><div><b>Reiseende</b><small>${esc(dayLong(end))}</small></div></li>` : ''}
+            </ol>
+            ${rs.length > 1 ? `<p class="note pl-total">${ic('route')}${kmText(total)} Luftlinie entlang der Route${drag ? ' · Reihenfolge per Ziehen am Griff' : ''}</p>` : ''}`
             : `<div class="pl-noroute">${ic('route')}<b>Plane deine Route</b><p>Lege die Orte der Reise in ihrer Reihenfolge an und gib an, wie viele Nächte ihr jeweils bleibt.</p>
-                ${edit ? `<button type="button" class="btn-action" data-pl="stop-add">${ic('plus')}Ersten Stopp hinzufügen</button>` : ''}</div>`}`;
+                ${edit ? `<button type="button" class="btn-action" data-pl="stop-add">${ic('plus')}Ersten Stopp hinzufügen</button>` : ''}</div>`}
+            ${edit ? `<div class="pl-fab-wrap"><div class="pl-fab-menu" hidden>
+                    <button type="button" data-pl="stop-add">${ic('pin')}Reiseziel hinzufügen</button>
+                    <button type="button" data-pl="fab-tr">${ic('plane')}Transport hinzufügen</button>
+                    <button type="button" data-pl="fab-acc">${ic('bed')}Unterkunft hinzufügen</button>
+                </div><button type="button" class="pl-fab" data-pl="fab" aria-label="Hinzufügen" aria-expanded="false">${ic('plus')}</button></div>` : ''}`;
+        if (detailK && dlg && dlg.open) renderDetail();
+    }
+    /* Verkehrsmittel zwischen zwei Stopps: eingetragener Transport mit passenden Orten, sonst Schätzung */
+    const MODE_IC = { flight: 'plane', train: 'train', ferry: 'ship', bus: 'bus', car: 'car' };
+    const placeWords = p => String(p && p.name || '').toLowerCase().split(/[\s,/·()&-]+/).filter(w => w.length > 2);
+    const endHits = (end, p) => { const t = [end && end.city, end && end.name, end && end.code].filter(Boolean).join(' ').toLowerCase(); return !!t && placeWords(p).some(w => t.includes(w)); };
+    function transportBetween(a, b) {
+        const f = (raw().flights || []).find(f => f && f.from && f.to && endHits(f.from, a) && endHits(f.to, b));
+        if (!f) return null;
+        const mode = f.mode || 'flight';
+        return { mode, icon: MODE_IC[mode] || 'plane', label: (MODES.find(x => x[0] === mode) || ['', 'Transport'])[1] + ' eingetragen' };
+    }
+    /* Zeit grob: Flug ≈ km/750 + 25 min, Fähre ≈ 30 km/h, sonst Straße/Schiene (Luftlinie × 1,3 bei 60 km/h) */
+    function travelText(k, mode) {
+        if (!mode && k >= 800) mode = 'flight';
+        const h = mode === 'flight' ? k / 750 + .4 : mode === 'ferry' ? k * 1.2 / 30 : k * 1.3 / 60;
+        if (h < 1) return `ca. ${Math.max(10, Math.round(h * 6) * 10)} min`;
+        const hh = Math.floor(h), mm = Math.round((h - hh) * 6) * 10;
+        return `ca. ${hh} h${mm && hh < 10 ? ` ${mm === 60 ? '' : mm + ' min'}` : ''}`.trim();
+    }
+    /* ---------- Etappe öffnen: Zeitraum, Nächte, Notizen, Unterkünfte, Transporte ---------- */
+    let detailK = null;
+    function openStop(k) {
+        const p = places()[k];
+        if (!p) return;
+        detailK = k;
+        sheet({ title: p.name || k, body: '<div class="pl-detail"></div>', submit: 'Fertig', done: () => true });
+        dlg.addEventListener('close', () => { detailK = null; }, { once: true });
+        renderDetail();
+    }
+    function renderDetail() {
+        const k = detailK, p = places()[k], box = dlg && dlg.querySelector('.pl-detail');
+        if (!p || !box) return;
+        const edit = canEdit(), g = legs().list.find(x => x.k === k), n = nightsOf(k, p);
+        const stays = [];
+        groups().forEach(gr => gr.list.forEach((s, i) => { if (stayKey(s) === k) stays.push({ s, gr, i }); }));
+        const bn = g ? Math.min(g.n, stays.filter(o => S.status(o.s) === 'booked').reduce((m, o) => m + (S.nights(o.s) || g.n), 0)) : 0;
+        const g0 = groups()[0] || { id: '' };
+        const trs = (raw().flights || []).map((f, i) => ({ f, i })).filter(({ f }) => f && f.from && f.to && (endHits(f.to, p) || endHits(f.from, p)));
+        box.innerHTML = `
+            <div class="pl-d-when">${ic('calendar')}<span>${g ? esc(legShort(g)) : esc(p.date || 'Kein Zeitraum')}</span>
+                ${p.num != null && edit ? `<div class="pl-nights" role="group" aria-label="Nächte">
+                    <button type="button" data-pl="n-dec" data-k="${esc(k)}" aria-label="Eine Nacht weniger"${n === 0 ? ' disabled' : ''}>${ic('minus')}</button>
+                    <span><b>${n == null ? '–' : n}</b><small>${n == null ? 'Nächte' : nightsWord(n)}</small></span>
+                    <button type="button" data-pl="n-inc" data-k="${esc(k)}" aria-label="Eine Nacht mehr">${ic('plus')}</button></div>` : n != null ? `<span class="pl-n-ro">${n} ${nightsWord(n)}</span>` : ''}</div>
+            <h3 class="pl-d-h">Notizen${edit ? `<button type="button" class="link-inline" data-pl="stop-edit" data-k="${esc(k)}">${ic('pencil')}Bearbeiten</button>` : ''}</h3>
+            <div class="pl-d-note">${p.desc ? rich(p.desc) : `<span class="note">${edit ? 'Noch keine Notizen – über „Bearbeiten“ ergänzen.' : 'Keine Notizen.'}</span>`}</div>
+            <h3 class="pl-d-h">Unterkünfte${edit ? `<button type="button" class="link-inline" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(k)}">${ic('plus')}Unterkunft</button>` : ''}</h3>
+            ${g && g.n ? `<div class="bk-prog${bn >= g.n ? ' done' : ''}"><span>${bn} / ${g.n} Nächte gebucht</span><i style="--pct:${Math.round(bn / g.n * 100)}"></i></div>` : ''}
+            ${stays.map(({ s, gr, i }) => `<button type="button" class="pl-d-item" data-pl="acc-edit" data-g="${esc(gr.id)}" data-i="${i}"${edit ? '' : ' disabled'}>${ic('bed')}<span><b>${s.hotel ? esc(stripTags(s.hotel)) : esc(S.name(s))}</b><small>${esc([fmt(S.cin(s)) && `${fmt(S.cin(s))} – ${fmt(S.cout(s))}`, s.code].filter(Boolean).join(' · '))}</small></span><span class="pl-st ${STATUS[S.status(s)][1]}">${STATUS[S.status(s)][0]}</span></button>`).join('') || '<p class="note">Noch keine Unterkunft.</p>'}
+            ${trs.length ? `<h3 class="pl-d-h">Transporte</h3>${trs.map(({ f, i }) => `<button type="button" class="pl-d-item" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}>${ic(MODE_IC[f.mode || 'flight'] || 'plane')}<span><b>${esc([f.from.code || f.from.city || f.from.name, f.to.code || f.to.city || f.to.name].filter(Boolean).join(' → '))}</b><small>${esc([f.from.date && fmt(f.from.date), f.from.time].filter(Boolean).join(' '))}</small></span></button>`).join('')}` : ''}
+            <div class="pl-d-acts">
+                <button type="button" class="btn-action" data-pl="stop-focus" data-k="${esc(k)}">${ic('map')}Auf der Karte</button>
+                ${window.TBActivities && TBActivities.ready ? `<button type="button" class="btn-action" data-pl="stop-acts" data-k="${esc(k)}">${ic('sparkles')}Aktivitäten</button>` : ''}
+            </div>`;
     }
     /* Stopp-Liste in den eigenen Bereich „Etappen“ (#stops) hängen – gibt es den nicht, neben die Karte (Split-View) –
        und die Distanz in den Karten-Kopf schreiben */
@@ -355,7 +421,7 @@
             raw().places = out;
         });
     }
-    function editStop(k) {
+    function editStop(k, at) {
         if (!editable()) return;
         const p = k ? places()[k] : null;
         if (k && !p) return;
@@ -419,7 +485,10 @@
                     if (who.length) { const on = who.filter(x => x.checked).map(x => x.value); if (on.length === who.length) delete o.who; else o.who = on; }
                     setOpt(o, 'date', val(f, 'date')); setOpt(o, 'desc', val(f, 'desc'));
                     if (!numbered) delete o.num;
-                    else if (o.num == null) o.num = Object.values(P).reduce((m, x) => x.num != null && x !== o ? Math.max(m, +x.num || 0) : m, 0) + 1;
+                    /* „+“ zwischen zwei Stopps: an dieser Stelle einfügen, sonst ans Ende */
+                    else if (o.num == null) o.num = at != null && isFinite(at) ? at + .5 : Object.values(P).reduce((m, x) => x.num != null && x !== o ? Math.max(m, +x.num || 0) : m, 0) + 1;
+                    /* neuer Stopp, während die Etappen schon Nächte haben: mit 1 Nacht starten */
+                    if (!k && numbered && legs().on && o.nights == null) o.nights = 1;
                     P[key] = o;
                     renumber();
                 });
@@ -658,100 +727,103 @@
     const copyBtn = (text, lab = 'Kopieren') => text ? `<button type="button" class="pl-copy" data-copy="${esc(text)}" aria-label="${esc(lab)}: ${esc(text)}" title="${esc(lab)}">${ic('copy')}</button>` : '';
 
     let accFilter = { q: '', st: 'all' };
+    let accPane = null;
+    /* Unterkünfte wie bei Polarsteps/Stippl: je Etappe ein Abschnitt „Aufenthalt in …“ mit „x/y Nächte gebucht“,
+       darin kompakte Karten; was zu keiner Etappe gehört, steht darunter (nach Gruppen, z. B. Thailand/Sri Lanka) */
     function renderAcc(pane) {
+        pane = pane || accPane;
         if (!pane) return;
-        const gs = groups(), all = allStations(), edit = canEdit();
+        accPane = pane;
+        const gs = groups(), all = allStations(), edit = canEdit(), L = legs();
         const booked = all.filter(s => S.status(s) === 'booked').length, open = all.filter(s => S.status(s) === 'open').length;
-        const nights = all.reduce((n, s) => n + S.nights(s), 0);
         const warn = warnings(), gp = gaps();
         const q = accFilter.q.toLowerCase();
         const match = s => (accFilter.st === 'all' || S.status(s) === accFilter.st)
             && (!q || [S.name(s), s.hotel, s.address, s.code, s.note, S.transfer(s).text].join(' ').toLowerCase().includes(q));
+        const filtering = accFilter.st !== 'all' || !!q;
         const today = H.today;
-        /* Ziehen zum Sortieren nur ohne Filter (sonst stimmt die Reihenfolge nicht mit der Liste überein) */
-        const sortable = accFilter.st === 'all' && !q;
-        const row = (s, g, i) => {
+        const nightsTxt = n => `${n} ${n === 1 ? 'Nacht' : 'Nächte'}`;
+        const card = (s, g, i, drag, inLeg) => {
             const st = S.status(s), c = cancelInfo(s), t = S.transfer(s), n = S.nights(s), cin = S.cin(s), cout = S.cout(s);
             const now = ISO.test(cin) && ISO.test(cout) && today >= cin && today < cout;
             const period = ISO.test(cin) ? `${fmt(cin)} – ${fmt(cout) || '?'}` : rich(s.period || '');
             const statusTag = `<span class="pl-st ${STATUS[st][1]}">${esc(s.statusText && !s._edited ? stripTags(s.statusText) : STATUS[st][0])}</span>`;
             const cancel = c ? `<span class="pl-cancel ${c.warn ? 'warn' : ''}${c.days < 0 ? ' late' : ''}">${ic(c.warn ? 'alert' : 'hourglass')}${esc(c.text)}</span>` : '';
-            const maps = mapsHref(s);
+            const maps = mapsHref(s), price = money(s.price, s.currency);
             const legacy = (s.bookings || []).map(b => `<div class="pl-legacy">${b.name ? `<b>${rich(b.name)}</b> ` : ''}${[b.room, b.by, b.cancel].filter(Boolean).map(rich).join(' · ')}</div>`).join('');
-            const acts = edit ? `<div class="pl-acts">
-                    <button type="button" data-pl="acc-edit" data-g="${esc(g.id)}" data-i="${i}" aria-label="Bearbeiten">${ic('pencil')}</button>
-                    ${sortable && g.list.length > 1 ? `<button type="button" class="pl-handle" data-drag="acc" data-g="${esc(g.id)}" data-i="${i}" aria-label="Verschieben: ${esc(S.name(s))} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button>` : ''}</div>` : '';
             const details = `${s.address ? `<div class="pl-addr"><span>${ic('pin')}<span lang="">${esc(s.address)}</span></span>${copyBtn(s.address, 'Adresse kopieren')}</div>` : ''}
                 ${maps ? `<a class="pl-link" href="${esc(maps)}" target="_blank" rel="noopener">${ic('map')}Google Maps ↗</a>` : ''}
                 ${t.time || t.text ? `<div class="pl-transfer">${t.time ? `<span class="travel-time-pill">${esc(t.time)}</span>` : ''}${rich(t.text)}</div>` : ''}
                 ${s.note ? `<div class="pl-note">${rich(s.note)}</div>` : ''}${legacy}`;
-            return {
-                tr: `<tr class="${now ? 'acc-now' : ''}${st === 'open' ? ' is-open' : ''}" data-g="${esc(g.id)}" data-i="${i}" data-sort="acc:${esc(g.id)}">
-                    <td><strong>${esc(S.name(s))}</strong>${now ? `<span class="now-badge">${ic('pin')}Heute hier</span>` : ''}</td>
-                    <td class="pl-nowrap">${period}${n ? `<div><span class="stay-badge">${n} ${n === 1 ? 'Nacht' : 'Nächte'}</span></div>` : ''}</td>
-                    <td><div class="pl-hotel">${rich(s.hotel || '')}</div>${statusTag}${cancel ? `<div>${cancel}</div>` : ''}</td>
-                    <td>${s.code ? `<span class="pl-code"><code>${esc(s.code)}</code>${copyBtn(s.code, 'Buchungscode kopieren')}</span>` : ''}${money(s.price, s.currency) ? `<div class="pl-price">${esc(money(s.price, s.currency))}</div>` : ''}</td>
-                    <td class="pl-more">${details}</td>
-                    ${edit ? `<td>${acts}</td>` : ''}
-                </tr>`,
-                card: `<article class="pl-card${now ? ' acc-now' : ''}${st === 'open' ? ' is-open' : ''}" data-g="${esc(g.id)}" data-i="${i}" data-sort="acc:${esc(g.id)}">
-                    <div class="pl-card-top">
-                        <div><b>${esc(S.name(s))}</b><small>${period}${n ? ` · ${n} ${n === 1 ? 'Nacht' : 'Nächte'}` : ''}</small></div>
-                        ${statusTag}
-                    </div>
-                    ${s.hotel ? `<div class="pl-hotel">${rich(s.hotel)}</div>` : ''}
-                    ${cancel}
-                    ${s.code ? `<div class="pl-code"><span>Buchung</span><code>${esc(s.code)}</code>${copyBtn(s.code, 'Buchungscode kopieren')}</div>` : ''}
-                    ${details.trim() || money(s.price, s.currency) ? `<details><summary>Details</summary>${money(s.price, s.currency) ? `<div class="pl-price">${esc(money(s.price, s.currency))}</div>` : ''}${details}</details>` : ''}
-                    ${edit ? acts : ''}
-                </article>`
-            };
+            /* Titel: Hotel, sonst der Ort; der Ort steht nur dabei, wenn die Karte nicht schon im Abschnitt der Etappe liegt */
+            const title = s.hotel ? rich(s.hotel) : esc(S.name(s) || 'Unterkunft');
+            const sub = [s.hotel && !inLeg ? esc(S.name(s)) : '', period, n ? nightsTxt(n) : ''].filter(Boolean).join(' · ');
+            return `<article class="bk-card st-${st}${now ? ' acc-now' : ''}" data-g="${esc(g.id)}" data-i="${i}"${drag ? ` data-sort="acc:${esc(g.id)}"` : ''}>
+                <div class="bk-row">
+                    <span class="bk-ic">${ic('bed')}</span>
+                    <div class="bk-txt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}
+                        <div class="bk-tags">${statusTag}${now ? `<span class="now-badge">${ic('pin')}Heute hier</span>` : ''}${cancel}</div></div>
+                    ${edit ? `<div class="pl-acts">
+                        <button type="button" data-pl="acc-edit" data-g="${esc(g.id)}" data-i="${i}" aria-label="Bearbeiten: ${esc(S.name(s))}">${ic('pencil')}</button>
+                        ${drag ? `<button type="button" class="pl-handle" data-drag="acc" data-g="${esc(g.id)}" data-i="${i}" aria-label="Verschieben: ${esc(S.name(s))} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button>` : ''}</div>` : ''}
+                </div>
+                ${s.code || price ? `<div class="bk-meta">${s.code ? `<span class="pl-code"><span>Buchung</span><code>${esc(s.code)}</code>${copyBtn(s.code, 'Buchungscode kopieren')}</span>` : ''}${price ? `<span class="pl-price">${esc(price)}</span>` : ''}</div>` : ''}
+                ${details.trim() ? `<details class="bk-more"><summary>Adresse &amp; Details</summary>${details}</details>` : ''}
+            </article>`;
         };
-        /* Etappen mit Nächten ohne Unterkunft: als offene Platzhalter */
-        const have = new Set(all.map(stayKey).filter(Boolean));
-        const missing = legs().list.filter(x => x.n > 0 && !have.has(x.k));
-        const ph = (x, g) => ({
-            tr: `<tr class="is-open pl-ph"><td><strong>${esc(x.p.name || x.k)}</strong></td><td class="pl-nowrap">${esc(legShort(x))}<div><span class="stay-badge">${x.n} ${nightsWord(x.n)}</span></div></td>
-                <td colspan="${edit ? 4 : 3}"><span class="pl-st warn">Unterkunft fehlt</span>${edit ? ` <button type="button" class="btn-action pl-ph-add" data-pl="acc-leg" data-g="${esc(g.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</td></tr>`,
-            card: `<article class="pl-card is-open pl-ph"><div class="pl-card-top"><div><b>${esc(x.p.name || x.k)}</b><small>${esc(legShort(x))} · ${x.n} ${nightsWord(x.n)}</small></div><span class="pl-st warn">Unterkunft fehlt</span></div>
-                ${edit ? `<button type="button" class="btn-action pl-ph-add" data-pl="acc-leg" data-g="${esc(g.id)}" data-k="${esc(x.k)}">${ic('plus')}Unterkunft eintragen</button>` : ''}</article>`
-        });
-        const blocks = gs.map((g, gi) => {
-            const items = g.list.map((s, i) => ({ s, i })).filter(x => match(x.s)).map(x => row(x.s, g, x.i));
-            if (gi === 0 && accFilter.st !== 'booked' && !q) {
-                /* Platzhalter nach Ankunft einsortieren */
-                missing.forEach(x => {
-                    const at = items.findIndex(it => { const s = g.list[+(/data-i="(\d+)"/.exec(it.tr) || [])[1]]; return s && ISO.test(S.cin(s)) && x.from && S.cin(s) > x.from; });
-                    items.splice(at < 0 ? items.length : at, 0, ph(x, g));
-                });
-            }
-            return `${gs.length > 1 || g.label ? `<h3 class="pl-group">${esc(g.label || '')}</h3>` : ''}
-                ${items.length ? `<div class="tw pl-table"><table>
-                    <thead><tr><th>Station</th><th>Zeitraum</th><th>Unterkunft &amp; Status</th><th>Buchung</th><th>Adresse &amp; Transfer</th>${edit ? '<th></th>' : ''}</tr></thead>
-                    <tbody>${items.map(x => x.tr).join('')}</tbody></table></div>
-                <div class="pl-cards">${items.map(x => x.card).join('')}</div>`
-                : `<p class="note">${g.list.length ? 'Keine Treffer.' : 'Noch keine Unterkünfte eingetragen.'}</p>`}
-                ${edit ? `<button type="button" class="btn-action pl-add" data-pl="acc-add" data-g="${esc(g.id)}">${ic('plus')}Unterkunft${gs.length > 1 && g.label ? ' · ' + esc(g.label) : ''}</button>` : ''}`;
+        /* Etappen (mit Nächten) als Abschnitte */
+        const g0 = gs[0] || { id: '' };
+        const used = new Set();
+        const legSecs = L.list.filter(x => x.n > 0).map(x => {
+            const stays = [];
+            gs.forEach(g => g.list.forEach((s, i) => { if (stayKey(s) === x.k) { used.add(s); if (match(s)) stays.push({ s, g, i }); } }));
+            const bn = Math.min(x.n, stays.filter(o => S.status(o.s) === 'booked').reduce((n, o) => n + (S.nights(o.s) || x.n), 0));
+            const allStays = all.filter(s => stayKey(s) === x.k);
+            if (filtering && !stays.length) return '';
+            return `<section class="bk-sec">
+                <div class="bk-head">
+                    <span class="pl-dot" style="--c:${esc(H.placeColor ? H.placeColor(x.k) : color(x.p.color, 'var(--p1)'))}">${esc(x.p.num ?? '')}</span>
+                    <div><h3>${esc(x.p.name || x.k)}</h3><small>${esc(legShort(x))} · ${nightsTxt(x.n)}</small></div>
+                    ${edit ? `<button type="button" class="bk-add" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}" aria-label="Unterkunft in ${esc(x.p.name || x.k)} hinzufügen">${ic('plus')}<span>Unterkunft</span></button>` : ''}
+                </div>
+                <div class="bk-prog${bn >= x.n ? ' done' : ''}"><span>${bn} / ${x.n} Nächte gebucht</span><i style="--pct:${Math.round(bn / x.n * 100)}"></i></div>
+                ${stays.map(o => card(o.s, o.g, o.i, false, true)).join('')}
+                ${!allStays.length ? `<div class="bk-missing">${ic('bed')}<span><b>Unterkunft fehlt</b><small>${nightsTxt(x.n)} zu planen</small></span>
+                    ${edit ? `<button type="button" class="btn-action" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</div>` : ''}
+            </section>`;
         }).join('');
-        pane.innerHTML = `<div class="box">
+        /* übrige Unterkünfte (ohne Etappe), nach Gruppen */
+        const rest = gs.map(g => {
+            const items = g.list.map((s, i) => ({ s, i })).filter(o => !used.has(o.s) && match(o.s));
+            const drag = edit && !filtering && items.length > 1;
+            if (!items.length && (legSecs || gs.length > 1 || filtering)) return '';
+            const title = gs.length > 1 && g.label ? g.label : legSecs ? 'Weitere Unterkünfte' : '';
+            return `<section class="bk-sec">
+                ${title ? `<div class="bk-head"><span class="bk-ic">${ic('bed')}</span><div><h3>${esc(title)}</h3><small>${items.length} ${items.length === 1 ? 'Eintrag' : 'Einträge'}</small></div>
+                    ${edit ? `<button type="button" class="bk-add" data-pl="acc-add" data-g="${esc(g.id)}">${ic('plus')}<span>Unterkunft</span></button>` : ''}</div>` : ''}
+                ${items.map(o => card(o.s, g, o.i, drag, false)).join('') || `<p class="note">${filtering ? 'Keine Treffer.' : 'Noch keine Unterkünfte eingetragen.'}</p>`}
+                ${!title && edit ? `<button type="button" class="btn-action pl-add" data-pl="acc-add" data-g="${esc(g.id)}">${ic('plus')}Unterkunft</button>` : ''}
+            </section>`;
+        }).join('');
+        /* Kopf: gebuchte Nächte über alle Etappen (sonst über alle Unterkünfte) */
+        const legN = L.list.reduce((n, x) => n + x.n, 0);
+        const bookedN = legN ? L.list.reduce((n, x) => n + Math.min(x.n, all.filter(s => stayKey(s) === x.k && S.status(s) === 'booked').reduce((m, s) => m + (S.nights(s) || x.n), 0)), 0)
+            : all.filter(s => S.status(s) === 'booked').reduce((n, s) => n + S.nights(s), 0);
+        const totalN = legN || all.reduce((n, s) => n + S.nights(s), 0);
+        pane.innerHTML = `<div class="box bk-box">
             <div class="mh"><h2>${ic('bed')}Unterkünfte</h2>
-                <span class="pl-sum"><span class="pl-st ok">${booked} gebucht</span>${open ? `<span class="pl-st warn">${open} offen</span>` : ''}${nights ? `<span class="pl-st mute">${nights} Nächte</span>` : ''}</span></div>
+                <span class="pl-sum"><span class="pl-st ok">${booked} gebucht</span>${open ? `<span class="pl-st warn">${open} offen</span>` : ''}</span></div>
+            ${totalN ? `<div class="bk-prog big${bookedN >= totalN ? ' done' : ''}"><span><b>${bookedN} / ${totalN}</b> Nächte gebucht</span><i style="--pct:${Math.round(bookedN / totalN * 100)}"></i></div>` : ''}
             ${warn.length ? `<div class="tb-banner pl-warn">${ic('alert')}<span><b>Storno-Fristen-Wächter:</b> ${warn.map(w => `${esc(w.name)} – ${esc(w.text)}`).join(' · ')}</span></div>` : ''}
-            ${gp.length ? `<div class="tb-banner pl-gap">${ic('bed')}<span><b>Nächte ohne Unterkunft:</b> ${gp.map(x => `${fmt(x.from)}–${fmt(x.to)} (${x.nights} ${x.nights === 1 ? 'Nacht' : 'Nächte'})`).join(' · ')}</span></div>` : ''}
-            ${all.length > 2 ? `<div class="controls pl-filter">
+            ${gp.length && !legSecs ? `<div class="tb-banner pl-gap">${ic('bed')}<span><b>Nächte ohne Unterkunft:</b> ${gp.map(x => `${fmt(x.from)}–${fmt(x.to)} (${nightsTxt(x.nights)})`).join(' · ')}</span></div>` : ''}
+            ${all.length > 4 ? `<div class="controls pl-filter">
                 <input type="search" class="q-input" data-pl-q placeholder="Unterkunft, Adresse oder Buchungscode suchen …" value="${esc(accFilter.q)}">
                 ${[['all', 'Alle'], ['booked', 'Gebucht'], ['open', 'Offen']].map(([k, l]) => `<button type="button" class="f${accFilter.st === k ? ' on' : ''}" data-pl="acc-filter" data-st="${k}">${l}</button>`).join('')}
             </div>` : ''}
-            ${blocks || (edit ? `<p class="note">Noch keine Unterkünfte.</p><button type="button" class="btn-action pl-add" data-pl="acc-add" data-g="">${ic('plus')}Unterkunft</button>` : '<p class="note">Noch keine Unterkünfte.</p>')}
-        </div>`;
+        </div>
+        <div class="bk-list">${legSecs}${rest || (!legSecs ? `<section class="bk-sec"><p class="note">Noch keine Unterkünfte.</p>${edit ? `<button type="button" class="btn-action pl-add" data-pl="acc-add" data-g="">${ic('plus')}Unterkunft</button>` : ''}</section>` : '')}</div>`;
         const qi = pane.querySelector('[data-pl-q]');
         if (qi) qi.oninput = () => { accFilter.q = qi.value; const pos = qi.selectionStart; renderAcc(pane); const n = pane.querySelector('[data-pl-q]'); n.focus(); n.setSelectionRange(pos, pos); };
-        pane.querySelectorAll('tbody tr[data-i]').forEach(tr => tr.onclick = e => {
-            if (e.target.closest('a, button, summary')) return;
-            const s = (gs.find(g => g.id === tr.dataset.g) || { list: [] }).list[+tr.dataset.i];
-            const k = s && (s.place || (s.focus && placeKeyByName(s.focus)) || placeKeyByName(S.name(s)));
-            if (k && H.focusPlace) H.focusPlace(k);
-        });
     }
     const stripTags = s => String(s || '').replace(/<[^>]*>/g, '');
     function editStation(gid, idx, legKey) {
@@ -963,10 +1035,15 @@
         const a = b.dataset.pl, i = b.dataset.i != null ? +b.dataset.i : null;
         if (a !== 'stop-focus' && a !== 'acc-filter' && a !== 'tr-filter') { e.preventDefault(); e.stopPropagation(); }
         switch (a) {
-            case 'stop-add': return editStop(null);
+            case 'stop-add': closeFab(); return editStop(null, b.dataset.at != null ? +b.dataset.at : null);
+            case 'stop-open': return openStop(b.dataset.k);
+            case 'stop-acts': { const p = places()[b.dataset.k]; if (dlg) dlg.close(); return p && window.TBActivities && TBActivities.open(p.name, p.num ?? '', b); }
+            case 'fab': { const m = b.parentElement.querySelector('.pl-fab-menu'); m.hidden = !m.hidden; b.setAttribute('aria-expanded', String(!m.hidden)); b.classList.toggle('on', !m.hidden); return; }
+            case 'fab-tr': closeFab(); return editTransport(null);
+            case 'fab-acc': closeFab(); return editStation((groups()[0] || {}).id, null);
             case 'people': return editPeople();
             case 'stop-edit': return editStop(b.dataset.k);
-            case 'stop-focus': return H.focusPlace && H.focusPlace(b.dataset.k);
+            case 'stop-focus': if (dlg && dlg.open) dlg.close(); return H.focusPlace && H.focusPlace(b.dataset.k);
             case 'row-add': return editRow(b.dataset.plan, null);
             case 'row-edit': return editRow(b.dataset.plan, i);
             case 'days-gen': return generateDays(b.dataset.plan);
@@ -976,7 +1053,7 @@
             case 'acc-leg': return editStation(b.dataset.g, null, b.dataset.k);
             case 'acc-add': return editStation(b.dataset.g, null);
             case 'acc-edit': return editStation(b.dataset.g, i);
-            case 'acc-filter': accFilter.st = b.dataset.st; return renderAcc(b.closest('.pane'));
+            case 'acc-filter': accFilter.st = b.dataset.st; return renderAcc();
             case 'tr-add': return editTransport(null);
             case 'tr-edit': return editTransport(i);
             case 'tr-sort': return sortTransports();
@@ -1052,6 +1129,9 @@
         g.addEventListener('pointerup', end);
         g.addEventListener('pointercancel', end);
     });
+
+    function closeFab() { document.querySelectorAll('.pl-fab-menu').forEach(m => { m.hidden = true; }); document.querySelectorAll('.pl-fab').forEach(f => { f.classList.remove('on'); f.setAttribute('aria-expanded', 'false'); }); }
+    document.addEventListener('pointerdown', e => { if (!e.target.closest('.pl-fab-wrap')) closeFab(); });
 
     function init(host) { H = host; window.TBPlanner.ready = true; }
 

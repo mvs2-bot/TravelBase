@@ -677,9 +677,18 @@ body:has(.pl-dragging) { user-select: none; -webkit-user-select: none; }
 /* schmal (Handy): Stepper in eine zweite Zeile unter den Ortsnamen */
 @media (max-width: 599.98px) {
     .pl-stop:has(.pl-nights) { flex-wrap: wrap; row-gap: 4px; }
-    .pl-stop:has(.pl-nights) .pl-stop-main { flex: 1 1 calc(100% - 36px); }
+    .pl-stop:has(.pl-nights) .pl-stop-main { flex: 1 1 calc(100% - 50px); }
     .pl-stop:has(.pl-nights) .pl-acts { margin-left: auto; }
     .pl-nights { margin-left: 36px; }
+    /* im Zeitstrahl bleibt alles in einer Zeile (wie Polarsteps), Stepper kompakter */
+    .pl-tl .pl-stop:has(.pl-nights) { flex-wrap: nowrap; gap: 8px; }
+    .pl-tl .pl-stop:has(.pl-nights) .pl-stop-main { flex: 1 1 auto; min-width: 0; }
+    .pl-tl .pl-stop .pl-nights { margin-left: 0; }
+    .pl-tl .pl-nights button { width: 30px; height: 30px; }
+    .pl-tl .pl-nights > span { min-width: 40px; }
+    .pl-tl .pl-stop-main b { font-size: 15px; }
+    .pl-tl .pl-stop-main b, .pl-tl .pl-stop-main small { overflow: hidden; text-overflow: ellipsis; }
+    .pl-tl .pl-acts button { width: 32px; height: 40px; }
 }
 .pl-nights { display: inline-flex; align-items: center; gap: 2px; background: var(--well); border-radius: 999px; padding: 2px; }
 .pl-nights button { border: 0; background: var(--card); color: var(--ink); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; padding: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); cursor: pointer; }
@@ -883,3 +892,115 @@ ul.fl-list li.pl-empty::before { content: none; }
 .pl-person input[name=pn] { flex: 1 1 auto; min-width: 0; min-height: 40px; font-size: 16px; padding: 6px 12px; border: 0; border-radius: 10px; background: var(--well); color: var(--ink); }
 .pl-person-x { flex: 0 0 40px; height: 40px; border: 0; border-radius: 10px; background: none; color: var(--mute); display: grid; place-items: center; }
 .pl-person-x:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* ==========================================================================
+   Etappen als Zeitstrahl (wie Polarsteps): Reisebeginn · Karten je Stopp · „+“ und Verkehrsmittel dazwischen · Reiseende
+   ========================================================================== */
+.pl-tl { list-style: none; position: relative; margin: 4px 0 8px; }
+.pl-tl::before { content: ""; position: absolute; left: 16px; top: 22px; bottom: 22px; border-left: 2px dashed var(--line); }
+.pl-tl > li { position: relative; }
+.pl-tl-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+.pl-tl-row b { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
+.pl-tl-row small { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--mute); }
+.pl-tl-ic { position: relative; z-index: 1; flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--well); color: var(--mute); }
+.pl-tl-ic.home { background: var(--p1); color: var(--on-p1); }
+.pl-tl-ic .ic { width: 17px; height: 17px; }
+.pl-npill { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 999px; background: var(--well); font-size: 12.5px; color: var(--mute); white-space: nowrap; }
+.pl-npill b { color: var(--ink); font-weight: 700; }
+.pl-npill.over b { color: var(--danger); }
+.pl-ring.sm { flex: 0 0 24px; width: 24px; height: 24px; background: radial-gradient(closest-side, var(--well) 68%, transparent 70%), conic-gradient(var(--p1) calc(var(--pct) * 1%), var(--line) 0); }
+.pl-npill.over .pl-ring.sm { background: radial-gradient(closest-side, var(--well) 68%, transparent 70%), conic-gradient(var(--danger) 100%, var(--line) 0); }
+.pl-tl-gap { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.pl-ins { position: relative; z-index: 1; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); display: grid; place-items: center; padding: 0; cursor: pointer; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.pl-ins:hover { color: var(--p1); border-color: var(--p1-line); }
+.pl-ins .ic { width: 16px; height: 16px; }
+.pl-ins-sp { flex: 0 0 34px; }
+.pl-tl-gap .pl-leg { border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; background: var(--card); font-size: 12px; }
+.pl-tl-gap .pl-leg .ic { width: 15px; height: 15px; color: var(--mute); }
+.pl-tl .pl-stop { z-index: 1; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 1px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, .05); margin-left: 0; }
+.pl-tl .pl-stop + .pl-stop { border-top: 1px solid var(--line); }
+.pl-tl .pl-dot { flex: 0 0 32px; width: 32px; height: 32px; margin-left: 0; font-size: 13px; box-shadow: 0 0 0 3px var(--card); }
+.pl-tl .pl-stop { padding-left: 1px; margin-left: 0; }
+.pl-tl .pl-stop > .pl-dot { margin-left: -1px; }
+button.pl-stop-main { display: block; border: 0; background: none; padding: 2px 0; font: inherit; text-align: left; cursor: pointer; color: inherit; }
+.pl-stop-main b { display: block; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-stop-main b .ic { width: 15px; height: 15px; color: var(--mute); margin-left: 2px; vertical-align: -2px; }
+button.pl-stop-main:hover b { color: var(--p1); }
+.pl-tl .pl-acts { margin-left: 0; }
+.pl-tl-row.end b { color: var(--text); }
+.pl-total { margin-top: 4px; }
+/* Plus-Knopf mit Menü */
+.pl-fab-wrap { position: fixed; z-index: 900; right: calc(24px + env(safe-area-inset-right, 0px)); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+.pl-fab { width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--p1); color: var(--on-p1); display: grid; place-items: center; box-shadow: 0 8px 22px rgba(0, 0, 0, .22); cursor: pointer; transition: transform .2s; }
+.pl-fab .ic { width: 26px; height: 26px; stroke-width: 2.2; }
+.pl-fab.on { transform: rotate(45deg); }
+.pl-fab-menu { position: absolute; right: 0; bottom: 70px; min-width: 240px; padding: 6px; border-radius: 18px; background: var(--card); box-shadow: 0 12px 34px rgba(0, 0, 0, .2), 0 0 0 .5px var(--line); }
+.pl-fab-menu[hidden] { display: none; }
+.pl-fab-menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 0; border-radius: 12px; background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--ink); text-align: left; cursor: pointer; }
+.pl-fab-menu button:hover { background: var(--hover); }
+.pl-fab-menu .ic { width: 20px; height: 20px; color: var(--p1); }
+@media (max-width: 767.98px) { .pl-fab-wrap { right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); } #stops .stop-panel { padding-bottom: 80px; } }
+/* Etappe geöffnet (Bottom-Sheet) */
+.pl-d-when { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--well); font-size: 15px; font-weight: 600; color: var(--ink); }
+.pl-d-when > .ic { color: var(--p1); }
+.pl-d-when .pl-nights { margin-left: auto; background: var(--card); }
+.pl-d-when .pl-n-ro { margin-left: auto; }
+.pl-d-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 8px; font-size: 16px; font-weight: 700; color: var(--ink); }
+.pl-d-h .link-inline { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--p1); text-decoration: none; }
+.pl-d-note { padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); font-size: 14px; color: var(--ink); }
+.pl-d-note .note { margin: 0; }
+.pl-d-item { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font: inherit; text-align: left; color: var(--ink); cursor: pointer; }
+.pl-d-item:disabled { cursor: default; }
+.pl-d-item > .ic { color: var(--mute); }
+.pl-d-item > span:not(.pl-st) { flex: 1; min-width: 0; }
+.pl-d-item b { display: block; font-size: 14px; }
+.pl-d-item small { display: block; font-size: 12px; color: var(--mute); }
+.pl-d-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+
+/* ==========================================================================
+   Unterkünfte nach Etappen (Buchungen)
+   ========================================================================== */
+.bk-box { margin-bottom: 14px; }
+.bk-list { display: grid; gap: 14px; align-items: start; }
+@media (min-width: 900px) { .bk-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bk-sec { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px 16px; }
+:root[data-theme="dark"] .bk-sec { border: 1px solid var(--line); }
+.bk-head { display: flex; align-items: center; gap: 10px; }
+.bk-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
+.bk-head small { display: block; font-size: 12.5px; color: var(--mute); }
+.bk-head > div { flex: 1; min-width: 0; }
+.bk-head .pl-dot { cursor: default; }
+.bk-add { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--well); font: inherit; font-size: 13px; font-weight: 600; color: var(--p1); cursor: pointer; }
+.bk-add:hover { background: var(--hover); }
+.bk-add .ic { width: 15px; height: 15px; }
+.bk-prog { display: flex; flex-direction: column; gap: 5px; margin: 10px 0 2px; font-size: 12px; color: var(--mute); }
+.bk-prog i { display: block; height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--warn) calc(var(--pct) * 1%), var(--line) 0); }
+.bk-prog.done i { background: var(--ok); }
+.bk-prog.big { font-size: 13px; margin-top: 0; }
+.bk-prog.big b { color: var(--ink); }
+.bk-prog.big i { height: 8px; border-radius: 4px; }
+.bk-card { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.bk-card.acc-now { border-color: var(--p1); box-shadow: 0 0 0 1px var(--p1); }
+.bk-row { display: flex; align-items: flex-start; gap: 10px; }
+.bk-ic { flex: 0 0 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--well); color: var(--mute); }
+.bk-ic .ic { width: 18px; height: 18px; }
+.st-booked .bk-ic { background: var(--ok-soft); color: var(--ok); }
+.st-open .bk-ic { background: var(--warn-soft); color: var(--warn); }
+.bk-txt { flex: 1; min-width: 0; }
+.bk-txt > b { display: block; font-size: 14.5px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.bk-txt > b a { color: inherit; }
+.bk-txt > small { display: block; font-size: 12.5px; color: var(--mute); }
+.bk-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; }
+.bk-tags .pl-cancel, .bk-tags .now-badge { margin: 0; }
+.bk-card .pl-acts { margin: -4px -6px 0 0; }
+.bk-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sep); font-size: 12px; color: var(--mute); }
+.bk-meta .pl-price { margin: 0 0 0 auto; }
+.bk-more { margin-top: 6px; font-size: 13px; }
+.bk-more summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--p1); padding: 2px 0; }
+.bk-more > *:not(summary) { margin-top: 6px; }
+.bk-missing { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 12px; border: 1.5px dashed var(--line); border-radius: 14px; }
+.bk-missing > .ic { flex: 0 0 auto; width: 20px; height: 20px; color: var(--warn); }
+.bk-missing > span { flex: 1; min-width: 0; }
+.bk-missing b { display: block; font-size: 14px; color: var(--ink); }
+.bk-missing small { display: block; font-size: 12px; color: var(--mute); }
+.bk-missing .btn-action { min-height: 36px; }
