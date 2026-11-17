@@ -71,6 +71,10 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   Mitglieder dürfen nur `places, routes, plans, stations, flights, days`; alles andere nur Admins. `planner.js` bearbeitet nur `RAW`
   und schreibt jeden Schlüssel in den Abschnitt, aus dem er kam (sonst `guest` für `places/routes`, `member` für den Rest).
 - **Von Mitgliedern geschriebene Inhalte gelten als unsicher:** HTML-Felder nur über `rich()`/`TB.safeHtml`, Farben über `TB.safeColor`, Links über `TB.safeUrl`.
+- **Etappen** (zentrale Planung, wie Stippl): `places[k].nights` je nummeriertem Stopp (− / + in der Stoppliste). Ankunft = Reisebeginn + Nächte davor.
+  Unterkünfte mit `place` (Vorlage) bzw. `focus` (Thailand) übernehmen die Daten der Etappe, fehlende erscheinen als „Unterkunft fehlt“;
+  ein Ablauf mit `legs: true` (nach „Tage aus den Etappen anlegen“) wird bei jeder Änderung neu angeordnet (Zeilen mit `auto: true` tragen
+  den Ortsnamen als Titel, eigene Inhalte bleiben). Ohne festes Reiseende ergibt die Summe der Nächte das Ende (nur Anzeige).
 - Unterkünfte `stations`: Array (Vorlage) oder Objekt aus Arrays (Thailand: `th`/`sl`). Felder u. a. `name|title`, `checkin|from`, `checkout|to`,
   `hotel`, `status` (`booked`/`open`), `code`, `price`+`currency`, `address`, `maps`, `cancel_until`, `cancel_checked`, `transfer`, `note`.
   `TB.tripSummaries()` (RPC `travelbase_trip_summaries`) liefert Stopps/Unterkünfte/Storno-Warnungen für die Übersicht.

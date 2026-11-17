@@ -57,9 +57,25 @@
         return p;
     }
     /* Anzeige-Daten aus RAW ableiten */
+    let LEG_END = false;
     function derive() {
         DATA = clone(RAW);
         applyChosenStart(RES.trip);
+        applyLegs();
+    }
+    /* Etappen (Nächte je Stopp, shared/planner.js): Daten der Stopps für Karte/Popups; ohne festes Ende ergibt
+       die Summe der Nächte das Reiseende */
+    function applyLegs() {
+        LEG_END = false;
+        if (!window.TBPlanner || !TBPlanner.legs || !DATA.places) return;
+        const m = DATA.meta = DATA.meta || {};
+        const L = TBPlanner.legs(DATA.places, m.start || null);
+        if (!L.on) return;
+        L.list.forEach(g => { if (DATA.places[g.k]) DATA.places[g.k].date = TBPlanner.legText(g); });
+        if (L.end && (!m.end || m.end === m.start) && L.total > 0) {
+            m.end = L.end; LEG_END = true;
+            m.period = `${fmtDM(m.start)} – ${fmtDM(m.end)}${m.end.slice(0, 4)}`;
+        }
     }
 
     /* ---------- Vielleicht-Reise mit gewähltem Startdatum ----------
@@ -685,6 +701,7 @@
             stationGroups: () => Array.isArray(RAW.stations) ? [{ id: 'all', label: '', list: RAW.stations }] : [],
             ensureStations: () => { RAW.stations = []; return { id: 'all', label: '', list: RAW.stations }; },
             newPlan,
+            legEnd: () => LEG_END,
             refresh: rerender,
             focusPlace: k => focusPlaces([k])
         });
