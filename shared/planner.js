@@ -198,6 +198,8 @@
     const legText = g => g.from ? (g.n ? `${label(g.from)} – ${label(g.to)}` : `${label(g.from)} · Zwischenstopp`)
         : g.n ? `Tag ${g.d0 + 1} – ${g.d1 + 1}` : `Tag ${g.d0 + 1} · Zwischenstopp`;
     const nightsWord = n => n === 1 ? 'Nacht' : 'Nächte';
+    /* Etappe braucht eine Unterkunft: Nächte > 0 und nicht als „Keine Unterkunft nötig“ markiert (places[k].noStay, z. B. Nachtflug) */
+    const needsStay = g => g.n > 0 && !g.p.noStay;
     const legShort = g => g.from ? `${fmt(g.from)} – ${fmt(g.to)}` : `Tag ${g.d0 + 1} – ${g.d1 + 1}`;
     /* − / +: sofort anzeigen, gesammelt speichern (kurz nach dem letzten Klick) */
     let nTimer = 0;
@@ -260,7 +262,10 @@
         const gap = (at, k) => {
             const x = k && next.get(k), tr = x && transportBetween(P[k], x.to);
             const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr && tr.mode))}</span>` : '';
-            return `<li class="pl-tl-gap">${ins(at)}${chip}</li>`;
+            /* eingetragener Transport: Status dezent daneben (gebucht / geplant) und ggf. Link zur Flugstatus-Seite */
+            const f = tr && tr.f, st = f ? (f.planned ? ['warn', 'geplant'] : ['ok', 'gebucht']) : null, su = f && url(f.status);
+            const badge = f ? `<span class="pl-tr-st ${st[0]}" title="${esc([f.airline, (f.flightNos || []).join(', '), f.booking && 'Buchung ' + f.booking].filter(Boolean).join(' · '))}">${ic(st[0] === 'ok' ? 'check' : 'clock')}${st[1]}</span>${su ? `<a class="pl-tr-link" href="${esc(su)}" target="_blank" rel="noopener" title="Flugstatus prüfen">Status ↗</a>` : ''}` : '';
+            return `<li class="pl-tl-gap">${ins(at)}${chip}${badge}</li>`;
         };
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
@@ -271,11 +276,12 @@
                 ${gap(0, null)}
                 ${l.map(({ k, p }, i) => {
                     const g = lg.get(k), when = g ? (g.from && g.n ? legShort(g) : legText(g)) : p.date || '';
+                    const whenX = p.noStay && g && g.n ? `${when} · ohne Unterkunft` : when;
                     return `<li class="pl-stop" data-k="${esc(k)}" data-sort="stops">
                     <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(lab.get(k) ?? p.num) : ic('pin')}</button>
                     <button type="button" class="pl-stop-main" data-pl="stop-open" data-k="${esc(k)}">
                         <b>${esc(p.name || k)}${p.same ? `<span class="pl-again-tag">${ic('refresh')}<span class="pl-again-txt">erneut</span></span>` : ''}${ic('chevronRight')}</b>
-                        ${when ? `<small>${esc(when)}</small>` : ''}
+                        ${whenX ? `<small>${esc(whenX)}</small>` : ''}
                     </button>
                     ${p.num != null ? stepper(k, p) : ''}
                     ${drag ? `<div class="pl-acts"><button type="button" class="pl-handle" data-drag="stops" data-k="${esc(k)}" aria-label="Verschieben: ${esc(p.name || k)} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button></div>` : ''}
@@ -301,7 +307,7 @@
         const f = (raw().flights || []).find(f => f && f.from && f.to && endHits(f.from, a) && endHits(f.to, b));
         if (!f) return null;
         const mode = f.mode || 'flight';
-        return { mode, icon: MODE_IC[mode] || 'plane', label: (MODES.find(x => x[0] === mode) || ['', 'Transport'])[1] + ' eingetragen' };
+        return { f, mode, icon: MODE_IC[mode] || 'plane', label: (MODES.find(x => x[0] === mode) || ['', 'Transport'])[1] + ' eingetragen' };
     }
     /* Zeit grob: Flug ≈ km/750 + 25 min, Fähre ≈ 30 km/h, sonst Straße/Schiene (Luftlinie × 1,3 bei 60 km/h) */
     function travelText(k, mode) {
@@ -338,9 +344,11 @@
                     <button type="button" data-pl="n-inc" data-k="${esc(k)}" aria-label="Eine Nacht mehr">${ic('plus')}</button></div>` : n != null ? `<span class="pl-n-ro">${n} ${nightsWord(n)}</span>` : ''}</div>
             <h3 class="pl-d-h">Notizen${edit ? `<button type="button" class="link-inline" data-pl="stop-edit" data-k="${esc(k)}">${ic('pencil')}Bearbeiten</button>` : ''}</h3>
             <div class="pl-d-note">${p.desc ? rich(p.desc) : `<span class="note">${edit ? 'Noch keine Notizen – über „Bearbeiten“ ergänzen.' : 'Keine Notizen.'}</span>`}</div>
-            <h3 class="pl-d-h">Unterkünfte${edit ? `<button type="button" class="link-inline" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(k)}">${ic('plus')}Unterkunft</button>` : ''}</h3>
-            ${g && g.n ? `<div class="bk-prog${bn >= g.n ? ' done' : ''}"><span>${bn} / ${g.n} Nächte gebucht</span><i style="--pct:${Math.round(bn / g.n * 100)}"></i></div>` : ''}
-            ${stays.map(({ s, gr, i }) => `<button type="button" class="pl-d-item" data-pl="acc-edit" data-g="${esc(gr.id)}" data-i="${i}"${edit ? '' : ' disabled'}>${ic('bed')}<span><b>${s.hotel ? esc(stripTags(s.hotel)) : esc(S.name(s))}</b><small>${esc([fmt(S.cin(s)) && `${fmt(S.cin(s))} – ${fmt(S.cout(s))}`, s.code].filter(Boolean).join(' · '))}</small></span><span class="pl-st ${STATUS[S.status(s)][1]}">${STATUS[S.status(s)][0]}</span></button>`).join('') || '<p class="note">Noch keine Unterkunft.</p>'}
+            <h3 class="pl-d-h">Unterkünfte${edit && !p.noStay ? `<button type="button" class="link-inline" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(k)}">${ic('plus')}Unterkunft</button>` : ''}</h3>
+            ${edit && p.num != null ? `<label class="pl-check pl-nostay"><input type="checkbox" data-pl-nostay="${esc(k)}"${p.noStay ? ' checked' : ''}><span>Keine Unterkunft nötig (z. B. Flug, Nachtzug)</span></label>` : ''}
+            ${p.noStay ? `<p class="note">Für diese Etappe ist keine Unterkunft nötig – sie erscheint nicht bei den Unterkünften.</p>` : ''}
+            ${g && g.n && !p.noStay ? `<div class="bk-prog${bn >= g.n ? ' done' : ''}"><span>${bn} / ${g.n} Nächte gebucht</span><i style="--pct:${Math.round(bn / g.n * 100)}"></i></div>` : ''}
+            ${p.noStay && !stays.length ? '' : (stays.map(({ s, gr, i }) => `<button type="button" class="pl-d-item" data-pl="acc-edit" data-g="${esc(gr.id)}" data-i="${i}"${edit ? '' : ' disabled'}>${ic('bed')}<span><b>${s.hotel ? esc(stripTags(s.hotel)) : esc(S.name(s))}</b><small>${esc([fmt(S.cin(s)) && `${fmt(S.cin(s))} – ${fmt(S.cout(s))}`, s.code].filter(Boolean).join(' · '))}</small></span><span class="pl-st ${STATUS[S.status(s)][1]}">${STATUS[S.status(s)][0]}</span></button>`).join('') || '<p class="note">Noch keine Unterkunft.</p>')}
             ${trs.length ? `<h3 class="pl-d-h">Transporte</h3>${trs.map(({ f, i }) => `<button type="button" class="pl-d-item" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}>${ic(MODE_IC[f.mode || 'flight'] || 'plane')}<span><b>${esc([f.from.code || f.from.city || f.from.name, f.to.code || f.to.city || f.to.name].filter(Boolean).join(' → '))}</b><small>${esc([f.from.date && fmt(f.from.date), f.from.time].filter(Boolean).join(' '))}</small></span></button>`).join('')}` : ''}
             <div class="pl-d-acts">
                 <button type="button" class="btn-action" data-pl="stop-focus" data-k="${esc(k)}">${ic('map')}Auf der Karte</button>
@@ -899,7 +907,7 @@
         /* Etappen (mit Nächten) als Abschnitte */
         const g0 = gs[0] || { id: '' };
         const used = new Set();
-        const legSecs = L.list.filter(x => x.n > 0).map(x => {
+        const legSecs = L.list.filter(needsStay).map(x => {
             const stays = [];
             gs.forEach(g => g.list.forEach((s, i) => { if (stayKey(s) === x.k) { used.add(s); if (match(s)) stays.push({ s, g, i }); } }));
             const bn = Math.min(x.n, stays.filter(o => S.status(o.s) === 'booked').reduce((n, o) => n + (S.nights(o.s) || x.n), 0));
@@ -931,8 +939,9 @@
             </section>`;
         }).join('');
         /* Kopf: gebuchte Nächte über alle Etappen (sonst über alle Unterkünfte) */
-        const legN = L.list.reduce((n, x) => n + x.n, 0);
-        const bookedN = legN ? L.list.reduce((n, x) => n + Math.min(x.n, all.filter(s => stayKey(s) === x.k && S.status(s) === 'booked').reduce((m, s) => m + (S.nights(s) || x.n), 0)), 0)
+        const LS = L.list.filter(needsStay);
+        const legN = LS.reduce((n, x) => n + x.n, 0);
+        const bookedN = legN ? LS.reduce((n, x) => n + Math.min(x.n, all.filter(s => stayKey(s) === x.k && S.status(s) === 'booked').reduce((m, s) => m + (S.nights(s) || x.n), 0)), 0)
             : all.filter(s => S.status(s) === 'booked').reduce((n, s) => n + S.nights(s), 0);
         const totalN = legN || all.reduce((n, s) => n + S.nights(s), 0);
         pane.innerHTML = `<div class="box bk-box">
@@ -1152,6 +1161,14 @@
     }
 
     /* ---------- Klicks (Delegation) ---------- */
+    /* Etappe ohne Unterkunft (Detail-Sheet) */
+    document.addEventListener('change', e => {
+        const c = e.target.closest && e.target.closest('[data-pl-nostay]');
+        if (!c) return;
+        const k = c.dataset.plNostay;
+        if (!editable()) { c.checked = !c.checked; return; }
+        commitPlaces(() => { const o = raw().places[k]; if (!o) return; if (c.checked) o.noStay = true; else delete o.noStay; }).then(() => renderDetail());
+    });
     document.addEventListener('click', async e => {
         const cp = e.target.closest('.pl-copy');
         if (cp) { e.preventDefault(); e.stopPropagation(); if (await TB.copyText(cp.dataset.copy)) status('copied'); return; }

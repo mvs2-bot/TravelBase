@@ -1098,3 +1098,118 @@ button.pl-stop-main:hover b { color: var(--p1); }
     .m-tl::before { top: 8px; bottom: 8px; }
     .m-route h2 { margin-bottom: 4px; }
 }
+
+/* ---------- Kompakt II (Stefan, 17.11.2026): Unterkünfte, Aktivitäten, Packliste ---------- */
+/* Etappen: Transport-Status dezent neben der Verkehrsmittel-Pille */
+.pl-tl-gap { flex-wrap: wrap; }
+.pl-tr-st { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 999px; white-space: nowrap; }
+.pl-tr-st .ic { width: 11px; height: 11px; }
+.pl-tr-st.ok { color: var(--ok); background: var(--ok-soft); }
+.pl-tr-st.warn { color: var(--warn); background: var(--warn-soft); }
+.pl-tr-link { font-size: 11px; font-weight: 500; color: var(--mute); text-decoration: none; white-space: nowrap; }
+.pl-tr-link:hover { color: var(--p1); text-decoration: underline; }
+/* Stopp-Sheet: „Keine Unterkunft nötig“ */
+.pl-nostay { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 13px; color: var(--text); cursor: pointer; }
+.pl-nostay input { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--p1); }
+
+/* Unterkünfte */
+.bk-box { padding: 12px 14px; margin-bottom: 10px; }
+.bk-box .mh { margin-bottom: 6px; }
+.bk-box .pl-filter { margin: 8px 0 0; gap: 4px; flex-wrap: nowrap; }
+.bk-box .pl-filter .q-input { flex: 1 1 auto; min-width: 0; padding-top: 6px; padding-bottom: 6px; }
+.bk-box .pl-filter .f { flex: 0 0 auto; min-height: 30px; padding: 4px 10px; font-size: 12.5px; }
+.bk-list { gap: 10px; }
+.bk-sec { padding: 10px 12px 12px; }
+.bk-head { gap: 8px; }
+.bk-head h3 { font-size: 15px; line-height: 1.25; }
+.bk-head small { font-size: 11.5px; }
+.bk-head .pl-dot { flex: 0 0 26px; width: 26px; height: 26px; font-size: 12px; }
+.bk-head > .bk-ic { flex-basis: 28px; height: 28px; }
+.bk-add { min-height: 28px; padding: 3px 10px; font-size: 12.5px; gap: 4px; }
+.bk-add .ic { width: 13px; height: 13px; }
+.bk-prog { gap: 3px; margin: 6px 0 0; font-size: 11.5px; }
+.bk-prog i { height: 4px; }
+.bk-prog.big { font-size: 12.5px; }
+.bk-prog.big i { height: 6px; }
+.bk-card { margin-top: 6px; padding: 7px 8px 7px 10px; border-radius: 12px; }
+.bk-row { gap: 8px; align-items: center; }
+.bk-ic { flex: 0 0 28px; height: 28px; border-radius: 8px; }
+.bk-ic .ic { width: 15px; height: 15px; }
+.bk-txt > b { font-size: 14px; line-height: 1.3; }
+/* Zeitraum und Status in einer Zeile */
+.bk-txt > small { display: inline; font-size: 12px; line-height: 1.35; }
+.bk-tags { display: inline-flex; vertical-align: 1px; gap: 4px; margin: 0 0 0 6px; }
+.bk-tags .pl-st, .bk-tags .pl-cancel, .bk-tags .now-badge { font-size: 10.5px; padding: 2px 7px; }
+.bk-card .pl-acts { margin: 0 -4px 0 0; }
+.bk-card .pl-acts button, .bk-card .pl-handle { width: 28px; height: 28px; }
+.bk-meta { margin-top: 6px; padding-top: 6px; gap: 4px 12px; font-size: 11.5px; }
+.bk-more { margin-top: 4px; }
+.bk-more summary { font-size: 12px; }
+.bk-missing { margin-top: 6px; padding: 7px 8px 7px 10px; gap: 8px; border-radius: 12px; }
+.bk-missing > .ic { width: 17px; height: 17px; }
+.bk-missing b { font-size: 13.5px; }
+.bk-missing small { font-size: 11.5px; }
+.bk-missing .btn-action { min-height: 28px; padding: 3px 10px; font-size: 12.5px; }
+
+/* Mögliche Aktivitäten */
+#activities .box { padding: 12px 14px; margin-bottom: 10px; }
+#activities .box > .note { font-size: 12px; line-height: 1.4; margin-bottom: 6px; }
+.act-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 4px; margin: 6px -14px 0; padding: 0 14px 2px; }
+.act-filter::-webkit-scrollbar { display: none; }
+.act-filter .f { flex: 0 0 auto; min-height: 28px; padding: 3px 10px; font-size: 12.5px; white-space: nowrap; }
+.act-hide { flex: 0 0 auto; font-size: 12.5px; margin-left: 4px; white-space: nowrap; }
+.act-hide input { width: 16px; height: 16px; }
+.act-filter .act-count { flex: 0 0 auto; font-size: 12px; white-space: nowrap; }
+.act-card .mh { margin-bottom: 0; }
+.act-card .mh h2 { font-size: 15px; gap: 8px; }
+.act-num { flex-basis: 22px; }
+.act-card .todo-list { margin-top: 6px; border-radius: 12px; }
+.act-item { gap: 6px; padding: 6px 4px 6px 10px; }
+.act-item .act-done { padding-top: 0; }
+.act-item input[type=checkbox] { width: 20px; height: 20px; }
+.act-main { font-size: 13.5px; line-height: 1.3; }
+.act-main p { margin-top: 1px; font-size: 12px; line-height: 1.35; }
+.act-meta { margin-top: 3px; gap: 3px; }
+.act-meta .pill { font-size: 11px; padding: 1px 6px; margin: 0; }
+.act-item > button { padding: 4px; }
+.act-item > button .ic { width: 15px; height: 15px; }
+.act-empty { margin: 4px 0 6px; font-size: 12.5px; }
+.act-add { margin-top: 6px; min-height: 28px; padding: 3px 10px; font-size: 12.5px; }
+.act-add .ic { width: 14px; height: 14px; }
+.act-empty + .act-add { margin-top: 0; }
+
+/* Packliste (Thailand) */
+#pack .box { padding: 12px 14px; margin-bottom: 10px; }
+#pack .sub-tabs { margin-bottom: 8px; }
+#pack .sub-tabs .tab { min-height: 28px; padding: 4px 12px; font-size: 12.5px; }
+#pack .mh { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+#pack .mh > div { gap: 4px !important; }
+#pack .mh .btn-action { min-height: 28px; padding: 3px 9px; font-size: 12px; gap: 4px; }
+#pack .mh .btn-action .ic { width: 13px; height: 13px; }
+.pack-summary { gap: 6px 10px; padding: 8px 12px; margin-bottom: 8px; }
+.pack-stat-val { font-size: 15px; line-height: 1.2; }
+.pack-stat-lbl { font-size: 11px; line-height: 1.25; }
+#pack .pack-add-form { gap: 6px; padding: 6px; margin-bottom: 8px; }
+#pack .pack-add-form input, #pack .pack-add-form select { min-height: 32px; padding: 5px 8px; }
+#pack .pack-add-form .f { min-height: 32px; }
+#pack td { padding-top: 6px; padding-bottom: 6px; }
+.charts-grid { gap: 10px; margin-top: 8px; }
+.chart-card { padding: 10px; }
+.chart-container { height: 240px; }
+@media (max-width: 767px) {
+    .bk-box .pl-filter .q-input { flex-basis: auto; }
+    #pack .mh h2 { flex: 1 1 100%; }
+    .pack-summary { grid-template-columns: 1fr 1fr; gap: 4px 10px; padding: 8px 10px; }
+    .pack-summary > div { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+    .pack-stat-val { font-size: 14px; white-space: nowrap; }
+    .pack-stat-lbl { font-size: 10.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Formular: Name über die ganze Breite, darunter zwei Spalten, Knopf rechts */
+    #pack .pack-add-form { display: grid; grid-template-columns: 1fr 1fr; }
+    #pack .pack-add-form input[type=text] { grid-column: 1 / -1; min-width: 0; }
+    #pack .pack-add-form input, #pack .pack-add-form select { min-width: 0; width: 100%; }
+    #pack .pack-add-form .f { justify-content: center; }
+    #pack tr { padding: 6px 10px; margin-bottom: 4px; border-radius: 10px; }
+    #pack tr:has(.pack-table-cat) { margin-top: 8px; padding: 2px 4px 0; }
+    #pack td { font-size: 13.5px; }
+    .chart-container { height: 200px; }
+}
