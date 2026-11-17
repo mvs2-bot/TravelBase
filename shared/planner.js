@@ -167,6 +167,27 @@
         const num = l.filter(x => x.p.num != null);
         return (num.length >= 2 ? num : l);
     }
+    /* Linien auf der Karte aus den Etappen: je zwei aufeinanderfolgende Stopps eine Strecke; Verkehrsmittel aus einem eingetragenen
+       Transport zwischen beiden Orten, sonst geschätzt (ab 800 km Flug, sonst Straße) */
+    function routeSegments(P) {
+        P = P || places();
+        const l = routeStops(P).filter(x => !x.p.noRoute), out = [];
+        for (let i = 1; i < l.length; i++) {
+            const a = l[i - 1], b = l[i];
+            if (+a.p.lat === +b.p.lat && +a.p.lng === +b.p.lng) continue;
+            const tr = transportBetween(a.p, b.p);
+            out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: tr ? tr.mode : km(a.p, b.p) >= 800 ? 'flight' : 'road' });
+        }
+        return out;
+    }
+    const SEG_STYLE = { flight: { color: '#059669', weight: 2.5, opacity: .85, dashArray: '6, 6' }, ferry: { color: '#0d9488', weight: 3, opacity: .9, dashArray: '2, 7' },
+        train: { color: '#dc2626', weight: 3, opacity: .9, dashArray: '4, 4' }, road: { color: '#0d9488', weight: 3.5, opacity: .9 }, bus: { color: '#0d9488', weight: 3.5, opacity: .9 }, car: { color: '#0d9488', weight: 3.5, opacity: .9 } };
+    /* zeichnet die Strecken der Etappen in eine Leaflet-Karte; true, wenn die Etappen die Linien bestimmen */
+    function drawRoute(map, P) {
+        if (!window.L || !map || !legs(P || places()).on) return false;
+        routeSegments(P).forEach(s => L.polyline([s.from, s.to], SEG_STYLE[s.mode] || SEG_STYLE.road).addTo(map));
+        return true;
+    }
     function totalKm(P) {
         const l = routeStops(P);
         let s = 0;
@@ -266,14 +287,29 @@
         const pill = L.on ? `<span class="pl-npill${goal && L.total > goal ? ' over' : ''}" title="${goal && L.total > goal ? `${L.total - goal} mehr als der Reisezeitraum` : goal && L.total < goal ? `noch ${goal - L.total} offen` : ''}">
                 <i class="pl-ring sm" style="--pct:${pct}"></i><span><b>${L.total}${goal ? `/${goal}` : ''}</b> Nächte geplant</span></span>` : '';
         /* Lücke zwischen zwei Stopps: „+“ zum Einfügen und das Verkehrsmittel */
-        const ins = at => edit ? `<button type="button" class="pl-ins" data-pl="stop-add" data-at="${at}" aria-label="Hier einen Stopp einfügen">${ic('plus')}</button>` : '<span class="pl-ins-sp"></span>';
-        const gap = (at, k) => {
-            const x = k && next.get(k), tr = x && transportBetween(P[k], x.to);
+        const ins = (at, k, nk) => edit ? `<button type="button" class="pl-ins" data-pl="gap-add" data-at="${at}" data-k="${esc(k || '')}" data-n="${esc(nk || '')}" aria-label="Hier einen Aufenthalt oder Transport einfügen">${ic('plus')}</button>` : '<span class="pl-ins-sp"></span>';
+        /* Transporte (flights mit Datum) stehen als eigene Einträge im Zeitstrahl: nach dem letzten Aufenthalt, der vor ihrem Datum beginnt */
+        const trAfter = new Map();
+        if (L.on && L.start) flights().map((f, i) => ({ f, i })).filter(({ f }) => f && f.from && f.to && ISO.test(f.from.date || ''))
+            .sort((a, b) => (a.f.from.date + (a.f.from.time || '')).localeCompare(b.f.from.date + (b.f.from.time || '')))
+            .forEach(t => { let pos = -1; l.forEach(({ k }, j) => { const g = lg.get(k); if (g && g.from && g.from < t.f.from.date) pos = j; }); if (!trAfter.has(pos)) trAfter.set(pos, []); trAfter.get(pos).push(t); });
+        const trLi = ({ f, i }) => {
+            const [, lab, icon] = MODES.find(x => x[0] === (f.mode || 'flight')) || MODES[0];
+            const route = [f.from.code || f.from.city, f.to.code || f.to.city].filter(Boolean).join(' → ');
+            const toD = f.to.date && f.to.date !== f.from.date ? fmt(f.to.date) : '';
+            const when = [fmt(f.from.date), f.from.time, toD || f.to.time ? `– ${[toD, f.to.time].filter(Boolean).join(' ')}` : ''].filter(Boolean).join(' ');
+            const who = Array.isArray(f.who) && f.who.length ? f.who.join(', ') : '';
+            return `<li class="pl-stop pl-tr"><span class="pl-dot" aria-hidden="true">${ic(icon)}</span>
+                <button type="button" class="pl-stop-main" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}><b>${esc(lab)} · ${esc(route)}${ic('chevronRight')}</b><small>${esc([when, who, f.planned ? 'geplant' : 'gebucht'].filter(Boolean).join(' · '))}</small></button></li>`;
+        };
+        const trs = pos => (trAfter.get(pos) || []).map(trLi).join('');
+        const gap = (at, k, nk) => {
+            const x = k && next.get(k), tr = x && !trAfter.has(l.findIndex(y => y.k === k)) && transportBetween(P[k], x.to);
             const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr && tr.mode))}</span>` : '';
             /* eingetragener Transport: Status dezent daneben (gebucht / geplant) und ggf. Link zur Flugstatus-Seite */
             const f = tr && tr.f, st = f ? (f.planned ? ['warn', 'geplant'] : ['ok', 'gebucht']) : null, su = f && url(f.status);
             const badge = f ? `<span class="pl-tr-st ${st[0]}" title="${esc([f.airline, (f.flightNos || []).join(', '), f.booking && 'Buchung ' + f.booking].filter(Boolean).join(' · '))}">${ic(st[0] === 'ok' ? 'check' : 'clock')}${st[1]}</span>${su ? `<a class="pl-tr-link" href="${esc(su)}" target="_blank" rel="noopener" title="Flugstatus prüfen">Status ↗</a>` : ''}` : '';
-            return `<li class="pl-tl-gap">${ins(at)}${chip}${badge}</li>`;
+            return `<li class="pl-tl-gap">${ins(at, k, nk)}${trAfter.has(l.findIndex(y => y.k === k)) && k ? '' : chip}${badge}</li>`;
         };
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
@@ -281,7 +317,7 @@
             ${!L.on && edit && nums.length ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : ''}
             ${l.length ? `<ol class="pl-tl">
                 <li class="pl-tl-row">${H.role === 'admin' && edit ? `<button type="button" class="pl-tl-start" data-pl="trip-dates" title="Reisebeginn ändern"><span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen – antippen')}${ic('pencil')}</small></div></button>` : `<span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen')}</small></div>`}${pill}</li>
-                ${gap(0, null)}
+                ${trs(-1)}${gap(0, null, l[0] && l[0].k)}
                 ${l.map(({ k, p }, i) => {
                     const g = lg.get(k), when = g ? (g.from && g.n ? legShort(g) : legText(g)) : p.date || '';
                     const whenX = [p.kind ? kindLabel(p.kind) + (p.kind && p.parallel ? ' (parallel)' : '') : '', p.noStay && !p.kind && g && g.n ? `${when} · ohne Unterkunft` : when].filter(Boolean).join(' · ');
@@ -293,7 +329,7 @@
                     </button>
                     ${p.num != null ? stepper(k, p) : ''}
                     ${drag ? `<div class="pl-acts"><button type="button" class="pl-handle" data-drag="stops" data-k="${esc(k)}" aria-label="Verschieben: ${esc(p.name || k)} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button></div>` : ''}
-                </li>${gap(i + 1, k)}`;
+                </li>${trs(i)}${gap(i + 1, k, l[i + 1] && l[i + 1].k)}`;
                 }).join('')}
                 ${end && L.on ? `<li class="pl-tl-row end"><span class="pl-tl-ic">${ic('flag')}</span><div><b>Reiseende</b><small>${esc(dayLong(end))}</small></div></li>` : ''}
             </ol>
@@ -560,9 +596,8 @@
                 ${field('Zeitraum / Datum (Text)', inp('date', cur.date, 'maxlength="80" placeholder="z. B. 12.–15.04. oder Tag 3–5"'))}
                 ${field('Beschreibung', area('desc', cur.desc, 'maxlength="2000"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(cur.who) || cur.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
-                ${field('Art der Etappe', sel('kind', cur.kind || '', KINDS))}
-                ${parallelBox(cur)}
-                <p class="note pl-kind-note">Anreise / Abreise: z. B. lange Flüge, auch mit Nächten. Zählen im Anwesenheitskalender als Reisetage und brauchen keine Unterkunft.</p>
+                ${cur.kind ? `${field('Art der Etappe (älter – neue Flüge, Züge usw. als Transport eintragen)', sel('kind', cur.kind || '', KINDS))}
+                ${parallelBox(cur)}` : ''}
                 <div class="pl-row">
                     <label class="pl-check"><input type="checkbox" name="numbered"${cur.num != null ? ' checked' : ''}><span>Nummerierter Stopp der Route</span></label>
                 </div>
@@ -592,7 +627,7 @@
                 };
                 const pick = pickMap(f, cur, k);
                 /* Anreise/Abreise: Unterkunft und Aktivitäten standardmäßig aus */
-                f.elements.kind.onchange = () => { if (f.elements.kind.value) ['noStay', 'noActs'].forEach(n => { if (f.elements[n]) f.elements[n].checked = false; }); };
+                if (f.elements.kind) f.elements.kind.onchange = () => { if (f.elements.kind.value) ['noStay', 'noActs'].forEach(n => { if (f.elements[n]) f.elements[n].checked = false; }); };
                 find.onclick = run;
                 f.querySelectorAll('[data-again]').forEach(b => b.onclick = () => { dlg.close(); addAgain(b.dataset.again, at); });
                 f.elements.name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
@@ -651,8 +686,7 @@
             body: `<p class="note">Name und Lage kommen vom ersten Besuch (Nr. ${esc(labels().get(p.same) ?? '')}). Hier gelten eigene Nächte, Unterkunft und Notizen.</p>
                 ${field('Notizen', area('desc', p.desc, 'maxlength="2000"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(p.who) || p.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
-                ${field('Art der Etappe', sel('kind', p.kind || '', KINDS))}
-                ${parallelBox(p)}
+                ${p.kind ? `${field('Art der Etappe', sel('kind', p.kind || '', KINDS))}${parallelBox(p)}` : ''}
                 ${showIn(p, false)}`,
             extra: `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: f => { f.querySelector('.pl-del').onclick = () => { if (confirm('Diesen erneuten Besuch löschen?')) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } }; },
@@ -771,26 +805,55 @@
         const pl = stopList();
         const foc = new Set(R.focus(r));
         const n = p.rows.length;
+        /* Etappe des Tags: gespeicherter Ort, sonst die Etappe am Datum */
+        const LL = legs(), atDate = iso => (LL.list.find(g => g.from && g.from <= iso && (g.n ? iso < g.to : iso === g.from)) || {}).k;
+        const LB = labels();
+        const curK = [...foc].pop() || (ISO.test(R.from(r) || '') ? atDate(R.from(r)) : '') || '';
+        const stopOpts = pl.filter(x => x.p.num != null || foc.has(x.k));
         sheet({
             title: isNew ? 'Neuer Tag' : `${r.day || 'Tag'} bearbeiten`,
-            body: `<div class="pl-row">
-                    ${field('Tag', inp('day', isNew ? r.day || `Tag ${n + 1}` : r.day, 'maxlength="40"'))}
+            body: `${stopOpts.length ? field('Etappe / Ort auf der Karte', `<select name="stop"><option value="">– kein Ort –</option>${stopOpts.map(({ k, p: x }) => { const g = LL.list.find(y => y.k === k); return `<option value="${esc(k)}"${k === curK ? ' selected' : ''}>${esc(LB.get(k) ?? x.num ?? '')}${x.num != null ? ' · ' : ''}${esc(x.name || k)}${g && g.from ? ` · ${esc(legShort(g))}` : ''}</option>`; }).join('')}</select>`) : ''}
+                <div class="pl-row">
                     ${field('Datum', `<input type="date" name="from" value="${esc(R.from(r))}">`)}
                     ${TH() ? '' : field('bis (optional)', `<input type="date" name="to" value="${esc(r.to || '')}">`)}
+                    ${field('Tag', inp('day', isNew ? r.day || `Tag ${n + 1}` : r.day, 'maxlength="40" class="pl-short"'))}
                 </div>
                 ${field('Ort & Aktivität', inp('title', R.title(r), 'maxlength="200" placeholder="z. B. Ankunft in Kyoto, Abendspaziergang Gion"'))}
+                ${window.TBActivities && TBActivities.forLocation ? field('Mögliche Aktivität übernehmen', '<select name="act"><option value="">– auswählen –</option></select>') : ''}
                 ${field('Details & Programm', area('details', r.details, 'rows="4" maxlength="5000"'))}
                 <div class="pl-row">
                     ${field('Transport', inp('transport', r.transport, 'maxlength="300" placeholder="z. B. Shinkansen 2:15 h"'))}
                     ${field('Unterkunft', inp('hotel', r.hotel, 'maxlength="300" placeholder="Name oder „Noch offen“"'))}
                 </div>
-                ${pl.length ? `<fieldset class="pl-focus"><legend>${TH() ? 'Ort auf der Karte' : 'Orte auf der Karte'}</legend>${pl.map(({ k, p: x }) =>
-                    `<label class="pl-chip"><input type="${TH() ? 'radio' : 'checkbox'}" name="focus" value="${esc(k)}"${foc.has(k) ? ' checked' : ''}><span>${x.num != null ? esc(x.num) + ' · ' : ''}${esc(x.name || k)}</span></label>`).join('')}</fieldset>` : ''}
                 <p class="note">Einfache Formatierung in den Details: Zeilenumbrüche bleiben erhalten.</p>`,
             extra: isNew ? '' : `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>
                 <button type="button" class="btn-action pl-up" aria-label="Nach oben"${idx === 0 ? ' disabled' : ''}>${ic('arrowUp')}</button>
                 <button type="button" class="btn-action pl-down" aria-label="Nach unten"${idx === n - 1 ? ' disabled' : ''}>${ic('arrowDown')}</button>`,
             onOpen: f => {
+                /* Etappe wählen: Datum in den Zeitraum der Etappe, Tag-Nummer und mögliche Aktivitäten des Orts */
+                const fillActs = () => {
+                    const a = f.elements.act, k = f.elements.stop ? f.elements.stop.value : '', P0 = places()[k];
+                    if (!a) return;
+                    const nm = P0 ? (P0.same && places()[P0.same] ? places()[P0.same].name : P0.name) : '';
+                    const list = nm ? (TBActivities.forLocation(nm) || []).filter(x => !x.done) : [];
+                    a.innerHTML = `<option value="">${list.length ? '– auswählen –' : nm ? 'Keine Ideen für diesen Ort' : 'Erst eine Etappe wählen'}</option>` + list.map(x => `<option value="${esc(x.title)}">${esc(x.title)}${x.duration ? ` (${esc(x.duration)})` : ''}</option>`).join('');
+                    a.disabled = !list.length;
+                };
+                const setDay = () => { const d = val(f, 'from'), L0 = legs(); if (ISO.test(d) && L0.start && !val(f, 'day').replace(/^Tag \d+$/, '')) f.elements.day.value = `Tag ${dn(d) - dn(L0.start) + 1}`; };
+                if (f.elements.stop) f.elements.stop.onchange = () => {
+                    const g = legs().list.find(y => y.k === f.elements.stop.value), d = val(f, 'from');
+                    if (g && g.from && !(d >= g.from && (g.n ? d < g.to : d === g.from))) { f.elements.from.value = g.from; setDay(); }
+                    fillActs();
+                };
+                f.elements.from.addEventListener('change', setDay);
+                if (f.elements.act) f.elements.act.onchange = () => {
+                    const t = f.elements.act.value;
+                    if (!t) return;
+                    if (!val(f, 'title')) f.elements.title.value = t;
+                    else { const d = f.elements.details; d.value = [d.value.trim(), '• ' + t].filter(Boolean).join('\n'); }
+                    f.elements.act.value = '';
+                };
+                fillActs();
                 const del = f.querySelector('.pl-del');
                 if (del) del.onclick = () => { if (confirm(`„${r.day || 'Tag'}“ löschen?`)) { dlg.close(); commit([H.planKey], () => p.rows.splice(idx, 1)); } };
                 const mv = d => () => { dlg.close(); commit([H.planKey], () => { const [x] = p.rows.splice(idx, 1); p.rows.splice(idx + d, 0, x); }); };
@@ -799,7 +862,9 @@
             done: f => {
                 const from = val(f, 'from'), to = f.elements.to ? val(f, 'to') : '';
                 if (to && from && to < from) { alert('„bis“ liegt vor dem Datum.'); return false; }
-                const focus = [...f.querySelectorAll('[name=focus]:checked')].map(x => x.value);
+                /* Ort: Auswahl der Etappe; in der Vorlage bleiben weitere gespeicherte Orte erhalten, wenn die Auswahl gleich bleibt */
+                const sk = f.elements.stop ? val(f, 'stop') : '';
+                const focus = !f.elements.stop ? [...foc] : !sk ? [] : sk === curK && foc.has(sk) ? [...foc] : [sk];
                 /* Thailand: neuer Tag landet im Teil (Thailand / Sri Lanka), zu dem das Datum gehört */
                 if (isNew && from && H.planFor) { const q = planById(H.planFor(from)); if (q) p = q; }
                 commit([H.planKey], () => {
@@ -884,7 +949,9 @@
         const whoOf = g => H.placeWho ? H.placeWho(g.k) : Array.isArray(g.p.who) ? g.p.who : ps.map(pkey);
         return ps.map(x => {
             const key = pkey(x), on = L.list.filter(g => g.from && whoOf(g).includes(key));
-            if (!on.length) return null;
+            /* Transporte (flights mit Datum) dieser Person: Reisetage, dürfen Aufenthalte anderer überlappen */
+            const trs = (raw().flights || []).filter(f => f && f.from && ISO.test(f.from.date || '') && (!Array.isArray(f.who) || !f.who.length || f.who.some(w => w === x.name || w === key)));
+            if (!on.length && !trs.length) return null;
             const days = new Map(), put = (iso, v) => { if (v === 'fl' || !days.has(iso)) days.set(iso, v); };
             on.forEach(g => {
                 const k = g.p.kind;
@@ -892,9 +959,12 @@
                 for (let d = dn(g.from); d < dn(g.to); d++) put(isoOf(d), k ? 'fl' : 'on');
                 if (k === 'depart') put(g.to, 'fl');
             });
-            const a = on[0], b = on[on.length - 1];
-            if (a.p.kind !== 'arrive') days.set(a.from, 'fl');
-            if (!b.p.kind && b.n) days.set(b.to, 'fl');
+            if (on.length) {
+                const a = on[0], b = on[on.length - 1];
+                if (a.p.kind !== 'arrive') days.set(a.from, 'fl');
+                if (!b.p.kind && b.n) days.set(b.to, 'fl');
+            }
+            trs.forEach(f => { const e = ISO.test(f.to && f.to.date || '') && f.to.date >= f.from.date ? f.to.date : f.from.date; for (let d = dn(f.from.date); d <= dn(e) && d - dn(f.from.date) < 30; d++) days.set(isoOf(d), 'fl'); });
             /* Lücken (Etappen nur anderer Reisender dazwischen, z. B. Abreise einer Person): weiter vor Ort */
             let isos = [...days.keys()].sort();
             for (let d = dn(isos[0]) + 1; d < dn(isos[isos.length - 1]); d++) if (!days.has(isoOf(d))) days.set(isoOf(d), 'on');
@@ -1068,9 +1138,10 @@
         const booked = all.filter(s => S.status(s) === 'booked').length, open = all.filter(s => S.status(s) === 'open').length;
         const warn = warnings(), gp = gaps();
         const q = accFilter.q.toLowerCase();
-        const match = s => (accFilter.st === 'all' || S.status(s) === accFilter.st)
+        const match = s => (accFilter.st === 'all' || accFilter.st === 'missing' || S.status(s) === accFilter.st)
             && (!q || [S.name(s), s.hotel, s.address, s.code, s.note, S.transfer(s).text].join(' ').toLowerCase().includes(q));
         const filtering = accFilter.st !== 'all' || !!q;
+        const missN = L.list.filter(needsStay).filter(x => !all.some(s => stayKey(s) === x.k)).length;
         const today = H.today;
         const nightsTxt = n => `${n} ${n === 1 ? 'Nacht' : 'Nächte'}`;
         const card = (s, g, i, drag, inLeg) => {
@@ -1094,12 +1165,13 @@
                     <span class="bk-ic">${ic('bed')}</span>
                     <div class="bk-txt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}
                         <div class="bk-tags">${statusTag}${now ? `<span class="now-badge">${ic('pin')}Heute hier</span>` : ''}${cancel}</div></div>
-                    ${edit ? `<div class="pl-acts">
+                    ${edit || details.trim() ? `<div class="bk-side">${edit ? `<div class="pl-acts">
                         <button type="button" data-pl="acc-edit" data-g="${esc(g.id)}" data-i="${i}" aria-label="Bearbeiten: ${esc(S.name(s))}">${ic('pencil')}</button>
                         ${drag ? `<button type="button" class="pl-handle" data-drag="acc" data-g="${esc(g.id)}" data-i="${i}" aria-label="Verschieben: ${esc(S.name(s))} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button>` : ''}</div>` : ''}
+                        ${details.trim() ? `<button type="button" class="bk-det" data-pl="acc-det" aria-expanded="false">Details${ic('chevronDown')}</button>` : ''}</div>` : ''}
                 </div>
                 ${s.code || price ? `<div class="bk-meta">${s.code ? `<span class="pl-code"><span>Buchung</span><code>${esc(s.code)}</code>${copyBtn(s.code, 'Buchungscode kopieren')}</span>` : ''}${price ? `<span class="pl-price">${esc(price)}</span>` : ''}</div>` : ''}
-                ${details.trim() ? `<details class="bk-more"><summary>Adresse &amp; Details</summary>${details}</details>` : ''}
+                ${details.trim() ? `<div class="bk-more">${details}</div>` : ''}
             </article>`;
         };
         /* Etappen (mit Nächten) als Abschnitte */
@@ -1110,6 +1182,11 @@
             gs.forEach(g => g.list.forEach((s, i) => { if (stayKey(s) === x.k) { used.add(s); if (match(s)) stays.push({ s, g, i }); } }));
             const bn = Math.min(x.n, stays.filter(o => S.status(o.s) === 'booked').reduce((n, o) => n + (S.nights(o.s) || x.n), 0));
             const allStays = all.filter(s => stayKey(s) === x.k);
+            if (accFilter.st === 'missing') return allStays.length ? '' : `<section class="bk-sec">
+                <div class="bk-head"><span class="pl-dot" style="--c:${esc(H.placeColor ? H.placeColor(x.k) : color(x.p.color, 'var(--p1)'))}">${esc(labels().get(x.k) ?? x.p.num ?? '')}</span>
+                    <div><h3>${esc(x.p.name || x.k)}</h3><small>${esc(legShort(x))} · ${nightsTxt(x.n)}</small></div></div>
+                <div class="bk-missing">${ic('bed')}<span><b>Unterkunft fehlt</b><small>${nightsTxt(x.n)} zu planen</small></span>
+                    ${edit ? `<button type="button" class="btn-action" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</div></section>`;
             if (filtering && !stays.length) return '';
             return `<section class="bk-sec">
                 <div class="bk-head">
@@ -1131,6 +1208,7 @@
         const rest = gs.map(g => {
             const items = g.list.map((s, i) => ({ s, i })).filter(o => !used.has(o.s) && match(o.s));
             const drag = edit && !filtering && items.length > 1;
+            if (accFilter.st === 'missing') return '';
             if (!items.length && (legSecs || gs.length > 1 || filtering)) return '';
             const title = gs.length > 1 && g.label ? g.label : legSecs ? 'Weitere Unterkünfte' : '';
             return `<section class="bk-sec">
@@ -1149,14 +1227,14 @@
         const legN0 = all.filter(s => 'bookings' in s).length;
         pane.innerHTML = `<div class="box bk-box">
             <div class="mh"><h2>${ic('bed')}Unterkünfte</h2>
-                <span class="pl-sum"><span class="pl-st ok">${booked} gebucht</span>${openN ? `<span class="pl-st warn">${openN} offen</span>` : ''}</span></div>
+                <span class="pl-sum"><span class="pl-st ok">${booked} gebucht</span>${openN ? `<span class="pl-st warn">${openN} offen</span>` : ''}${missN ? `<span class="pl-st bad">${missN} fehlt</span>` : ''}</span></div>
             ${totalN ? `<div class="bk-prog big${bookedN >= totalN ? ' done' : ''}"><span><b>${bookedN} / ${totalN}</b> Nächte gebucht</span><i style="--pct:${Math.round(bookedN / totalN * 100)}"></i></div>` : ''}
             ${edit && legN0 ? `<div class="tb-banner pl-gap">${ic('info')}<span>${legN0 === 1 ? 'Eine Unterkunft hat' : `${legN0} Unterkünfte haben`} noch alte Buchungsangaben aus dem Import, die man nicht bearbeiten kann.</span><button type="button" class="btn-action" data-pl="acc-legacy">In Notizen übernehmen</button></div>` : ''}
             ${warn.length ? `<div class="tb-banner pl-warn">${ic('alert')}<span><b>Storno-Fristen-Wächter:</b> ${warn.map(w => `${esc(w.name)} – ${esc(w.text)}`).join(' · ')}</span></div>` : ''}
             ${gp.length && !legSecs ? `<div class="tb-banner pl-gap">${ic('bed')}<span><b>Nächte ohne Unterkunft:</b> ${gp.map(x => `${fmt(x.from)}–${fmt(x.to)} (${nightsTxt(x.nights)})`).join(' · ')}</span></div>` : ''}
-            ${all.length > 4 ? `<div class="controls pl-filter">
+            ${all.length > 4 || missN ? `<div class="controls pl-filter">
                 <input type="search" class="q-input" data-pl-q placeholder="Unterkunft, Adresse oder Buchungscode suchen …" value="${esc(accFilter.q)}">
-                ${[['all', 'Alle'], ['booked', 'Gebucht'], ['open', 'Offen']].map(([k, l]) => `<button type="button" class="f${accFilter.st === k ? ' on' : ''}" data-pl="acc-filter" data-st="${k}">${l}</button>`).join('')}
+                ${[['all', 'Alle'], ['booked', 'Gebucht'], ['open', 'Offen'], ...(missN ? [['missing', `Fehlt (${missN})`]] : [])].map(([k, l]) => `<button type="button" class="f${accFilter.st === k ? ' on' : ''}" data-pl="acc-filter" data-st="${k}">${l}</button>`).join('')}
             </div>` : ''}
         </div>
         <div class="bk-list">${legSecs}${rest || (!legSecs ? `<section class="bk-sec"><p class="note">Noch keine Unterkünfte.</p>${edit ? `<button type="button" class="btn-action pl-add" data-pl="acc-add" data-g="">${ic('plus')}Unterkunft</button>` : ''}</section>` : '')}</div>`;
@@ -1221,13 +1299,12 @@
                     ${field('Preis', inp('price', s.price, 'inputmode="decimal" placeholder="z. B. 240"'))}
                     ${field('Währung', inp('currency', s.currency || '€', 'maxlength="4" class="pl-short"'))}
                 </div>
-                ${field('Adresse in Landessprache (für Taxi/Navigation)', area('address', s.address, 'rows="2" maxlength="400" lang=""'))}
                 ${field('Google-Maps-Link oder Suchbegriff', inp('maps', s.maps, 'maxlength="500" placeholder="https://maps.app.goo.gl/… oder Hotelname, Ort"'))}
                 <div class="pl-row">
                     ${field('Transferzeit', inp('ttime', t.time, 'maxlength="40" placeholder="z. B. 2:30 h"'))}
                     ${field('Transfer-Notiz / Weiterreise', inp('ttext', stripTags(t.text), 'maxlength="300"'))}
                 </div>
-                ${field('Notiz', area('note', legacyNote(s, s.note || ''), 'rows="3" maxlength="2000"'))}
+                ${field('Notiz', area('note', (n => s.address && !plainNorm(n).includes(plainNorm(s.address)) ? [n, s.address].filter(Boolean).join('\n') : n)(legacyNote(s, s.note || '')), 'rows="3" maxlength="2000"'))}
                 ${legacyOpen(s).length ? `<p class="note">Alte Buchungsangaben aus dem Import stehen jetzt in der Notiz und können dort bearbeitet werden.</p>` : ''}`,
             extra: isNew ? '' : `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: f => {
@@ -1254,7 +1331,9 @@
                     if (f.elements.cancel_checked.checked) o.cancel_checked = true; else delete o.cancel_checked;
                     if (price) o.price = +price; else delete o.price;
                     setOpt(o, 'currency', price ? val(f, 'currency') : '');
-                    setOpt(o, 'address', val(f, 'address')); setOpt(o, 'maps', val(f, 'maps')); setOpt(o, 'note', val(f, 'note'));
+                    setOpt(o, 'maps', val(f, 'maps')); setOpt(o, 'note', val(f, 'note'));
+                    /* Adresse hat kein eigenes Feld mehr: vorhandene in die Notiz übernehmen */
+                    if (o.address) { if (!plainNorm(o.note).includes(plainNorm(o.address))) o.note = [o.note, o.address].filter(Boolean).join('\n'); delete o.address; }
                     if ('bookings' in o) { const m = (o.bookings || []).map(b => b && b.maps).find(Boolean); if (m && !o.maps) o.maps = m; delete o.bookings; }
                     const tt = val(f, 'ttime'), tx = val(f, 'ttext');
                     if (tt || tx || typeof o.transfer === 'object') o.transfer = { time: tt, text: tx }; else delete o.transfer;
@@ -1302,7 +1381,9 @@
                 <input type="search" class="q-input" data-pl-tq placeholder="Ort, Nummer oder Buchungscode suchen …" value="${esc(trFilter.q)}">
                 ${modes.length > 1 ? [['all', 'Alle', ''], ...MODES.filter(m => modes.includes(m[0]))].map(([k, l, icon]) => `<button type="button" class="f${trFilter.mode === k ? ' on' : ''}" data-pl="tr-filter" data-mode="${k}">${icon ? ic(icon) : ''}${l}</button>`).join('') : ''}
             </div>` : '')
-            + (edit ? `<div class="pl-toolbar"><button type="button" class="btn-action" data-pl="tr-add">${ic('plus')}Transport hinzufügen</button>${all.length > 1 ? `<button type="button" class="btn-action" data-pl="tr-sort">${ic('calendar')}Nach Datum sortieren</button>` : ''}</div>` : '');
+            /* Transporte entstehen in den Etappen (Zeitstrahl); hier die Übersicht */
+            + (document.getElementById('stops') ? `<p class="note pl-srcnote">${ic('sparkles')}Aus den Etappen: Flüge, Züge, Busse usw. im Zeitstrahl der Etappen über „+“ eintragen.${edit ? ` <button type="button" class="link-inline" data-pl="go-stops">Zu den Etappen</button>` : ''}</p>` : '')
+            + (edit ? `<div class="pl-toolbar">${document.getElementById('stops') ? '' : `<button type="button" class="btn-action" data-pl="tr-add">${ic('plus')}Transport hinzufügen</button>`}${all.length > 1 ? `<button type="button" class="btn-action" data-pl="tr-sort">${ic('calendar')}Nach Datum sortieren</button>` : ''}</div>` : '');
         const qi = bar.querySelector('[data-pl-tq]');
         if (qi) qi.oninput = () => { trFilter.q = qi.value; const pos = qi.selectionStart; renderTransports(listEl); const n = listEl.previousElementSibling.querySelector('[data-pl-tq]'); n.focus(); n.setSelectionRange(pos, pos); };
         const sortable = trFilter.mode === 'all' && !q && all.length > 1;
@@ -1310,7 +1391,8 @@
                 <button type="button" data-pl="tr-edit" data-i="${i}" aria-label="Bearbeiten">${ic('pencil')}</button>
                 ${sortable ? `<button type="button" class="pl-handle" data-drag="tr" data-i="${i}" aria-label="Verschieben (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button>` : ''}</div>` : '';
         listEl.innerHTML = shown.map(({ f, i }) => {
-            const li = fc && fc.isCard(f) ? fc.card(f) : `<li>
+            const card = fc && fc.isCard(f);
+            const li = card ? fc.card(f, edit ? acts(i) : '') : `<li>
                     <div class="fl-date">${esc(f.date)}</div>
                     <div class="fl-route">${rich(f.route)}</div>
                     ${f.duration ? `<div class="fl-dur">${ic('clock')}${esc(f.duration)}</div>` : ''}
@@ -1319,13 +1401,13 @@
                 </li>`;
             /* Handy: nach links wischen zeigt Bearbeiten / Löschen (.sw-acts), wie bei To-Dos */
             const sw = `<span class="sw-acts"><button type="button" class="sw-edit" data-pl="tr-edit" data-i="${i}" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button><button type="button" class="sw-del" data-pl="tr-del" data-i="${i}" aria-label="Löschen" title="Löschen">${ic('trash')}</button></span>`;
-            return edit ? li.replace(/^\s*<li( class=")?/, (m, c) => `<li data-sort="tr" data-i="${i}" class="sw-row${c ? ' ' : '"'}`).replace(/<\/li>\s*$/, acts(i) + sw + '</li>') : li;
+            return edit ? li.replace(/^\s*<li( class=")?/, (m, c) => `<li data-sort="tr" data-i="${i}" class="sw-row${c ? ' ' : '"'}`).replace(/<\/li>\s*$/, (card ? '' : acts(i)) + sw + '</li>') : li;
         }).join('') || `<li class="pl-empty"><p class="note">${all.length ? 'Keine Treffer.' : 'Noch keine Flüge oder Transporte eingetragen.'}</p></li>`;
     }
-    function editTransport(idx) {
+    function editTransport(idx, preset) {
         if (!editable()) return;
         const isNew = idx == null || idx < 0;
-        const f0 = isNew ? { mode: 'flight', from: {}, to: {} } : flights()[idx];
+        const f0 = isNew ? Object.assign({ mode: 'flight', from: {}, to: {} }, preset || {}) : flights()[idx];
         const legacy = !isNew && !(f0.from && f0.to);
         const f = legacy ? { mode: 'flight', label: f0.date, note: stripTags([f0.route, f0.details].filter(Boolean).join(' – ')), cost: stripTags(f0.price), status: f0.status, from: {}, to: {} } : f0;
         const end = (side, o) => `<fieldset class="pl-end"><legend>${side === 'from' ? 'Abfahrt / Start' : 'Ankunft / Ziel'}</legend>
@@ -1358,7 +1440,8 @@
                     ${field('oder Kosten als Text', inp('cost', f.cost, 'maxlength="80" placeholder="z. B. 349,90 € p.P."'), 'grow')}
                 </div>
                 ${field('Ticket- / Status-Link', inp('status', f.status, 'type="url" maxlength="500" placeholder="https://…"'))}
-                ${field('Mitreisende – mit Komma getrennt', inp('who', (Array.isArray(f.who) ? f.who : []).join(', '), 'maxlength="200"'))}
+                ${persons().length ? `<fieldset class="pl-who"><legend>Wer reist mit? (keiner angehakt = alle)</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="whoP" value="${esc(x.name || pkey(x))}"${Array.isArray(f.who) && f.who.some(w => w === x.name || w === pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name || pkey(x))}</span></label>`).join('')}</fieldset>`
+                    : field('Mitreisende – mit Komma getrennt', inp('who', (Array.isArray(f.who) ? f.who : []).join(', '), 'maxlength="200"'))}
                 ${field('Notiz', area('note', f.note, 'rows="2" maxlength="1000"'))}`,
             extra: isNew ? '' : `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: fm => {
@@ -1378,7 +1461,8 @@
                     o.from = endOf('from'); o.to = endOf('to');
                     ['label', 'dur', 'airline', 'booking', 'cost', 'status', 'note', 'currency'].forEach(k => setOpt(o, k, val(fm, k)));
                     if (price) o.price_value = +price; else { delete o.price_value; delete o.currency; }
-                    const nos = list(val(fm, 'nos')), who = list(val(fm, 'who'));
+                    const wb = [...fm.querySelectorAll('input[name="whoP"]')];
+                    const nos = list(val(fm, 'nos')), who = wb.length ? (wb.every(x => x.checked) ? [] : wb.filter(x => x.checked).map(x => x.value)) : list(val(fm, 'who'));
                     if (nos.length) o.flightNos = nos; else delete o.flightNos;
                     if (who.length) o.who = who; else delete o.who;
                     if (val(fm, 'planned') === '1') o.planned = true; else delete o.planned;
@@ -1386,6 +1470,24 @@
                     if (isNew) F.push(o); else if (legacy) F[idx] = o;
                 });
             }
+        });
+    }
+    /* „+“ im Zeitstrahl: Aufenthalt oder Transport an dieser Stelle */
+    function addAt(at, k, nk) {
+        if (!editable()) return;
+        const P = places(), a = k && P[k], z = nk && P[nk], g = k && legs().list.find(x => x.k === k);
+        sheet({
+            title: 'Hier einfügen',
+            body: `<div class="pl-choice">
+                <button type="button" class="pl-choice-btn" data-c="stay">${ic('pin')}<span><b>Aufenthalt</b><small>Ort mit Nächten (Etappe)</small></span></button>
+                <button type="button" class="pl-choice-btn" data-c="tr">${ic('plane')}<span><b>Transport</b><small>Flug, Zug, Bus, Auto, Fähre${a && z ? ` · ${esc(a.name)} → ${esc(z.name)}` : ''}</small></span></button>
+            </div>`,
+            onOpen: f => {
+                f.querySelector('.pl-save').hidden = true;
+                f.querySelector('[data-c=stay]').onclick = () => { dlg.close(); editStop(null, at); };
+                f.querySelector('[data-c=tr]').onclick = () => { dlg.close(); editTransport(null, { from: { city: a ? a.name : '', date: g && g.to ? g.to : '' }, to: { city: z ? z.name : '' } }); };
+            },
+            done: () => true
         });
     }
     function sortTransports() {
@@ -1417,6 +1519,11 @@
             case 'stop-acts': { const p = places()[b.dataset.k]; if (dlg) dlg.close(); return p && window.TBActivities && TBActivities.open(p.name, labels().get(b.dataset.k) ?? p.num ?? '', b); }
             case 'fab': { const m = b.parentElement.querySelector('.pl-fab-menu'); m.hidden = !m.hidden; b.setAttribute('aria-expanded', String(!m.hidden)); b.classList.toggle('on', !m.hidden); return; }
             case 'fab-tr': closeFab(); return editTransport(null);
+            case 'go-stops': { const t = document.querySelector('.tabs .tab[data-t="stops"], .pop-btn[data-t="stops"]'); if (t) t.click(); return; }
+            case 'info-add': return editInfo(null);
+            case 'info-edit': return editInfo(i);
+            case 'info-del': { const x = (raw().infos || [])[i]; if (x && editable() && confirm(`„${stripTags(x.title || x.text).slice(0, 60)}“ löschen?`)) commit(['infos'], () => raw().infos.splice(i, 1)); return; }
+            case 'gap-add': return addAt(b.dataset.at != null ? +b.dataset.at : null, b.dataset.k, b.dataset.n);
             case 'fab-acc': closeFab(); return editStation((groups()[0] || {}).id, null);
             case 'people': return editPeople();
             case 'trip-dates': return editTripDates();
@@ -1424,6 +1531,7 @@
             case 'stop-focus': { if (dlg && dlg.open) dlg.close(); const p = places()[b.dataset.k]; return H.focusPlace && H.focusPlace(p && p.same && places()[p.same] ? p.same : b.dataset.k); }
             case 'row-add': return editRow(b.dataset.plan, null, b.dataset.iso ? (legDays().find(x => x.iso === b.dataset.iso) || { iso: b.dataset.iso, day: '', keys: [] }) : null);
             case 'row-edit': return editRow(b.dataset.plan, i);
+            case 'row-del': { const p = planById(b.dataset.plan), r = p && p.rows[i]; if (r && editable() && confirm(`„${r.day || 'Tag'}${R.title(r) ? ' · ' + R.title(r) : ''}“ löschen?`)) commit([H.planKey], () => p.rows.splice(i, 1)); return; }
             case 'days-gen': return generateDays(b.dataset.plan);
             case 'days-legs': return planFromLegs(b.dataset.plan);
             case 'n-inc': return stepNights(b.dataset.k, 1);
@@ -1433,6 +1541,7 @@
             case 'acc-edit': return editStation(b.dataset.g, i);
             case 'acc-filter': accFilter.st = b.dataset.st; return renderAcc();
             case 'acc-legacy': return migrateAllLegacy();
+            case 'acc-det': { const o = b.closest('.bk-card').classList.toggle('det-open'); b.setAttribute('aria-expanded', o); return; }
             case 'tr-add': return editTransport(null);
             case 'tr-edit': return editTransport(i);
             case 'tr-del': { const f = flights()[i]; if (f && editable() && confirm('Diesen Eintrag löschen?')) commit(['flights'], () => raw().flights.splice(i, 1)); return; }
@@ -1513,17 +1622,114 @@
     function closeFab() { document.querySelectorAll('.pl-fab-menu').forEach(m => { m.hidden = true; }); document.querySelectorAll('.pl-fab').forEach(f => { f.classList.remove('on'); f.setAttribute('aria-expanded', 'false'); }); }
     document.addEventListener('pointerdown', e => { if (!e.target.closest('.pl-fab-wrap')) closeFab(); });
 
-    function init(host) { H = host; window.TBPlanner.ready = true; }
+    /* ---------- Listen: Suchleiste + „+“ statt Eingabezeile (To-Dos, Packliste) ----------
+       Die vorhandene Eingabezeile der Seite (.pack-add-form) wandert beim Tippen auf „+“ in ein eigenes Bottom-Sheet und danach zurück,
+       so bleibt die Speicher-Logik der Seite unverändert. */
+    function plusAdd(form, anchor, title) {
+        if (!form || !anchor || form.dataset.plus) return;
+        form.dataset.plus = '1';
+        form.hidden = true;
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'add-plus'; btn.setAttribute('aria-label', title); btn.title = title;
+        btn.innerHTML = ic('plus');
+        anchor.appendChild(btn);
+        const home = form.parentNode, next = form.nextSibling;
+        let d = null;
+        const close = () => { if (d && d.open) d.close(); };
+        btn.onclick = () => {
+            if (!d) {
+                d = document.createElement('dialog');
+                d.className = 'pl-sheet pl-add-sheet';
+                d.innerHTML = `<div class="pl-form"><div class="pl-grip" aria-hidden="true"></div><div class="pl-head"><h2>${esc(title)}</h2><button type="button" class="pl-x" aria-label="Schließen">${ic('x')}</button></div><div class="pl-body"></div></div>`;
+                document.body.appendChild(d);
+                d.querySelector('.pl-x').onclick = close;
+                d.addEventListener('click', e => { if (e.target === d) close(); });
+                d.addEventListener('close', () => { form.hidden = true; home.insertBefore(form, next); });
+            }
+            d.querySelector('.pl-body').appendChild(form);
+            form.hidden = false;
+            d.showModal();
+            const first = form.querySelector('input[type=text], input:not([type])');
+            if (first) setTimeout(() => first.focus(), 50);
+        };
+        /* nach dem Hinzufügen (Seite leert das Textfeld) schließen */
+        const after = () => setTimeout(() => { const t = form.querySelector('input[type=text], input:not([type])'); if (t && !t.value) close(); }, 60);
+        form.addEventListener('click', e => { if (e.target.closest('button')) after(); });
+        form.addEventListener('keydown', e => { if (e.key === 'Enter') after(); });
+    }
+    /* Packliste: Suchleiste über der Tabelle (filtert die Zeilen nach Text) */
+    function packSearch(box) {
+        if (!box || box.querySelector('.pack-search')) return null;
+        const form = box.querySelector('.pack-add-form');
+        const row = document.createElement('div');
+        row.className = 'controls pack-search';
+        row.innerHTML = '<input type="search" class="q-input" placeholder="Packliste durchsuchen …" aria-label="Packliste durchsuchen">';
+        (form || box.firstChild).before(row);
+        const qi = row.querySelector('input');
+        const run = () => { const t = qi.value.trim().toLowerCase(); box.querySelectorAll('tbody tr, .pack-card').forEach(r => { r.hidden = !!t && !r.textContent.toLowerCase().includes(t); }); };
+        qi.oninput = run;
+        new MutationObserver(() => { if (qi.value) run(); }).observe(box, { childList: true, subtree: true });
+        return row;
+    }
+    function enhanceLists() {
+        const tf = document.querySelector('#todos .pack-add-form'), ts = document.querySelector('#todos .todo-search');
+        if (tf && ts) plusAdd(tf, ts, 'Neues To-Do');
+        const pbox = document.querySelector('#pack .pack-add-form') && document.querySelector('#pack .pack-add-form').closest('.box');
+        if (pbox) { const row = packSearch(pbox); if (row) plusAdd(pbox.querySelector('.pack-add-form'), row, 'Neuer Gegenstand'); }
+    }
+    /* ---------- Infos & Hinweise (infos: [{ title, text }]) – Admins: „+“, Wischen zum Bearbeiten/Löschen ---------- */
+    function renderInfos(ul) {
+        if (!ul) return;
+        const L = raw().infos || [], admin = H.role === 'admin' && canEdit();
+        const box = ul.closest('.box');
+        if (box) {
+            box.hidden = !L.length && !admin;
+            const h = box.querySelector('h2');
+            if (h && admin && !h.querySelector('.add-plus')) h.insertAdjacentHTML('beforeend', `<button type="button" class="add-plus" data-pl="info-add" aria-label="Hinweis hinzufügen" title="Hinweis hinzufügen">${ic('plus')}</button>`);
+        }
+        ul.innerHTML = L.map((x, i) => `<li class="${admin ? 'sw-row info-row' : ''}"><span class="info-txt"><strong>${esc(x.title || '')}${x.title ? ':' : ''}</strong> ${rich(x.text)}</span>${admin ? `<span class="sw-acts"><button type="button" class="sw-edit" data-pl="info-edit" data-i="${i}" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button><button type="button" class="sw-del" data-pl="info-del" data-i="${i}" aria-label="Löschen" title="Löschen">${ic('trash')}</button></span>` : ''}</li>`).join('')
+            || (admin ? '<li class="note">Noch keine Hinweise – über „+“ hinzufügen.</li>' : '');
+    }
+    function editInfo(i) {
+        if (!editable()) return;
+        const isNew = i == null, x = isNew ? {} : (raw().infos || [])[i];
+        if (!x) return;
+        sheet({
+            title: isNew ? 'Neuer Hinweis' : 'Hinweis bearbeiten',
+            body: field('Titel', inp('title', x.title, 'maxlength="120" placeholder="z. B. Visum"')) + field('Text', area('text', x.text, 'rows="4" maxlength="2000" required')),
+            done: f => {
+                const t = val(f, 'text');
+                if (!t) { alert('Bitte einen Text eingeben.'); return false; }
+                commit(['infos'], () => { const L = raw().infos = raw().infos || []; const o = isNew ? {} : L[i]; o.title = val(f, 'title'); o.text = t; if (isNew) L.push(o); });
+            }
+        });
+    }
+    /* Ablauf-Karten (Handy): Wischen nach links zeigt Bearbeiten / Löschen; die Karten tragen dafür ihren Bearbeiten-Knopf */
+    function swipeCards() {
+        document.querySelectorAll('.card:not(.sw-row)').forEach(c => {
+            const e = c.querySelector('.row-edit[data-pl="row-edit"]');
+            if (!e) return;
+            c.classList.add('sw-row', 'ab-sw');
+            const d = `data-plan="${esc(e.dataset.plan)}" data-i="${esc(e.dataset.i)}"`;
+            c.insertAdjacentHTML('beforeend', `<div class="sw-acts"><button type="button" class="sw-edit" data-pl="row-edit" ${d} aria-label="Bearbeiten">${ic('pencil')}</button><button type="button" class="sw-del" data-pl="row-del" ${d} aria-label="Löschen">${ic('trash')}</button></div>`);
+        });
+    }
+    function init(host) {
+        H = host; window.TBPlanner.ready = true; setTimeout(enhanceLists, 0);
+        let t = 0;
+        if (window.MutationObserver) new MutationObserver(() => { if (!t) t = requestAnimationFrame(() => { t = 0; swipeCards(); }); }).observe(document.body, { childList: true, subtree: true });
+        setTimeout(swipeCards, 0);
+    }
 
     window.TBPlanner = {
         init, ready: false, canEdit, editable,
         stopList, routeStops, totalKm, kmText, renderStops, mountStops,
         planToolbar, rowEditBtn, editRow, dayOptions, dayLabel, addToDay,
         renderAcc, warnings, gaps, cancelInfo,
-        legs, legText, labels, legDays, ablauf, personRanges, presence, renderPresence, stayKey: s => stayKey(s),
+        legs, legText, labels, legDays, ablauf, personRanges, presence, renderPresence, routeSegments, drawRoute, stayKey: s => stayKey(s),
         saveKeys: (keys, mutate) => commit(keys, mutate),
         sheet: o => sheet(o), ui: { field, inp, area, sel: (n, v, o) => sel(n, v, o), val: (f, n) => val(f, n) },
-        renderTransports,
+        renderTransports, renderInfos, enhanceLists,
         stationStats: () => { const a = allStations(); return { total: a.length, booked: a.filter(s => S.status(s) === 'booked').length, open: a.filter(s => S.status(s) === 'open').length }; }
     };
 })();

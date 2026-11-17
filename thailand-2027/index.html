@@ -257,7 +257,6 @@
         <div id="flights" class="pane">
             <div class="box">
                 <h2><svg class="ic"><use href="#i-plane"></use></svg>Gebuchte Flüge (Übersicht)</h2>
-                <p class="note">Alle gebuchten Flüge mit Zeiten, Zwischenstopps und direktem Link zum Flugstatus der Airline.</p>
                 <ul class="fl-list" id="flightList"></ul>
             </div>
         </div>
@@ -565,6 +564,7 @@
         }
 
         function renderInfos() {
+            if (window.TBPlanner && TBPlanner.ready && TBPlanner.renderInfos) return TBPlanner.renderInfos($('#infoList'));
             $('#infoList').innerHTML = DATA.infos.map(i => `<li><strong>${esc(i.title)}:</strong> ${rich(i.text)}</li>`).join('');
         }
 
@@ -614,7 +614,8 @@
                     tr.className = 'row ab-virt' + (x.iso === todayStr ? ' today-row' : '');
                     tr.setAttribute('data-location', names.join(' '));
                     tr.setAttribute('data-rawdate', x.iso);
-                    tr.onclick = e => { if (!e.target.closest('[data-pl], a')) focusMap(loc); };
+                    tr.setAttribute('data-focus', x.v.keys[x.v.keys.length - 1] || loc);
+                    tr.onclick = e => { if (!e.target.closest('[data-pl], a')) focusMap(tr.dataset.focus, x.iso); };
                     tr.innerHTML = `
                         <td><span class="dn">Tag ${x.v.day}</span><div class="dt">${esc(fmtISO(x.iso))}</div></td>
                         <td></td>
@@ -631,10 +632,10 @@
                 tr.setAttribute('data-group', item.groupTag || '');
                 tr.setAttribute('data-location', item.locName || '');
                 tr.setAttribute('data-rawdate', item.rawDate || '');
-                tr.onclick = e => { if (!e.target.closest('.row-edit, a')) focusMap(item.locName); };
-                let groupClass = 'group-ines-stefan';
-                if (item.groupTag === 'Ines alleine') groupClass = 'group-ines-alleine';
-                if (item.groupTag === 'Ines & Anna') groupClass = 'group-ines-anna';
+                tr.setAttribute('data-focus', item.locName || '');
+                tr.onclick = e => { if (!e.target.closest('.row-edit, a')) focusMap(item.locName, item.rawDate); };
+                /* Gruppen-Badge: Farbe nach Reihenfolge des ersten Auftretens (keine Namen im Code) */
+                const groupClass = 'group-' + groupIdx(item.groupTag);
                 const groupBadge = item.groupTag ? `<span class="group-badge ${groupClass}">${esc(item.groupTag)}</span>` : '';
                 const regTag = /^[\w-]+$/.test(item.regTag || '') ? item.regTag : '';
                 tr.innerHTML = `
@@ -678,7 +679,7 @@
                 const isToday = rawDate === todayStr;
                 const card = document.createElement('div');
                 card.className = 'card' + (isToday ? ' today-card' : '') + (row.classList.contains('ab-virt') ? ' ab-virt' : '');
-                card.onclick = e => { if (!e.target.closest('.row-edit, a, [data-pl]')) focusMap(loc.split(' ').pop()); };
+                card.onclick = e => { if (!e.target.closest('.row-edit, a, [data-pl]')) focusMap(row.getAttribute('data-focus') || '', rawDate); };
                 /* Etappen-Tag ohne Eintrag: eine kompakte Zeile */
                 if (row.classList.contains('ab-virt')) {
                     const add = c[3].querySelector('.ab-plan'), ideas = [...c[3].querySelectorAll('.ab-ideas')].map(x => x.outerHTML).join('');
@@ -752,7 +753,9 @@
             L.control.layers(baseLayers, null, { collapsed: true, position: 'topright' }).addTo(map);
 
             const points = DATA.places || {};
-            (DATA.routes || []).forEach(r => {
+            /* Linien: aus den Etappen (Reihenfolge + eingetragene Transporte), sonst die gespeicherten Strecken */
+            const PLm = window.TBPlanner && TBPlanner.ready && TBPlanner.drawRoute ? TBPlanner : null;
+            if (!(PLm && PLm.drawRoute(map, DATA.places || {}))) (DATA.routes || []).forEach(r => {
                 /* Orte, die inzwischen gelöscht wurden, überspringen */
                 const pts = r.path || (r.via || []).map(k => points[k] && [points[k].lat, points[k].lng]).filter(Boolean);
                 if (pts.length > 1) L.polyline(pts, ROUTE_STYLES[r.style] || ROUTE_STYLES.th).addTo(map);
@@ -811,14 +814,23 @@
             mapFitted = true;
         }
 
-        function focusMap(name) {
-            /* Exakter Name zuerst (z. B. "Colombo (Ceylon StayZ)"), sonst grobe Zuordnung */
-            let t = markers[name];
-            if (!t) {
-                if (name.includes("Bangkok")) t = markers["Flughafen Bangkok (BKK)"];
-                else if (name.includes("Colombo")) t = markers["Flughafen Colombo (CMB)"];
-                else if (name.includes("Wien")) t = markers["Flughafen Wien (VIE)"];
-                else if (name.includes("Krabi")) t = markers["Krabi / Railay"];
+        const GROUP_SEEN = [];
+        const groupIdx = g => { if (!g) return 0; let i = GROUP_SEEN.indexOf(g); if (i < 0) i = GROUP_SEEN.push(g) - 1; return i % 3; };
+        function focusMap(name, iso) {
+            /* Schlüssel oder exakter Name zuerst, dann ohne Groß/Klein, dann Präfix („Bangkok Stadtzentrum“ → „Bangkok“),
+               dann die Etappe am Datum der Zeile */
+            name = String(name || '');
+            const P = DATA.places || {}, base = k => P[k] && P[k].same && P[P[k].same] ? P[k].same : k;
+            let t = markers[base(name)] || markers[name];
+            if (!t && name) {
+                const n = name.toLowerCase().replace(/^\d+\.\s*/, '');
+                const hit = Object.keys(P).filter(k => P[k] && P[k].name && markers[base(k)]).map(k => ({ k, m: P[k].name.toLowerCase() }))
+                    .filter(x => x.m === n || n.startsWith(x.m + ' ') || x.m.startsWith(n + ' ') || n.includes(x.m)).sort((a, b) => b.m.length - a.m.length)[0];
+                if (hit) t = markers[base(hit.k)];
+            }
+            if (!t && iso && window.TBPlanner && TBPlanner.ready) {
+                const g = TBPlanner.legs().list.find(x => x.from && x.from <= iso && (x.n ? iso < x.to : iso === x.from));
+                if (g) t = markers[base(g.k)];
             }
             if (t) {
                 switchTab('mapview');
@@ -845,15 +857,17 @@
 
         /* Arbeitstage bis zum eigenen Reisebeginn (aus den Etappen), abzüglich Feiertagen und eingetragener Urlaubstage
            (workdays.vacation = { bayern: n, wien: n }, eintragen dürfen Admins) */
-        const WD_ROWS = [['bayern', 'stefan', 'Stefan'], ['wien', 'ines', 'Ines']];
+        /* Region (Feiertage) ↔ Person: workdays.people = { <region>: <Personen-Schlüssel> } aus der Datenbank, sonst die bisherige Zuordnung */
+        const WD_DEFAULT = [['bayern', 'stefan'], ['wien', 'ines']];
+        const wdRows = wd => wd.people && typeof wd.people === 'object' ? Object.entries(wd.people).map(([r, k]) => [r, String(k).toLowerCase()]) : WD_DEFAULT;
         function calculateWorkDays() {
             const wd = DATA.workdays, el = $('#workStats');
             if (!wd || !el) return;
             const ok = d => /^\d{4}-\d\d-\d\d$/.test(d || '');
             const ps = DATA.persons || [], vac = wd.vacation || {};
             const admin = ROLE === 'admin' && window.TBPlanner && TBPlanner.ready && TBPlanner.saveKeys;
-            el.innerHTML = WD_ROWS.map(([reg, key, label]) => {
-                const p = ps.find(x => String(personKey(x)).toLowerCase() === key || String(x.name || '').toLowerCase() === key) || { name: label, color: '' };
+            el.innerHTML = wdRows(wd).map(([reg, key]) => {
+                const p = ps.find(x => String(personKey(x)).toLowerCase() === key || String(x.name || '').toLowerCase() === key) || { name: key.charAt(0).toUpperCase() + key.slice(1), color: '' };
                 const start = personRange(p).start || (window.TBPlanner && TBPlanner.ready ? (TBPlanner.legs().start || '') : '') || firstDate() || wd.until || '';
                 let n = 0;
                 if (ok(start)) {
@@ -867,7 +881,7 @@
                 }
                 const v = Math.max(0, parseInt(vac[reg], 10) || 0);
                 return `<div class="stat">
-                        <span style="color:${col(p.color, '#64748b')}">●</span> Arbeitstage ${esc(p.name || label)}
+                        <span style="color:${col(p.color, '#64748b')}">●</span> Arbeitstage ${esc(p.name || key)}
                         <b>${ok(start) ? Math.max(0, n - v) : '–'} Tage</b>${ok(start) ? `bis ${fmtISO(start)}` : 'Noch kein Reisebeginn'}
                         ${admin ? `<label class="wd-vac">Urlaubstage bis dahin <input type="number" min="0" max="99" inputmode="numeric" data-wd-vac="${reg}" value="${v || ''}" placeholder="0"></label>`
                             : v ? `<small>abzgl. ${v} Urlaubstag${v === 1 ? '' : 'e'}</small>` : ''}
@@ -1570,6 +1584,7 @@
         function rerenderAll() {
             const y = window.scrollY;
             safe(renderStats);
+            safe(renderInfos);
             safe(renderPresenceTH);
             safe(calculateWorkDays);
             safe(renderAccommodations);

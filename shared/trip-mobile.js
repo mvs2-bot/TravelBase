@@ -123,7 +123,7 @@
             return rows.length ? `<div class="m-grp">${name}</div><div class="m-list">${rows.map(i => `
                 <button type="button" class="m-li" data-open="${esc(i.id)}">
                     <span class="m-bx" style="background:${i.color}">${i.icon}</span>
-                    <span class="m-lt">${esc(i.label)}</span>
+                    <span class="m-lt">${esc(i.label)}${i.id === 'stops' ? `<span class="m-base">${ic('sparkles')}Basis für Route, Unterkünfte, Ablauf, Anwesenheit</span>` : ''}</span>
                     ${i.value ? `<small>${esc(i.value)}</small>` : ''}${ic('chevronRight')}
                 </button>`).join('')}</div>` : '';
         };
@@ -142,6 +142,7 @@
         const act = window.TBActivities && TBActivities.ready;
         if (routeView) routeView.innerHTML = stops.length ? `<div class="box m-route">
                 <h2>${ic('pin')}Route · ${stops.length} Stationen</h2>
+                ${hasStops() ? `<p class="note m-src">${ic('sparkles')}Aus den Etappen – Änderungen dort eintragen.</p>` : ''}
                 <div class="m-tl">${stops.map(s => `<div class="m-stop${s.now ? ' now' : ''}" style="--c:${esc(s.color || 'var(--p1)')}">${act
                     ? `<button type="button" class="m-num" data-loc="${esc(s.name)}" data-num="${esc(s.num ?? '')}" aria-label="Mögliche Aktivitäten: ${esc(s.name)}" title="Mögliche Aktivitäten">${esc(s.num ?? '')}</button>`
                     : `<i>${esc(s.num ?? '')}</i>`}

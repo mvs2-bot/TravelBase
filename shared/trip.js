@@ -178,7 +178,7 @@
         // To-Dos als eigener Bereich; eine ältere Seite aus dem Cache ohne #todos zeigt sie weiter unter „Infos & mehr“
         const todoPane = DATA.todos && !!$('#todos');
         if (todoPane) s.push({ id: 'todos', icon: ic('checkCircle'), label: 'To-Dos' });
-        if ((DATA.persons || []).some(p => p.start) || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
+        if ((DATA.persons || []).some(p => p.start) || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links || (ROLE === 'admin' && DATA.plans)) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
         if ((DATA.flights || []).length || (canEdit() && DATA.plans)) s.push({ id: 'flights', icon: ic('plane'), label: (DATA.flights || []).some(f => f.mode && f.mode !== 'flight') || canEdit() ? 'Flüge & Transporte' : 'Flüge', sub: 'bookings' });
         /* Buchungen: Unterkünfte und Transporte als Unterbereiche eines Bereichs (direkt hinter den Tagesplänen) */
         const subs = s.filter(x => x.sub === 'bookings');
@@ -293,7 +293,10 @@
         L.control.layers(baseLayers, null, { collapsed: true, position: 'topright' }).addTo(map);
 
         const P = DATA.places || {}, styles = { ...DEFAULT_STYLES, ...(DATA.routeStyles || {}) };
-        (DATA.routes || []).forEach(r => {
+        /* Linien: aus den Etappen (Reihenfolge + eingetragene Transporte), sonst die gespeicherten Strecken */
+        const PLm = window.TBPlanner && TBPlanner.ready && TBPlanner.drawRoute ? TBPlanner : null;
+        const byLegs = !!(PLm && PLm.drawRoute(map, RAW.places || {}));
+        if (!byLegs) (DATA.routes || []).forEach(r => {
             const pts = r.path || (r.via || []).map(k => P[k] && [P[k].lat, P[k].lng]).filter(Boolean);
             if (pts.length < 2) return;
             const st = styles[r.style] || DEFAULT_STYLES.road, cs = whoColors(r.who);
@@ -304,7 +307,7 @@
         });
         /* Ohne eigene Strecken: automatische Linie durch die Stopps in Reihenfolge */
         const PL = window.TBPlanner;
-        if (!(DATA.routes || []).length && PL) {
+        if (!byLegs && !(DATA.routes || []).length && PL) {
             const pts = PL.routeStops(P).map(x => [+x.p.lat, +x.p.lng]);
             if (pts.length > 1) L.polyline(pts, { ...DEFAULT_STYLES.road, dashArray: '8, 6' }).addTo(map);
         }
@@ -576,7 +579,8 @@
             }).join('');
             $('#workHolidays').textContent = w.note || '';
         }
-        if ((DATA.infos || []).length) {
+        if (window.TBPlanner && TBPlanner.ready && TBPlanner.renderInfos) TBPlanner.renderInfos($('#infoList'));
+        else if ((DATA.infos || []).length) {
             $('#infoBox').hidden = false;
             $('#infoList').innerHTML = DATA.infos.map(i => `<li><strong>${esc(i.title)}:</strong> ${rich(i.text)}</li>`).join('');
         }

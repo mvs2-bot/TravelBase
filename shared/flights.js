@@ -1,14 +1,14 @@
 /* TravelBase – Flug- und Transportkarten (Thailand-Seite und Reise-Vorlage)
    Ein Flug in den Reisedaten (Abschnitt "flights") kann strukturiert angelegt werden:
      {
-       "label":   "Hinflug Thailand",                                         Art des Flugs
-       "from":    { "code": "VIE", "city": "Wien",    "date": "2027-01-01", "time": "15:30" },
-       "to":      { "code": "BKK", "city": "Bangkok", "date": "2027-01-02", "time": "13:40" },
-       "stops":   [{ "code": "RUH", "city": "Riad", "time": "15:45–17:15" }], Zwischenstopps (time optional)
+       "label":   "Hinflug",                                         Art des Flugs
+       "from":    { "code": "AAA", "city": "Abflugort", "date": "2030-01-01", "time": "15:30" },
+       "to":      { "code": "BBB", "city": "Zielort",   "date": "2030-01-02", "time": "13:40" },
+       "stops":   [{ "code": "CCC", "city": "Umstieg", "time": "15:45–17:15" }], Zwischenstopps (time optional)
        "dur":     "16 Std. 10 Min.",                                           Reisezeit (optional, auch "ca. 14–17 Std.")
-       "airline": "Saudia Airlines", "flightNos": ["SV152", "SV846"],
-       "who":     ["Ines", "Stefan"],
-       "cost":    "349,90 € p.P.",
+       "airline": "Beispiel Air", "flightNos": ["XX101", "XX102"],
+       "who":     ["Person A", "Person B"],
+       "cost":    "300 € p.P.",
        "status":  "https://…",                                                 Link zur Flugstatus-Seite der Airline
        "planned": true,                                                        noch nicht gebucht → Hinweis „Geplant“
        "note":    "Nachtflug, …"                                               freie Zusatzinfo
@@ -51,7 +51,8 @@
     const safeUrl = u => /^https?:\/\//i.test(String(u || '').trim()) ? String(u).trim() : '';
     const money = (v, cur) => v == null || v === '' || !isFinite(+v) ? '' : (+v).toLocaleString('de-DE', { minimumFractionDigits: +v % 1 ? 2 : 0, maximumFractionDigits: 2 }) + ' ' + (cur || '€');
 
-    function card(f) {
+    /* tail: optionale Knöpfe (Bearbeiten, Verschieben) rechts in der Fußzeile, nach dem Flugstatus */
+    function card(f, tail) {
         const mode = MODE[f.mode] ? f.mode : 'flight', [modeLabel, modeIcon] = MODE[mode];
         const stops = list(f.stops);
         /* bei geplanten Flügen ohne bekannte Stopps nicht „Direkt“ behaupten */
@@ -82,10 +83,10 @@
                 ${f.note ? `<div class="flc-note">${ic('info')}${esc(f.note)}</div>` : ''}
                 ${f.airline || nos.length ? `<div class="flc-airline">${ic(modeIcon)}<span>${esc(f.airline || '')}</span>${nos.map(n => `<span class="flc-no">${esc(n)}</span>`).join('')}</div>` : ''}
                 ${f.booking ? `<div class="flc-booking"><span>Buchung</span><code>${esc(f.booking)}</code><button type="button" class="pl-copy" data-copy="${esc(f.booking)}" aria-label="Buchungscode kopieren: ${esc(f.booking)}" title="Kopieren">${ic('copy')}</button></div>` : ''}
-                ${who.length || cost || status ? `<div class="flc-foot">
+                ${who.length || cost || status || tail ? `<div class="flc-foot">
                     ${who.length ? `<span class="flc-who">${ic('users')}${who.map(esc).join(', ')}</span>` : ''}
                     ${cost ? `<span class="flc-cost">${cost}</span>` : ''}
-                    ${status}
+                    ${status}${tail || ''}
                 </div>` : ''}
             </li>`;
     }

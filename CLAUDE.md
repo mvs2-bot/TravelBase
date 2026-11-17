@@ -43,7 +43,7 @@ Import-Skripte mit Reisedaten gehören **nicht** ins Repo.
 | `planner.js` | `TBPlanner.init(host)`: Live-Planung für Vorlage **und** Thailand (die Seite liefert über `host` ihre Daten-Zugriffe). Etappen im eigenen Bereich `#stops` als Zeitstrahl wie Polarsteps (Reise beginnt · Stopp-Karten · „+“ zum Einfügen dazwischen · Verkehrsmittel-Pille mit km und grober Zeit, eingetragene Transporte zwischen den Orten bestimmen das Symbol · Reiseende; sonst Split-View neben der Karte), Stopp antippen = Detail-Sheet (Zeitraum, Nächte, Notizen, Unterkünfte, Transporte), „Reise beginnt“ antippen = Reisezeitraum (nur Admins, speichert `meta.start`/`meta.end`; die RPC zieht `travelbase_trips.start_date` mit), „Neuer Stopp“ mit Kartenauswahl (Tippen setzt lat/lng, Nominatim-Reverse für den Namen) und eingeklapptem „Ort erneut besuchen“, Plus-Knopf `.pl-fab` mit Menü, Nominatim-Suche, Reihenfolge per Ziehen am Griff `.pl-handle` oder Pfeiltasten, Reisende & Farben (`persons`, nur Admins), Tagesplan-Zeilen + „leere Tage anlegen“, Unterkünfte (`stations`, Storno-Wächter, Lücken), Flüge & Transporte (`flights` mit `mode`). Bottom-Sheet `<dialog class="pl-sheet">`, Speichern über `TB.saveSection`. |
 | `trip.css` | Design-System + Layout für Vorlage **und** Thailand, inkl. Mobile-Ansicht (< 768 px). |
 | `trip-mobile.js` | `TBTripMobile`: Handy-Ansicht im iOS-Einstellungen-Stil (Start-Übersicht, Route-Zeitstrahl, Zurück-Button) + schwebende Tabbar *Start · Karte · (Etappen) · Route · Infos* (Etappen nur, wenn die Seite `.pop-btn[data-t="stops"]` hat). Daten kommen per `setData()/setTile()` von der Seite. Braucht `.pop-btn[data-t]` und `.pane`. Desktop unverändert. |
-| `activities.js` | `TBActivities.init({ tripId, slug, stops })` / `open(name, num, el)`: mögliche Aktivitäten pro Ort (Unterseite `#activities` + Modal), Tabelle `travelbase_activities`, verknüpft über `trip_id + location_name`. Kategorien (`tags`), `done`, „In Ablauf übernehmen“ (`planned_day`, über `TBPlanner.addToDay`); ohne die neuen Spalten läuft es im alten Umfang. `setStops()` nach Änderungen. |
+| `activities.js` | `TBActivities.init({ tripId, slug, stops })` / `open(name, num, el)`: mögliche Aktivitäten pro Ort (Unterseite `#activities` + Modal), Tabelle `travelbase_activities`, verknüpft über `trip_id + location_name`. Kategorien (`tags`, farbige Chips mit Symbol über `data-tag`/`TAG_IC`), `done`, „In Ablauf übernehmen“ (`planned_day`, über `TBPlanner.addToDay`); ohne die neuen Spalten läuft es im alten Umfang. `setStops()` nach Änderungen. |
 | `flights.js` | `tbFlights.isCard(f)` / `card(f)`: strukturierte Karten für Flug/Zug/Fähre/Bus/Mietwagen (`mode`, Schema im Dateikopf); alte Text-Einträge bleiben kompatibel. |
 | `icons.js` | SVG-Sprite + `tbIcon(name, cls)`. |
 | `profile.js` | Profil-Button `#tbProfileBtn` + Menü (Name, Rolle, Cloud-Sync-Status, Dashboard, `/konto.html`, `/admin.html`, Abmelden). Liest `overall_profiles` und RPC `overall_app_role`. |
@@ -71,7 +71,7 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   Mitglieder dürfen nur `places, routes, plans, stations, flights, days`; alles andere nur Admins. `planner.js` bearbeitet nur `RAW`
   und schreibt jeden Schlüssel in den Abschnitt, aus dem er kam (sonst `guest` für `places/routes`, `member` für den Rest).
 - **Von Mitgliedern geschriebene Inhalte gelten als unsicher:** HTML-Felder nur über `rich()`/`TB.safeHtml`, Farben über `TB.safeColor`, Links über `TB.safeUrl`.
-- **Unterkünfte-Ansicht** (`renderAcc`): je Etappe ein Abschnitt mit „x/y Nächte gebucht“ und kompakten Karten (`.bk-sec`, `.bk-card`), fehlende als „Unterkunft fehlt“; Unterkünfte ohne Etappe darunter (Gruppen, z. B. Thailand/Sri Lanka). Keine Tabelle mehr.
+- **Unterkünfte-Ansicht** (`renderAcc`): je Etappe ein Abschnitt mit „x/y Nächte gebucht“ und kompakten Karten (`.bk-sec`, `.bk-card`), fehlende als „Unterkunft fehlt“ (Zähler „n fehlt“ oben, Filter „Fehlt“; Details per Knopf `.bk-det` rechts unter dem Stift; kein Adressfeld mehr – Adressen stehen in der Notiz); Unterkünfte ohne Etappe darunter (Gruppen, z. B. Thailand/Sri Lanka). Keine Tabelle mehr.
 - **Bereiche der Vorlage:** Karte · Etappen (`#stops`) · Tagespläne · **Buchungen** (`#bookings`, Unterbereiche `#acc` Unterkünfte und `#flights` Transporte
   als Segmente; alte Links `#acc`/`#flights` öffnen den Unterbereich). Thailand hat Etappen, aber weiter getrennte Unterkünfte/Flüge; dort ist **„Ablauf“** (`#ablauf`) **eine** Liste aus `days.th` und `days.sl`
   nach Datum (alte Links `#thailand`/`#srilanka` öffnen sie; neue Tage landen per `planFor(iso)` im passenden Teil) mit kompakter Filterleiste.
@@ -91,8 +91,25 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   Besuchen gilt der erste Besuch; die Seite übergibt solche Orte mit `hide: true` an `TBActivities.setStops`).
 - **Aktivitäten-Orte:** Orte ohne passende Etappe bleiben als eigener Abschnitt sichtbar; eindeutige alte Namen („2. Chiang Mai“, „Bangkok Stadtzentrum“)
   hängt `activities.js` beim Laden still an die Etappe um (`location_name`-Update, nur mit Schreibrecht).
-- **Wischen:** Zeilen mit `.sw-row` + `.sw-acts` (To-Dos, Packliste, mögliche Aktivitäten, Flüge & Transporte) zeigen auf dem Handy per Wischen nach links Bearbeiten/Löschen
+- **Wischen:** Zeilen mit `.sw-row` + `.sw-acts` (To-Dos, Packliste, mögliche Aktivitäten, Flüge & Transporte, Infos, Ablauf-Karten) zeigen auf dem Handy per Wischen nach links Bearbeiten/Löschen
   (`shared/trip-mobile.js`); Bearbeiten über `TBPlanner.sheet` / `TBPlanner.ui`.
+  Ablauf-Karten bekommen das automatisch (`swipeCards()` in `planner.js` per MutationObserver: jede `.card` mit `.row-edit` erhält `.sw-acts` mit `row-edit`/`row-del`).
+- **Transporte in den Etappen:** Etappen sind Aufenthalte (`places`) oder Transporte (`flights`-Einträge mit ISO-`from.date`). Im Zeitstrahl
+  steht ein Transport nach dem letzten Aufenthalt, der vor seinem Datum beginnt (`.pl-stop.pl-tr`); das „+“ zwischen zwei Stopps fragt
+  „Aufenthalt“ oder „Transport“ (`addAt`, Transport mit Von/Nach/Datum vorbelegt). Transporte dürfen Aufenthalte überlappen und zählen in
+  `presence()` als Reisetag (`'fl'`) der Personen aus `who` (leer = alle). „Flüge & Transporte“ und die Route am Handy sind nur Anzeige mit Hinweis
+  „Aus den Etappen“ (Knopf `go-stops`); „Transport hinzufügen“ dort nur ohne `#stops`. `places[k].kind` (Anreise/Abreise) ist abgelöst,
+  die Auswahl erscheint nur noch bei Etappen, die sie schon haben.
+- **Kartenlinien:** sobald die Etappen Nächte haben, zeichnet `TBPlanner.drawRoute(map, places)` (`routeSegments()`) Linien zwischen aufeinanderfolgenden
+  Stopps (ohne `noRoute`, gleiche Koordinaten übersprungen). Stil nach eingetragenem Transport dazwischen (`transportBetween`), sonst ab 800 km Flug,
+  darunter Straße (`SEG_STYLE`). Ohne Etappen-Nächte wie bisher gespeicherte `routes` (`{via:[Schlüssel], style}`) bzw. automatische Linie.
+- **Ablauf-Tag bearbeiten** (`editRow`): Auswahl „Etappe / Ort auf der Karte“ (Dropdown; setzt `focus`/`locName`, verschiebt das Datum in den
+  Zeitraum der Etappe und die Tag-Nummer), Datum, „Mögliche Aktivität übernehmen“ (`TBActivities.forLocation`, füllt Titel bzw. hängt an Details an).
+  Thailand: Klick auf eine Zeile springt über `data-focus` + `focusMap(name, iso)` (Schlüssel → Name → Präfix → Etappe am Datum) zur Karte.
+- **Listen:** `TBPlanner.enhanceLists()` macht aus den Eingabezeilen von To-Dos und Packliste ein rundes „+“ neben der Suche (`plusAdd`, Formular im Sheet)
+  und ergänzt die Suche der Packliste (`packSearch`). Packlisten-Personen am Handy unten über der Tabbar.
+- **Infos & Hinweise** = `infos` in der Datenbank (Admins): `TBPlanner.renderInfos(ul)`, „+“ in der Überschrift, Wischen bzw. Stift/Papierkorb (`editInfo`).
+  Reisezeiträume und Arbeitstage entstehen automatisch (Etappen bzw. `workdays`; Thailand: Region ↔ Person optional über `workdays.people`).
 - **Punktfarben = Reisende** (wie Südamerika): ohne `mapColors` färben `persons` (`{key,name,color}`, gepflegt über „Reisende“ in den Etappen)
   die Punkte auf Karte, Etappen und Route; `places[k].who` schränkt ein (fehlt = alle, `[]` = bewusst niemand → Gelb `#eab308`). Ohne Reisende Blau. Stopps haben keine eigene Farbauswahl mehr.
   Alte Reisen mit `mapColors: "persons"` + `who` in Tagesplan-Zeilen bleiben unverändert.
