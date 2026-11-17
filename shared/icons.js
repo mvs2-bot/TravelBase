@@ -61,7 +61,23 @@
         chevronRight: '<path d="m9 6 6 6-6 6"/>',
         chevronLeft: '<path d="m15 6-6 6 6 6"/>',
         mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/>',
-        search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>'
+        search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>',
+        /* Live-Planung: Transportmittel, Sortieren, Kopieren */
+        train: '<rect x="6" y="3.5" width="12" height="13" rx="3"/><path d="M6 11h12M9.5 13.8h.01M14.5 13.8h.01M8.5 20.5l2-4M15.5 20.5l-2-4"/>',
+        ship: '<path d="M3.5 18.5c1.4 1.2 2.9 1.2 4.3 0 1.4 1.2 2.8 1.2 4.2 0 1.4 1.2 2.8 1.2 4.2 0 1.4 1.2 2.9 1.2 4.3 0"/><path d="M5.2 15.5 4 11.5h16l-1.2 4M7 11.5V8h10v3.5M12 4.5V8"/>',
+        bus: '<rect x="4.5" y="3.5" width="15" height="14" rx="2.5"/><path d="M4.5 11h15M8 14.3h.01M16 14.3h.01M7.5 17.5v2.5M16.5 17.5v2.5"/>',
+        car: '<path d="M5 13 7 7.5h10L19 13"/><rect x="3.5" y="13" width="17" height="4.5" rx="1.5"/><path d="M7 17.5v2M17 17.5v2M7.5 15.3h.01M16.5 15.3h.01"/>',
+        copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>',
+        arrowUp: '<path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/>',
+        arrowDown: '<path d="M12 5v14M6.5 13.5 12 19l5.5-5.5"/>',
+        route: '<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18H16a3 3 0 0 0 0-6H8a3 3 0 0 1 0-6h7.8"/>',
+        wand: '<path d="m4 20 10.5-10.5M13 6.5l3 3M15 3.5v2M20.5 9h-2M18.5 5.5 20 4M19 13.5l1.5 1.5"/>',
+        tag: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.2 6.2a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8" cy="8" r="1.4"/>',
+        link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+        calendarPlus: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M12 12.5v5M9.5 15h5"/>',
+        filter: '<path d="M4 5.5h16l-6.2 7.3V19l-3.6-1.8v-4.4z"/>',
+        layers: '<path d="m12 4 8.5 4.5L12 13 3.5 8.5z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>',
+        hourglass: '<path d="M6.5 3.5h11M6.5 20.5h11M7.5 3.5c0 4.5 4.5 5.5 4.5 8.5s-4.5 4-4.5 8.5M16.5 3.5c0 4.5-4.5 5.5-4.5 8.5s4.5 4 4.5 8.5"/>'
     };
     window.tbIcon = (name, cls) => `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
 

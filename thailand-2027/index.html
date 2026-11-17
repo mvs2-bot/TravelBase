@@ -19,6 +19,7 @@
     <script src="../shared/overall-account.js"></script>
     <script src="../shared/trip-mobile.js"></script>
     <script src="../shared/flights.js"></script>
+    <script src="../shared/planner.js"></script>
     <script src="../shared/activities.js"></script>
     <script src="../shared/profile.js"></script>
     <script src="../shared/ios-nav.js" defer></script>
@@ -435,7 +436,7 @@
         /* 0. Daten laden & Speicher
            Später: loadTripData() holt die Daten nach dem Login aus Supabase,
            store.get/set speichern To-Dos & Packlisten dann gemeinsam statt nur im Browser. */
-        let DATA = null, ROLE = null, TRIP_FLAGS = [];
+        let DATA = null, ROLE = null, TRIP_FLAGS = [], RES = null;
         /* Ordnername = Reise-Kennung in Supabase (z. B. "thailand-2027") */
         const TRIP_SLUG = (() => { const p = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean); return p[p.length - 1]; })();
         function gate(html) { const g = $('#tbGate'); g.innerHTML = html; g.hidden = !html; }
@@ -447,6 +448,7 @@
             if (!res) { location.replace('../?next=' + encodeURIComponent(TRIP_SLUG)); return null; }
             if (res.denied) { gate(`<h2>${ic('lock')}Kein Zugriff</h2><p class="note">Du bist für diese Reise nicht freigeschaltet.</p><a href="../">← Zur Übersicht</a>`); return null; }
             ROLE = res.role;
+            RES = res;
             TRIP_ID = res.trip.id;
             TRIP_FLAGS = res.trip.flags || [];
             $('#tbWho').innerHTML = ic('person') + String(res.user.name || res.user.email).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
@@ -477,6 +479,10 @@
 
         /* 1. Hilfsfunktionen */
         const $ = s => document.querySelector(s);
+        /* Inhalte, die Mitreisende bearbeiten können: escapen bzw. HTML säubern, Farben prüfen */
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const rich = s => window.TB && TB.safeHtml ? TB.safeHtml(s) : esc(s);
+        const col = (c, f = '#15803d') => window.TB && TB.safeColor ? TB.safeColor(c, f) : f;
         /* Linien-Symbol aus shared/icons.js */
         const ic = n => window.tbIcon ? tbIcon(n) : '';
         const pad = n => String(n).padStart(2, '0');
@@ -511,6 +517,8 @@
 
         /* 2. Unterkünfte (aus DATA.stations) */
         function renderAccommodations() {
+            /* Live-Planung: Unterkünfte mit Bearbeiten, Storno-Fristen-Wächter und Lücken (shared/planner.js) */
+            if (window.TBPlanner && TBPlanner.ready) { TBPlanner.renderAcc($('#acc')); renderCancelBanner(); return; }
             const today = getTodayISO();
             [['th', '#accBodyThailand'], ['sl', '#accBodySriLanka']].forEach(([k, sel]) => {
                 const tbody = $(sel);
@@ -556,6 +564,11 @@
 
         /* 3. Flüge & Infos */
         function renderFlights() {
+            if (window.TBPlanner && TBPlanner.ready) {
+                const h = $('#flights h2');
+                if (h && TBPlanner.canEdit()) h.innerHTML = ic('plane') + 'Flüge &amp; Transporte';
+                return TBPlanner.renderTransports($('#flightList'));
+            }
             const fc = window.tbFlights;
             $('#flightList').innerHTML = DATA.flights.map(f => fc && fc.isCard(f) ? fc.card(f) : `
                     <li>
@@ -567,7 +580,7 @@
         }
 
         function renderInfos() {
-            $('#infoList').innerHTML = DATA.infos.map(i => `<li><strong>${i.title}:</strong> ${i.text}</li>`).join('');
+            $('#infoList').innerHTML = DATA.infos.map(i => `<li><strong>${esc(i.title)}:</strong> ${rich(i.text)}</li>`).join('');
         }
 
         /* 4. Filter, Tagespläne & Mobile Karten */
@@ -592,32 +605,40 @@
             sl: { body: '#planTableBodySriLanka', cards: '#mobileCardsSriLanka', search: '#qSL', region: () => currentRegionSriLanka }
         };
 
+        const PLAN_ID = { th: 'thailand', sl: 'srilanka' };
         function renderPlanTable(k) {
             const cfg = planCfg[k], todayStr = getTodayISO(), tbody = $(cfg.body);
             tbody.innerHTML = '';
-            DATA.days[k].forEach(item => {
+            /* Werkzeugleiste der Live-Planung über der Tabelle */
+            const PL = window.TBPlanner && TBPlanner.ready ? TBPlanner : null;
+            const box = tbody.closest('.box');
+            let slot = box.querySelector('.pl-slot');
+            if (!slot) { slot = document.createElement('div'); slot.className = 'pl-slot'; box.querySelector('.controls').before(slot); }
+            slot.innerHTML = PL ? PL.planToolbar(PLAN_ID[k]) : '';
+            (DATA.days[k] || []).forEach((item, idx) => {
                 const tr = document.createElement('tr');
                 const isToday = item.rawDate === todayStr;
                 tr.className = 'row' + (isToday ? ' today-row' : '');
-                tr.setAttribute('data-region', item.region);
+                tr.setAttribute('data-region', item.region || '');
                 tr.setAttribute('data-group', item.groupTag || '');
-                tr.setAttribute('data-location', item.locName);
+                tr.setAttribute('data-location', item.locName || '');
                 tr.setAttribute('data-rawdate', item.rawDate || '');
-                tr.onclick = () => focusMap(item.locName);
+                tr.onclick = e => { if (!e.target.closest('.row-edit, a')) focusMap(item.locName); };
                 let groupClass = 'group-ines-stefan';
                 if (item.groupTag === 'Ines alleine') groupClass = 'group-ines-alleine';
                 if (item.groupTag === 'Ines & Anna') groupClass = 'group-ines-anna';
-                const groupBadge = item.groupTag ? `<span class="group-badge ${groupClass}">${item.groupTag}</span>` : '';
+                const groupBadge = item.groupTag ? `<span class="group-badge ${groupClass}">${esc(item.groupTag)}</span>` : '';
+                const regTag = /^[\w-]+$/.test(item.regTag || '') ? item.regTag : '';
                 tr.innerHTML = `
                     <td>
-                        <span class="dn">${item.day}</span>
-                        <div class="dt">${item.date}</div>${groupBadge}
+                        <span class="dn">${esc(item.day)}</span>${PL ? PL.rowEditBtn(PLAN_ID[k], idx) : ''}
+                        <div class="dt">${esc(item.date)}</div>${groupBadge}
                     </td>
-                    <td><span class="rg ${item.regTag}">${item.region}</span></td>
-                    <td><div class="tt">${item.title} ${isToday ? `<span class="today-tag">${ic('star')}Heute</span>` : ''}</div></td>
-                    <td>${item.details}</td>
-                    <td><span class="pill">${item.transport}</span></td>
-                    <td><span class="pill hotel-pill${/noch offen/i.test(item.hotel) ? ' hotel-open' : ''}">${item.hotel}</span></td>`;
+                    <td>${item.region ? `<span class="rg ${regTag}">${esc(item.region)}</span>` : ''}</td>
+                    <td><div class="tt">${esc(item.title)} ${isToday ? `<span class="today-tag">${ic('star')}Heute</span>` : ''}</div></td>
+                    <td>${rich(item.details)}</td>
+                    <td>${item.transport ? `<span class="pill">${rich(item.transport)}</span>` : ''}</td>
+                    <td>${item.hotel ? `<span class="pill hotel-pill${/noch offen/i.test(item.hotel) ? ' hotel-open' : ''}">${rich(item.hotel)}</span>` : ''}</td>`;
                 tbody.appendChild(tr);
             });
             filterPlan(k);
@@ -645,8 +666,8 @@
                 const isToday = rawDate === todayStr;
                 const card = document.createElement('div');
                 card.className = 'card' + (isToday ? ' today-card' : '');
-                card.onclick = () => focusMap(loc);
-                const dayBadge = c[0].querySelector('.dn') ? c[0].querySelector('.dn').outerHTML : '';
+                card.onclick = e => { if (!e.target.closest('.row-edit, a')) focusMap(loc); };
+                const dayBadge = (c[0].querySelector('.dn') ? c[0].querySelector('.dn').outerHTML : '') + (c[0].querySelector('.row-edit') ? c[0].querySelector('.row-edit').outerHTML : '');
                 const dateText = c[0].querySelector('.dt') ? c[0].querySelector('.dt').textContent : '';
                 const groupBadge = c[0].querySelector('.group-badge') ? c[0].querySelector('.group-badge').outerHTML : '';
                 const regionBadge = c[1].querySelector('.rg') ? c[1].querySelector('.rg').outerHTML : '';
@@ -655,7 +676,7 @@
                         <div class="card-meta">${dayBadge} <span class="card-date">${dateText}</span> ${groupBadge}</div>
                         ${regionBadge}
                     </div>
-                    <div class="card-title">${c[2].textContent}</div>
+                    <div class="card-title">${esc(c[2].textContent)}</div>
                     <div class="card-details">${c[3].innerHTML}</div>
                     <div class="card-footer">${c[4].innerHTML} ${c[5].innerHTML}</div>`;
                 container.appendChild(card);
@@ -700,16 +721,19 @@
             map = L.map('map', { layers: [baseLayers['🇩🇪 OSM Deutsch (Deutsch / Landessprache)']] });
             L.control.layers(baseLayers, null, { collapsed: true, position: 'topright' }).addTo(map);
 
-            const points = DATA.places;
-            DATA.routes.forEach(r => {
-                const pts = r.path || r.via.map(k => [points[k].lat, points[k].lng]);
-                L.polyline(pts, ROUTE_STYLES[r.style]).addTo(map);
+            const points = DATA.places || {};
+            (DATA.routes || []).forEach(r => {
+                /* Orte, die inzwischen gelöscht wurden, überspringen */
+                const pts = r.path || (r.via || []).map(k => points[k] && [points[k].lat, points[k].lng]).filter(Boolean);
+                if (pts.length > 1) L.polyline(pts, ROUTE_STYLES[r.style] || ROUTE_STYLES.th).addTo(map);
             });
 
             Object.keys(points).forEach(key => {
                 const p = points[key];
-                const marker = L.circleMarker([p.lat, p.lng], { color: p.color, fillColor: p.color, fillOpacity: .9, radius: 6 })
-                    .bindPopup(`<b style="color:${p.color}">${ic('pin')} ${p.name}</b><br><small>${ic('calendar')} ${p.date}</small><br>${p.desc}`);
+                if (!isFinite(+p.lat) || !isFinite(+p.lng)) return;
+                const c = col(p.color);
+                const marker = L.circleMarker([p.lat, p.lng], { color: c, fillColor: c, fillOpacity: .9, radius: 6 })
+                    .bindPopup(`<b style="color:${c}">${ic('pin')} ${esc(p.name)}</b>${p.date ? `<br><small>${ic('calendar')} ${esc(p.date)}</small>` : ''}${p.desc ? `<br>${rich(p.desc)}` : ''}`);
                 marker.addTo(map);
                 markers[p.name] = { marker, lat: p.lat, lng: p.lng };
                 markers[key] = { marker, lat: p.lat, lng: p.lng };
@@ -737,6 +761,7 @@
             };
             lg.addTo(map);
             fitStartView();
+            if (window.TBPlanner && TBPlanner.ready) TBPlanner.mountStops(DATA.places || {});
         }
 
         /* Start-Ausschnitt erst setzen, wenn die Karte sichtbar ist – sonst rechnet Leaflet
@@ -1311,6 +1336,7 @@
                 setInterval(updateCountdown, 1000);
             });
             safe(renderStats);
+            safe(initPlanner);
             safe(renderAccommodations);
             safe(renderFlights);
             safe(renderInfos);
@@ -1339,7 +1365,7 @@
             else if (start && TODAY < start && days[0]) today = { ...days[0], label: 'Los geht’s' };
             const placeColor = name => (Object.values(DATA.places || {}).find(p => p.name === name) || {}).color;
             const route = st.map((x, i) => ({
-                num: i + 1, name: String(x.title || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus),
+                num: i + 1, name: String(x.title || x.name || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus),
                 when: `${x.period || ''}${x.nights ? ` · ${x.nights} ${x.nights === 1 ? 'Nacht' : 'Nächte'}` : ''}`,
                 now: !!(x.from && x.to && TODAY >= x.from && TODAY < x.to), label: 'Heute hier'
             }));
@@ -1347,10 +1373,63 @@
                 thailand: { text: `${(DATA.days.th || []).length} Tage` }, srilanka: { text: `${(DATA.days.sl || []).length} Tage` },
                 acc: { text: `${st.length} Stationen` }, mapview: { text: `${Object.keys(DATA.places || {}).length} Orte` }
             };
-            if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} Flüge` };
+            if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} ${DATA.flights.some(f => f.mode && f.mode !== 'flight') ? 'Einträge' : 'Flüge'}` };
             if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
+            if (window.TBPlanner && TBPlanner.ready) { const w = TBPlanner.warnings().length, ss = TBPlanner.stationStats(); tiles.acc = { text: w ? `${w}× Storno-Frist!` : `${ss.booked}/${ss.total} gebucht` }; }
             TBTripMobile.setData({ flags: TRIP_FLAGS, past, today, route, tiles, people: persons.map(p => p.name).join(', ') });
-            if (window.TBActivities) TBActivities.init({ tripId: TRIP_ID, slug: TRIP_SLUG, stops: route });
+            if (window.TBActivities && TBActivities.ready && TBActivities.setStops) TBActivities.setStops(route);
+            else if (window.TBActivities) TBActivities.init({ tripId: TRIP_ID, slug: TRIP_SLUG, stops: route });
+        }
+
+        /* Live-Planung (shared/planner.js): Thailand speichert Tage unter "days" ({th, sl}) und Unterkünfte unter "stations" ({th, sl}) */
+        function initPlanner() {
+            if (!window.TBPlanner || !RES) return;
+            DATA.days = DATA.days || {}; DATA.stations = DATA.stations || {};
+            const persons = DATA.persons || [];
+            TBPlanner.init({
+                tripId: TRIP_ID, slug: TRIP_SLUG, role: ROLE, offline: !!RES.offline, today: TODAY,
+                get raw() { return DATA; },
+                sections: RES.sections || [],
+                meta: () => ({
+                    start: (DATA.meta || {}).start || persons.reduce((a, p) => !a || p.start < a ? p.start : a, ''),
+                    end: (DATA.meta || {}).end || persons.reduce((a, p) => p.end > a ? p.end : a, '')
+                }),
+                plans: () => [{ id: 'thailand', title: 'Thailand', rows: DATA.days.th = DATA.days.th || [] }, { id: 'srilanka', title: 'Sri Lanka', rows: DATA.days.sl = DATA.days.sl || [] }],
+                planKey: 'days', rowFormat: 'thailand',
+                stationGroups: () => [{ id: 'th', label: (DATA.texts || {}).accHeadTh || 'Thailand', list: DATA.stations.th = DATA.stations.th || [] },
+                                      { id: 'sl', label: (DATA.texts || {}).accHeadSl || 'Sri Lanka', list: DATA.stations.sl = DATA.stations.sl || [] }],
+                refresh: rerenderAll,
+                focusPlace: k => focusMap(k)
+            });
+        }
+        /* Hinweis oben: Storno-Fristen in den nächsten 7 Tagen oder abgelaufen */
+        function renderCancelBanner() {
+            let el = $('#tbCancelWarn');
+            if (!el) { $('#tbOffline').insertAdjacentHTML('afterend', '<div id="tbCancelWarn" class="tb-banner pl-warn" hidden></div>'); el = $('#tbCancelWarn'); }
+            const w = TBPlanner.warnings();
+            el.hidden = !w.length;
+            el.innerHTML = w.length ? `${ic('alert')}<span><b>Storno-Frist${w.length > 1 ? 'en' : ''}:</b> ${w.map(x => `${esc(x.name)} – ${esc(x.text)}`).join(' · ')} <button type="button" class="link-inline" data-goto="acc">Zu den Unterkünften</button></span>` : '';
+            const b = el.querySelector('[data-goto]');
+            if (b) b.onclick = () => { const x = document.querySelector('.pop-btn[data-t="acc"]'); if (x) x.click(); document.body.classList.remove('m-home'); };
+        }
+        /* Nach jeder Änderung neu zeichnen; die Karte behält ihren Ausschnitt */
+        function rerenderAll() {
+            const y = window.scrollY;
+            safe(renderAccommodations);
+            safe(renderFlights);
+            safe(renderTableAndCards);
+            safe(() => {
+                const view = map ? { c: map.getCenter(), z: map.getZoom() } : null;
+                if (map) { map.remove(); map = null; }
+                Object.keys(markers).forEach(k => delete markers[k]);
+                const fitted = mapFitted; mapFitted = true;
+                initMap();
+                mapFitted = fitted;
+                if (view && fitted) map.setView(view.c, view.z, { animate: false });
+                else { mapFitted = false; fitStartView(); }
+            });
+            safe(mobileData);
+            window.scrollTo(0, y);
         }
     </script>
 <script>/* TravelBase PWA */if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("../sw.js").catch(function(){});});}</script>

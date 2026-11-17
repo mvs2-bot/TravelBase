@@ -1,4 +1,4 @@
-/* TravelBase – Flugkarten (Thailand-Seite und Reise-Vorlage)
+/* TravelBase – Flug- und Transportkarten (Thailand-Seite und Reise-Vorlage)
    Ein Flug in den Reisedaten (Abschnitt "flights") kann strukturiert angelegt werden:
      {
        "label":   "Hinflug Thailand",                                         Art des Flugs
@@ -13,6 +13,10 @@
        "planned": true,                                                        noch nicht gebucht → Hinweis „Geplant“
        "note":    "Nachtflug, …"                                               freie Zusatzinfo
      }
+   Live-Planung (shared/planner.js) ergänzt optional:
+       "mode":    "flight" | "train" | "ferry" | "bus" | "car"                 Transportmittel (Standard: Flug)
+       "booking": "ABC123",                                                    Buchungscode (mit Kopier-Knopf)
+       "price_value": 89.5, "currency": "€"                                    Preis als Zahl
    Fehlende Angaben werden einfach weggelassen (z. B. Uhrzeiten bei noch nicht gebuchten Flügen).
    Ältere Einträge (date/route/details/price als Text) zeigt die Seite weiter wie bisher an.
    Im JS: tbFlights.isCard(f) → strukturiert?  tbFlights.card(f) → <li>…</li> als Text */
@@ -43,7 +47,12 @@
         return `<div class="flc-end flc-${side}">${when}<span class="flc-code${long ? ' is-long' : ''}">${esc(code)}</span>${city}${date}</div>`;
     }
 
+    const MODE = { flight: ['Flug', 'plane'], train: ['Zug', 'train'], ferry: ['Fähre', 'ship'], bus: ['Bus', 'bus'], car: ['Mietwagen', 'car'] };
+    const safeUrl = u => /^https?:\/\//i.test(String(u || '').trim()) ? String(u).trim() : '';
+    const money = (v, cur) => v == null || v === '' || !isFinite(+v) ? '' : (+v).toLocaleString('de-DE', { minimumFractionDigits: +v % 1 ? 2 : 0, maximumFractionDigits: 2 }) + ' ' + (cur || '€');
+
     function card(f) {
+        const mode = MODE[f.mode] ? f.mode : 'flight', [modeLabel, modeIcon] = MODE[mode];
         const stops = list(f.stops);
         /* bei geplanten Flügen ohne bekannte Stopps nicht „Direkt“ behaupten */
         const stopText = stops.length ? `${stops.length} Stopp${stops.length > 1 ? 's' : ''} · ${stops.map(s => esc(s.code || s.city)).join(', ')}` : (f.planned ? '' : 'Direkt');
@@ -51,28 +60,31 @@
         const nos = list(f.flightNos);
         const who = list(f.who);
         const head = [fmtDate(f.from && f.from.date), f.label ? esc(f.label) : ''].filter(Boolean).join(' · ');
-        const status = f.status ? `<a class="flc-status" href="${esc(f.status)}" target="_blank" rel="noopener">${ic('external')}Flugstatus</a>` : '';
+        const st = safeUrl(f.status);
+        const status = st ? `<a class="flc-status" href="${esc(st)}" target="_blank" rel="noopener">${ic('external')}${mode === 'flight' ? 'Flugstatus' : 'Ticket / Status'}</a>` : '';
+        const cost = [money(f.price_value, f.currency), f.cost].filter(Boolean).map(esc).join(' · ');
         return `
-            <li class="flc${f.planned ? ' is-planned' : ''}">
+            <li class="flc flc-${mode}${f.planned ? ' is-planned' : ''}">
                 <div class="flc-head">
-                    <span class="flc-day">${ic('calendar')}${head}</span>
+                    <span class="flc-day">${f.mode ? `<span class="flc-mode">${ic(modeIcon)}${modeLabel}</span>` : ic('calendar')}${head}</span>
                     ${f.planned ? '<span class="flc-tag">Geplant</span>' : ''}
                 </div>
                 <div class="flc-route">
                     ${end(f.from, 'from')}
                     <div class="flc-mid">
                         ${f.dur ? `<span class="flc-dur">${esc(f.dur)}</span>` : ''}
-                        <span class="flc-line${stops.length ? ' has-stops' : ''}" aria-hidden="true">${stops.map(() => '<i></i>').join('')}${ic('plane')}</span>
+                        <span class="flc-line${stops.length ? ' has-stops' : ''}" aria-hidden="true">${stops.map(() => '<i></i>').join('')}${ic(modeIcon)}</span>
                         ${stopText ? `<span class="flc-stops${stops.length ? '' : ' is-direct'}">${stopText}</span>` : ''}
                     </div>
                     ${end(f.to, 'to', f.from)}
                 </div>
                 ${stopDetail ? `<div class="flc-note">${ic('clock')}${stopDetail}</div>` : ''}
                 ${f.note ? `<div class="flc-note">${ic('info')}${esc(f.note)}</div>` : ''}
-                ${f.airline || nos.length ? `<div class="flc-airline">${ic('plane')}<span>${esc(f.airline || '')}</span>${nos.map(n => `<span class="flc-no">${esc(n)}</span>`).join('')}</div>` : ''}
-                ${who.length || f.cost || status ? `<div class="flc-foot">
+                ${f.airline || nos.length ? `<div class="flc-airline">${ic(modeIcon)}<span>${esc(f.airline || '')}</span>${nos.map(n => `<span class="flc-no">${esc(n)}</span>`).join('')}</div>` : ''}
+                ${f.booking ? `<div class="flc-booking"><span>Buchung</span><code>${esc(f.booking)}</code><button type="button" class="pl-copy" data-copy="${esc(f.booking)}" aria-label="Buchungscode kopieren: ${esc(f.booking)}" title="Kopieren">${ic('copy')}</button></div>` : ''}
+                ${who.length || cost || status ? `<div class="flc-foot">
                     ${who.length ? `<span class="flc-who">${ic('users')}${who.map(esc).join(', ')}</span>` : ''}
-                    ${f.cost ? `<span class="flc-cost">${esc(f.cost)}</span>` : ''}
+                    ${cost ? `<span class="flc-cost">${cost}</span>` : ''}
                     ${status}
                 </div>` : ''}
             </li>`;

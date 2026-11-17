@@ -26,6 +26,7 @@
     <script src="../shared/overall-account.js"></script>
     <script src="../shared/trip-mobile.js"></script>
     <script src="../shared/flights.js"></script>
+    <script src="../shared/planner.js"></script>
     <script src="../shared/profile.js"></script>
     <script src="../shared/ios-nav.js" defer></script>
 </head>
@@ -75,16 +76,24 @@
     <div id="tbLimited" class="tb-banner" hidden></div>
 
     <div id="mapview" class="pane">
-        <div class="box map" id="mapBox" style="margin-bottom:0">
-            <div class="mh">
-                <h2>Interaktive Reiseroute &amp; Karte</h2>
-                <button id="fs" type="button"><svg class="ic"><use href="#i-expand"></use></svg>Vollbild</button>
+        <div class="map-split">
+            <div class="box map" id="mapBox" style="margin-bottom:0">
+                <div class="mh">
+                    <h2>Interaktive Reiseroute &amp; Karte</h2>
+                    <span id="mapKm" class="map-km" hidden></span>
+                    <button id="fs" type="button"><svg class="ic"><use href="#i-expand"></use></svg>Vollbild</button>
+                </div>
+                <div id="map"></div>
             </div>
-            <div id="map"></div>
+            <!-- Stopps mit Distanzen; Bearbeiten für Mitreisende (shared/planner.js) -->
+            <aside id="stopPanel" class="box stop-panel" hidden></aside>
         </div>
     </div>
 
     <div id="planPanes"></div>
+
+    <!-- Unterkünfte mit Storno-Fristen-Wächter (Inhalt aus shared/planner.js) -->
+    <div id="acc" class="pane"></div>
 
     <div id="cal" class="pane">
         <div class="box">
@@ -141,7 +150,7 @@
 
     <div id="flights" class="pane">
         <div class="box">
-            <h2><svg class="ic"><use href="#i-plane"></use></svg>Flüge</h2>
+            <h2><svg class="ic"><use href="#i-plane"></use></svg>Flüge &amp; Transporte</h2>
             <ul class="fl-list" id="flightList" style="margin-top:10px"></ul>
         </div>
     </div>
