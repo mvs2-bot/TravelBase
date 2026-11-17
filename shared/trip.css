@@ -1222,6 +1222,12 @@ button.pl-stop-main:hover b { color: var(--p1); }
 .todo-item .sw-acts .sw-del:hover { color: var(--danger); }
 .todo-item .sw-acts .ic { width: 17px; height: 17px; }
 #pack td.sw-acts { display: table-cell; text-align: center; white-space: nowrap; }
+/* Flüge & Transporte: Desktop nutzt die Leiste unter der Karte, Handy das Wischen */
+@media (min-width: 768px) { .fl-list > li > .sw-acts { display: none; } }
+@media (max-width: 767.98px) {
+    .fl-list .pl-tr-acts [data-pl="tr-edit"] { display: none; }
+    .fl-list .pl-tr-acts:not(:has(.pl-handle)) { display: none; }
+}
 @media (max-width: 767.98px) {
     .sw-row { position: relative; overflow: hidden; touch-action: pan-y; }
     .sw-row > * { transform: translateX(var(--sx, 0)); }

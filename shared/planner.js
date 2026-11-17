@@ -525,6 +525,10 @@
         const j = await r.json(), a = (j && j.address) || {};
         return a.city || a.town || a.village || a.municipality || a.county || (j && j.name) || (j && j.display_name ? String(j.display_name).split(',')[0] : '');
     }
+    /* Etappe anzeigen in: Unterkünfte (noStay), Route (noRoute), mögliche Aktivitäten (noActs); angehakt = anzeigen */
+    const SHOW_IN = [['noStay', 'Unterkünfte (aus = keine nötig, z. B. Flug, Nachtzug)'], ['noRoute', 'Route'], ['noActs', 'Mögliche Aktivitäten']];
+    const showIn = (p, acts) => `<fieldset class="pl-who pl-showin"><legend>Anzeigen bei</legend>${SHOW_IN.filter(([k]) => acts || k !== 'noActs').map(([k, l]) => `<label class="pl-check"><input type="checkbox" name="${k}"${p[k] ? '' : ' checked'}><span>${l}</span></label>`).join('')}</fieldset>`;
+    const readShowIn = (f, o) => SHOW_IN.forEach(([k]) => { const c = f.elements[k]; if (c) { if (c.checked) delete o[k]; else o[k] = true; } });
     function editStop(k, at) {
         if (!editable()) return;
         const p = k ? places()[k] : null;
@@ -551,6 +555,7 @@
                 <div class="pl-row">
                     <label class="pl-check"><input type="checkbox" name="numbered"${cur.num != null ? ' checked' : ''}><span>Nummerierter Stopp der Route</span></label>
                 </div>
+                ${showIn(cur, true)}
                 <p class="note pl-src">Ortssuche: © OpenStreetMap-Mitwirkende (Nominatim)</p>`,
             extra: p ? `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>` : '',
             onOpen: f => {
@@ -599,6 +604,7 @@
                     const who = [...f.querySelectorAll('input[name="who"]')];
                     if (who.length) { const on = who.filter(x => x.checked).map(x => x.value); if (on.length === who.length) delete o.who; else o.who = on; }
                     setOpt(o, 'date', val(f, 'date')); setOpt(o, 'desc', val(f, 'desc'));
+                    readShowIn(f, o);
                     if (!numbered) delete o.num;
                     /* „+“ zwischen zwei Stopps: an dieser Stelle einfügen, sonst ans Ende */
                     else if (o.num == null) o.num = at != null && isFinite(at) ? at + .5 : Object.values(P).reduce((m, x) => x.num != null && x !== o ? Math.max(m, +x.num || 0) : m, 0) + 1;
@@ -631,13 +637,14 @@
             title: `Erneuter Besuch: ${p.name || src.name || ''}`,
             body: `<p class="note">Name und Lage kommen vom ersten Besuch (Nr. ${esc(labels().get(p.same) ?? '')}). Hier gelten eigene Nächte, Unterkunft und Notizen.</p>
                 ${field('Notizen', area('desc', p.desc, 'maxlength="2000"'))}
-                ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(p.who) || p.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}`,
+                ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(p.who) || p.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
+                ${showIn(p, false)}`,
             extra: `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: f => { f.querySelector('.pl-del').onclick = () => { if (confirm('Diesen erneuten Besuch löschen?')) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } }; },
             done: f => {
                 commitPlaces(() => {
                     const o = raw().places[k];
-                    setOpt(o, 'desc', val(f, 'desc'));
+                    setOpt(o, 'desc', val(f, 'desc')); readShowIn(f, o);
                     const who = [...f.querySelectorAll('input[name="who"]')];
                     if (who.length) { const on = who.filter(x => x.checked).map(x => x.value); if (on.length === who.length) delete o.who; else o.who = on; }
                 });
@@ -1227,7 +1234,9 @@
                     ${f.details ? `<div class="fl-details">${rich(f.details)}${url(f.status) ? ` (<a href="${esc(url(f.status))}" target="_blank" rel="noopener" class="fl-link">Status prüfen ↗</a>)` : ''}</div>` : ''}
                     ${f.price ? `<div class="fl-price">${rich(f.price)}</div>` : ''}
                 </li>`;
-            return edit ? li.replace(/^\s*<li/, `<li data-sort="tr" data-i="${i}"`).replace(/<\/li>\s*$/, acts(i) + '</li>') : li;
+            /* Handy: nach links wischen zeigt Bearbeiten / Löschen (.sw-acts), wie bei To-Dos */
+            const sw = `<span class="sw-acts"><button type="button" class="sw-edit" data-pl="tr-edit" data-i="${i}" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button><button type="button" class="sw-del" data-pl="tr-del" data-i="${i}" aria-label="Löschen" title="Löschen">${ic('trash')}</button></span>`;
+            return edit ? li.replace(/^\s*<li( class=")?/, (m, c) => `<li data-sort="tr" data-i="${i}" class="sw-row${c ? ' ' : '"'}`).replace(/<\/li>\s*$/, acts(i) + sw + '</li>') : li;
         }).join('') || `<li class="pl-empty"><p class="note">${all.length ? 'Keine Treffer.' : 'Noch keine Flüge oder Transporte eingetragen.'}</p></li>`;
     }
     function editTransport(idx) {
@@ -1343,6 +1352,7 @@
             case 'acc-legacy': return migrateAllLegacy();
             case 'tr-add': return editTransport(null);
             case 'tr-edit': return editTransport(i);
+            case 'tr-del': { const f = flights()[i]; if (f && editable() && confirm('Diesen Eintrag löschen?')) commit(['flights'], () => raw().flights.splice(i, 1)); return; }
             case 'tr-sort': return sortTransports();
             case 'tr-filter': { trFilter.mode = b.dataset.mode; const l = b.closest('.pl-trbar').nextElementSibling; return renderTransports(l); }
         }
