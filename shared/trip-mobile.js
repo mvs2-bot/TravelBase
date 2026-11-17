@@ -16,7 +16,8 @@
     const ic = n => window.tbIcon ? tbIcon(n) : '';
     const KEY = 'travelbase-trip-view:' + location.pathname;
     let data = {}, home = null, routeView = null, bar = null;
-    const ALL_TABS = [['home', 'Start', 'home'], ['mapview', 'Karte', 'map'], ['stops', 'Etappen', 'route'], ['route', 'Route', 'pin'], ['misc', 'Infos', 'info']];
+    const ALL_TABS = [['home', 'Start', 'home'], ['stops', 'Etappen', 'route'], ['mapview', 'Karte', 'map'], ['route', 'Route', 'pin'], ['misc', 'Infos', 'info']];
+    const MAIN_HINT = 'Hier planst du die Reise';
     /* Etappen nur, wenn die Seite den Bereich hat */
     const hasStops = () => !!document.querySelector('.pop-btn[data-t="stops"]');
     let TABS = ALL_TABS.filter(t => t[0] !== 'stops');
@@ -94,8 +95,8 @@
             const known = id in GROUP;
             const svg = span && span.querySelector('svg') ? span.innerHTML : ic('calendar');
             items.push({ id, label, group: known ? GROUP[id] : 'trip', color: COLOR[id] || PLAN_COLORS[plan++ % PLAN_COLORS.length], icon: svg, value: ((data.tiles || {})[id] || {}).text });
-            /* Route direkt nach der Karte bzw. nach den Etappen */
-            if (id === (btns.some(x => x.dataset.t === 'stops') ? 'stops' : 'mapview') && (data.route || []).length) items.push({ id: 'route', label: 'Route', group: 'trip', color: COLOR.route, icon: ic('pin'), value: `${data.route.length} Stationen` });
+            /* Route direkt nach der Karte (die Etappen stehen hervorgehoben darüber) */
+            if (id === 'mapview' && (data.route || []).length) items.push({ id: 'route', label: 'Route', group: 'trip', color: COLOR.route, icon: ic('pin'), value: `${data.route.length} Stationen` });
         });
         if ((data.route || []).length && !items.some(i => i.id === 'route')) items.push({ id: 'route', label: 'Route', group: 'trip', color: COLOR.route, icon: ic('pin'), value: `${data.route.length} Stationen` });
         return items;
@@ -107,7 +108,7 @@
         TABS = want;
         bar.dataset.n = String(want.length);
         bar.style.setProperty('--n', want.length);
-        bar.innerHTML = TABS.map(([id, label, icon]) => `<button type="button" data-tab="${id}">${ic(icon)}${label}</button>`).join('');
+        bar.innerHTML = TABS.map(([id, label, icon]) => `<button type="button" data-tab="${id}"${id === 'stops' ? ' class="m-tab-main"' : ''}>${ic(icon)}${label}</button>`).join('');
         bar.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => tab(b.dataset.tab));
         mark();
     }
@@ -118,12 +119,14 @@
         const cd = document.getElementById('countdown');
         const t = data.today;
         const items = rowsFor();
+        /* Etappen als hervorgehobene Karte ganz oben: dort wird alles eingetragen */
+        const main = items.find(i => i.id === 'stops');
         const list = (g, name) => {
-            const rows = items.filter(i => i.group === g);
+            const rows = items.filter(i => i.group === g && i !== main);
             return rows.length ? `<div class="m-grp">${name}</div><div class="m-list">${rows.map(i => `
                 <button type="button" class="m-li" data-open="${esc(i.id)}">
                     <span class="m-bx" style="background:${i.color}">${i.icon}</span>
-                    <span class="m-lt">${esc(i.label)}${i.id === 'stops' ? `<span class="m-base">${ic('sparkles')}Basis für Route, Unterkünfte, Ablauf, Anwesenheit</span>` : ''}</span>
+                    <span class="m-lt">${esc(i.label)}</span>
                     ${i.value ? `<small>${esc(i.value)}</small>` : ''}${ic('chevronRight')}
                 </button>`).join('')}</div>` : '';
         };
@@ -135,6 +138,11 @@
                     ${t ? `<small>${esc(t.label)}: ${esc(t.title)}</small>` : ''}
                 </span>
             </button>
+            ${main ? `<button type="button" class="m-main" data-open="stops">
+                <span class="m-main-ic">${main.icon}</span>
+                <span class="m-main-t"><b>${esc(main.label)}</b><small>${esc(MAIN_HINT)} – Route, Unterkünfte, Ablauf und Anwesenheit ergeben sich daraus</small>${main.value ? `<span class="m-main-v">${esc(main.value)}</span>` : ''}</span>
+                ${ic('chevronRight')}
+            </button>` : ''}
             ${list('trip', 'Reise')}${list('org', 'Organisation')}${list('info', 'Infos')}`;
         home.querySelectorAll('[data-open]').forEach(b => b.onclick = () => open(b.dataset.open));
         const stops = data.route || [];
@@ -172,7 +180,9 @@
                 sig = now;
                 const title = (document.getElementById('tripTitle') || {}).textContent || '';
                 side.innerHTML = `<a class="d-side-home" href="../">${ic('chevronLeft')}Alle Reisen</a>${title ? `<div class="d-side-t">${esc(title)}</div>` : ''}`
-                    + bs.map(b => `<button type="button" data-t="${esc(b.dataset.t)}">${(b.querySelector('span') || {}).innerHTML || ''}<span>${esc(txt(b))}</span></button>`).join('');
+                    + bs.map(b => b.dataset.t === 'stops'
+                        ? `<button type="button" class="d-main" data-t="stops">${(b.querySelector('span') || {}).innerHTML || ''}<span><b>${esc(txt(b))}</b><small>${esc(MAIN_HINT)}</small></span></button>`
+                        : `<button type="button" data-t="${esc(b.dataset.t)}">${(b.querySelector('span') || {}).innerHTML || ''}<span>${esc(txt(b))}</span></button>`).join('');
             }
             side.querySelectorAll('button[data-t]').forEach(x => { const o = bs.find(b => b.dataset.t === x.dataset.t); x.classList.toggle('on', !!(o && o.classList.contains('on'))); });
             document.body.classList.toggle('d-sidebar', dq.matches && bs.length > 1);

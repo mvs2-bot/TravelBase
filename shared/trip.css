@@ -64,6 +64,7 @@ header p { font-size: 13px; font-weight: 500; color: var(--mute); }
 .tab:hover { color: var(--ink); }
 .tab.on { background: var(--card); color: var(--p1); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 :root[data-theme="dark"] .tab.on { background: #48484a; color: var(--p1); }
+.tabs .tab-main:not(.on) { color: var(--p1); background: var(--p1-soft); }
 .tabs .tab-menu { color: var(--p1); }
 .tabs .tab-menu:hover { color: var(--p1); background: color-mix(in srgb, var(--p1) 10%, transparent); }
 .pane { display: none; }
@@ -116,6 +117,7 @@ header p { font-size: 13px; font-weight: 500; color: var(--mute); }
 .popover-links button::after { content: ""; margin-left: auto; width: 7px; height: 7px; border-right: 2px solid color-mix(in srgb, var(--mute) 60%, transparent); border-top: 2px solid color-mix(in srgb, var(--mute) 60%, transparent); transform: rotate(45deg); flex: 0 0 auto; }
 .popover-links button:hover { background: var(--hover); }
 .popover-links button.on { color: var(--p1); font-weight: 600; background: color-mix(in srgb, var(--p1) 8%, transparent); }
+.popover-links button.pop-main { color: var(--p1); font-weight: 700; background: var(--p1-soft); }
 
 /* Konto im Menü */
 .tb-account { margin-top: 14px; padding: 10px 14px; background: var(--card); border-radius: var(--radius-s); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
@@ -542,8 +544,17 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
     .m-bx { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; }
     .m-bx .ic, .m-bx svg { width: 18px; height: 18px; color: #fff; stroke: currentColor; }
     .m-lt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .m-base { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--p1); overflow: hidden; text-overflow: ellipsis; }
-    .m-base .ic { width: 11px; height: 11px; flex: none; }
+    /* Etappen hervorgehoben ganz oben: hier wird die Reise geplant */
+    .m-main { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 14px; padding: 14px 12px 14px 14px; border: 1px solid var(--p1-line); border-radius: 14px;
+        background: var(--p1-soft); box-shadow: var(--shadow); text-align: left; font: inherit; color: var(--ink); }
+    .m-main:active { filter: brightness(.97); }
+    .m-main-ic { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--p1); color: var(--on-p1); }
+    .m-main-ic .ic, .m-main-ic svg { width: 22px; height: 22px; color: var(--on-p1); stroke: currentColor; }
+    .m-main-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .m-main-t b { font-size: 17px; font-weight: 700; color: var(--p1); }
+    .m-main-t small { font-size: 12.5px; color: var(--text); line-height: 1.35; }
+    .m-main-v { align-self: flex-start; margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--p1); background: var(--card); border-radius: 999px; padding: 2px 9px; }
+    .m-main > .ic:last-child { width: 18px; height: 18px; color: var(--p1); flex: 0 0 auto; }
     .m-li small { font-size: 15px; color: var(--mute); white-space: nowrap; }
     .m-li > .ic:last-child { width: 16px; height: 16px; color: var(--mute); opacity: .7; flex: 0 0 auto; }
 
@@ -567,6 +578,7 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
     :root[data-theme="dark"] .m-tabbar { background: #2c2c2e; box-shadow: 0 8px 28px rgba(0, 0, 0, .6), 0 0 0 .5px rgba(255, 255, 255, .1); }
     .m-tabbar button { position: relative; z-index: 0; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0; border: 0; background: none; font: inherit; font-size: 11px; font-weight: 500; color: var(--text); }
     .m-tabbar button .ic { width: 24px; height: 24px; }
+    .m-tabbar button.m-tab-main:not([aria-current="page"]) .ic { color: var(--p1); }
     .m-tabbar button[aria-current="page"]::before { content: ""; position: absolute; inset: 7px 6px; z-index: -1; border-radius: 16px; background: var(--p1-soft); }
     .m-tabbar button[aria-current="page"] { color: var(--p1); font-weight: 600; }
     body:not(.tb-loading) { padding-bottom: calc(62px + 36px + env(safe-area-inset-bottom, 0px)); }
@@ -1407,6 +1419,15 @@ h2 .add-plus .ic { width: 17px; height: 17px; }
     .d-side button.on { background: var(--p1-soft); color: var(--p1); font-weight: 600; }
     .d-side button .ic { width: 18px; height: 18px; flex: 0 0 18px; color: var(--p1); }
     .d-side button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Etappen hervorgehoben ganz oben: hier wird die Reise geplant */
+    .d-side button.d-main { margin: 2px 0 8px; padding: 10px; border: 1px solid var(--p1-line); background: var(--p1-soft); color: var(--p1); position: relative; }
+    .d-side button.d-main::after { content: ""; position: absolute; left: 4px; right: 4px; bottom: -6px; height: 1px; background: var(--sep); }
+    .d-side button.d-main:hover { filter: brightness(.97); }
+    .d-side button.d-main.on { background: var(--p1); border-color: var(--p1); color: var(--on-p1); }
+    .d-side button.d-main.on .ic { color: var(--on-p1); }
+    .d-side button.d-main > span { display: flex; flex-direction: column; white-space: normal; }
+    .d-side button.d-main b { font-weight: 700; font-size: 15px; }
+    .d-side button.d-main small { font-size: 11.5px; font-weight: 500; opacity: .8; }
 }
 @media (min-width: 1100px) {
     #stops.pl-split.on { display: grid; grid-template-columns: minmax(440px, 600px) minmax(0, 1fr); gap: 16px; align-items: start; }

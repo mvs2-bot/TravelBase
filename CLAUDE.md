@@ -72,7 +72,8 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   und schreibt jeden Schlüssel in den Abschnitt, aus dem er kam (sonst `guest` für `places/routes`, `member` für den Rest).
 - **Von Mitgliedern geschriebene Inhalte gelten als unsicher:** HTML-Felder nur über `rich()`/`TB.safeHtml`, Farben über `TB.safeColor`, Links über `TB.safeUrl`.
 - **Unterkünfte-Ansicht** (`renderAcc`): je Etappe ein Abschnitt mit „x/y Nächte gebucht“ und kompakten Karten (`.bk-sec`, `.bk-card`), fehlende als „Unterkunft fehlt“ (Zähler „n fehlt“ oben, Filter „Fehlt“; Details per Knopf `.bk-det` rechts unter dem Stift; kein Adressfeld mehr – Adressen stehen in der Notiz); Unterkünfte ohne Etappe darunter (Gruppen, z. B. Thailand/Sri Lanka). Keine Tabelle mehr.
-- **Bereiche der Vorlage** (wie Thailand): Karte · Etappen (`#stops`) · Tagespläne · **Unterkünfte** (`#acc`, eigener Bereich, sobald es Unterkünfte gibt
+- **Etappen stehen überall ganz oben und hervorgehoben** (Reiter `.tab-main`, Menü `.pop-main`, Seitenleiste `.d-main` mit „Hier planst du die Reise“, Handy-Start: Karte `.m-main` über den Gruppen, Tabbar Start · Etappen · Karte · Route · Infos). Ohne Hash startet die Seite weiter auf der Karte.
+- **Bereiche der Vorlage** (wie Thailand): Etappen (`#stops`) · Karte · Tagespläne · **Unterkünfte** (`#acc`, eigener Bereich, sobald es Unterkünfte gibt
   oder man sie anlegen darf; `stations` als Array oder Gruppen `{ "Peru": [...] }`) · … · Flüge & Transporte (`#flights`); alter Link `#bookings` öffnet `#acc`.
   Symbol der Tagespläne ist immer `calendar` (ein Emoji in `plans[].icon` wird ignoriert). Thailand hat Etappen und getrennte Unterkünfte/Flüge; dort ist **„Ablauf“** (`#ablauf`) **eine** Liste aus `days.th` und `days.sl`
   nach Datum (alte Links `#thailand`/`#srilanka` öffnen sie; neue Tage landen per `planFor(iso)` im passenden Teil) mit kompakter Filterleiste.

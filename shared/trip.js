@@ -164,9 +164,9 @@
     /* ---------- Navigation (Tabs & Menü werden aus den vorhandenen Daten gebaut) ---------- */
     function sections() {
         const s = [];
-        if (DATA.places) s.push({ id: 'mapview', icon: ic('map'), label: 'Karte', tab: true });
-        /* Etappen: Stopps mit Nächten als eigener Bereich (Inhalt aus shared/planner.js) */
+        /* Etappen ganz oben: dort wird die Reise geplant (Inhalt aus shared/planner.js) */
         if (DATA.places && window.TBPlanner && TBPlanner.mountStops && (Object.keys(DATA.places).length || canEdit())) s.push({ id: 'stops', icon: ic('route'), label: 'Etappen', tab: true });
+        if (DATA.places) s.push({ id: 'mapview', icon: ic('map'), label: 'Karte', tab: true });
         (DATA.plans || []).forEach(p => s.push({ id: p.id, icon: ic('calendar'), label: p.tabLabel || 'Tagesplan', tab: true }));
         /* Unterkünfte (eigener Bereich wie bei Thailand): wenn Daten da sind (Array oder Gruppen wie { th: [], sl: [] })
            oder man sie anlegen darf und die Reise einen Ablauf oder Etappen hat (Gäste bekommen keine) */
@@ -194,9 +194,9 @@
         const tabs = SECTIONS.filter(s => s.tab);
         $('#tabs').style.setProperty('--tab-count', tabs.length + 1);
         /* Schnellauswahl einzeilig: „Tagesplan Peru“ / „Möglicher Ablauf Peru“ → „Peru“ (voller Name als Tooltip) */
-        $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${esc(s.id)}" title="${esc(s.label)}"><span>${s.icon}</span>${esc(s.label.replace(/^(Tagesplan|Möglicher Ablauf) (?=\S)/, ''))}</button>`).join('')
+        $('#tabs').innerHTML = tabs.map(s => `<button class="tab${s.id === 'stops' ? ' tab-main' : ''}" data-t="${esc(s.id)}" title="${esc(s.label)}"><span>${s.icon}</span>${esc(s.label.replace(/^(Tagesplan|Möglicher Ablauf) (?=\S)/, ''))}</button>`).join('')
             + '<button class="tab tab-menu" id="menuTab" type="button" aria-label="Menü öffnen"><span>' + ic('list') + '</span>Menü</button>';
-        $('#popLinks').innerHTML = SECTIONS.map(s => `<button data-t="${esc(s.id)}" class="pop-btn"><span>${s.icon}</span>${esc(s.label)}</button>`).join('');
+        $('#popLinks').innerHTML = SECTIONS.map(s => `<button data-t="${esc(s.id)}" class="pop-btn${s.id === 'stops' ? ' pop-main' : ''}"><span>${s.icon}</span>${esc(s.label)}</button>`).join('');
         document.querySelectorAll('.tabs .tab[data-t]').forEach(b => b.onclick = () => switchTab(b.dataset.t));
         $('#menuTab').onclick = () => $('#navPopover').classList.add('open');
         document.querySelectorAll('.pop-btn').forEach(b => b.onclick = () => { switchTab(b.dataset.t); $('#navPopover').classList.remove('open'); });
@@ -215,7 +215,8 @@
         if (window.TBTripMobile && TBTripMobile.mark) TBTripMobile.mark(id);
         if (id === 'mapview' && map) setTimeout(() => { map.invalidateSize(); fitStartView(); }, 50);
     }
-    function tabFromHash() { switchTab(location.hash.replace('#', '') || SECTIONS[0].id); }
+    /* ohne Hash startet die Seite weiter auf der Karte (Etappen stehen nur oben im Menü) */
+    function tabFromHash() { switchTab(location.hash.replace('#', '') || (SECTIONS.some(s => s.id === 'mapview') ? 'mapview' : SECTIONS[0].id)); }
 
     /* ---------- Karte ---------- */
     const DEFAULT_STYLES = {
