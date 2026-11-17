@@ -739,6 +739,7 @@ body:has(.pl-dragging) { user-select: none; -webkit-user-select: none; }
 .pl-sp { flex: 1; }
 .pl-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--mute); min-width: 0; flex: 1 1 140px; }
 .pl-field.grow { flex: 3 1 200px; }
+.pl-body > * { flex-shrink: 0; } /* sonst schrumpfen Kinder mit overflow (z. B. Suchergebnisse) auf 0 px */
 .pl-body > .pl-field { flex: 0 0 auto; }
 .pl-field input, .pl-field select, .pl-field textarea { width: 100%; min-height: 44px; background: var(--well); border: 0; border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 16px; color: var(--ink); }
 .pl-field textarea { resize: vertical; line-height: 1.4; }
