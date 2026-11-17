@@ -69,9 +69,14 @@
         LEG_END = false;
         if (!window.TBPlanner || !TBPlanner.legs || !DATA.places) return;
         const m = DATA.meta = DATA.meta || {};
-        const L = TBPlanner.legs(DATA.places, m.start || null);
+        const P = DATA.places;
+        /* erneute Besuche („same“) tragen die Nummer des ersten Besuchs */
+        if (TBPlanner.labels) TBPlanner.labels(P).forEach((n, k) => { P[k].label = n; });
+        const L = TBPlanner.legs(P, m.start || null);
         if (!L.on) return;
-        L.list.forEach(g => { if (DATA.places[g.k]) DATA.places[g.k].date = TBPlanner.legText(g); });
+        L.list.forEach(g => { if (P[g.k]) P[g.k].date = TBPlanner.legText(g); });
+        /* Punkt auf der Karte = erster Besuch: zeigt alle Zeiträume */
+        Object.values(P).forEach(p => { const o = p && p.same && P[p.same]; if (o && p.date && o !== p) o.date = [o.date, p.date].filter(Boolean).join(' · '); });
         if (L.end && (!m.end || m.end === m.start) && L.total > 0) {
             m.end = L.end; LEG_END = true;
             m.period = `${fmtDM(m.start)} – ${fmtDM(m.end)}${m.end.slice(0, 4)}`;
@@ -256,8 +261,12 @@
         if (!who.size && autoPersons() && p.num != null) return DATA.persons.map(x => x.key);
         return [...who];
     }
-    function placeColor(k) {
-        const cs = whoColors(placeWho(k));
+    function placeColorFor(keys) {
+        const who = new Set(); keys.forEach(k => placeWho(k).forEach(x => who.add(x)));
+        return whoColors([...who]).length ? placeColor(keys[0], [...who]) : placeColor(keys[0]);
+    }
+    function placeColor(k, whoList) {
+        const cs = whoColors(whoList || placeWho(k));
         /* neue Reisen: Farbe kommt nur von den Reisenden; noch keine eingetragen = Farbe der ersten Person (Blau) */
         if (!cs.length) return DATA.mapColors ? col((DATA.places[k] || {}).color) : (DATA.persons || []).length ? col(DATA.persons[0].color) : '#2563eb';
         return cs.length === 1 ? cs[0] : `conic-gradient(${cs.map((c, i) => `${c} ${i / cs.length * 360}deg ${(i + 1) / cs.length * 360}deg`).join(', ')})`;
@@ -295,10 +304,14 @@
         const all = [];
         Object.entries(P).forEach(([key, p]) => {
             if (!isFinite(+p.lat) || !isFinite(+p.lng)) return;
-            const color = placeColor(key), solid = whoColors(placeWho(key))[0] || (DATA.mapColors ? col(p.color) : placeColor(key));
+            /* erneuter Besuch: kein eigener Punkt, der Punkt des ersten Besuchs gilt */
+            if (p.same && P[p.same]) return;
+            /* Punkt mit erneuten Besuchen: Farben aller Reisenden, die bei einem der Besuche dort sind */
+            const again = Object.keys(P).filter(x => P[x] && P[x].same === key);
+            const color = again.length ? placeColorFor([key, ...again]) : placeColor(key), solid = whoColors(placeWho(key))[0] || (DATA.mapColors ? col(p.color) : placeColor(key));
             const popup = `<b style="color:${solid}">${ic('pin')} ${esc(p.name)}</b>${p.date ? `<br><small>${ic('calendar')} ${esc(p.date)}</small>` : ''}${p.desc ? `<br>${rich(p.desc)}` : ''}`;
             const m = p.num != null
-                ? L.marker([p.lat, p.lng], { icon: L.divIcon({ className: 'nm', html: `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${color}">${esc(p.num)}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
+                ? L.marker([p.lat, p.lng], { icon: L.divIcon({ className: 'nm', html: `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${color}">${esc(p.label ?? p.num)}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
                 : L.circleMarker([p.lat, p.lng], { color: solid, fillColor: solid, fillOpacity: .9, radius: +p.size || 6 });
             m.bindPopup(popup).addTo(map);
             markers[key] = m;
@@ -348,7 +361,8 @@
         fitted = true;
     }
     function focusPlaces(keys) {
-        const ms = (keys || []).map(k => markers[k]).filter(Boolean);
+        const P = DATA.places || {};
+        const ms = (keys || []).map(k => markers[k] || (P[k] && markers[P[k].same])).filter(Boolean);
         if (!ms.length || !map) return;
         switchTab('mapview');
         setTimeout(() => {
@@ -686,13 +700,13 @@
         /* Route: Tagesplan-Zeilen nach Ort zusammenfassen; ohne Tagesplan (Gäste) die Orte nach Nummer */
         let route = [];
         const fmt = iso => iso ? fmtDM(iso) : '';
-        const placeStops = Object.entries(P).filter(([, p]) => p && p.num != null).sort((a, b) => a[1].num - b[1].num).map(([k, p]) => ({ num: p.num, name: p.name, color: placeColor(k), when: p.date || '' }));
+        const placeStops = Object.entries(P).filter(([, p]) => p && p.num != null).sort((a, b) => a[1].num - b[1].num).map(([k, p]) => ({ num: p.label ?? p.num, name: p.name, color: placeColor(k), when: p.date || '' }));
         if (rows.length) {
             rows.forEach(r => (r.focus || []).forEach((k, i, all) => {
                 const last = route[route.length - 1], p = P[k] || {};
                 const from = r.from, to = all.length > 1 ? null : (r.to || r.from);
                 if (last && last.k === k) { if (to) last.to = to; last.rows.push(r); return; }
-                route.push({ k, num: p.num, name: p.name || k, color: placeColor(k), from: i === 0 ? from : null, to, rows: [r] });
+                route.push({ k, num: p.label ?? p.num, name: p.name || k, color: placeColor(k), from: i === 0 ? from : null, to, rows: [r] });
             }));
             route.forEach(x => {
                 const n = x.from && x.to ? dayNum(x.to) - dayNum(x.from) + 1 : 0;
@@ -704,7 +718,7 @@
         if (!route.length) route = placeStops;
         /* kurze Zusatzinfos unter den Kacheln */
         const tiles = {};
-        if (DATA.places) tiles.mapview = { text: `${Object.keys(P).length} Orte` };
+        if (DATA.places) tiles.mapview = { text: `${Object.values(P).filter(p => !(p && p.same && P[p.same])).length} Orte` };
         /* Zeilen können mehrere Tage umfassen („Tag 33–38“) */
         plans.forEach(p => { tiles[p.id] = { text: `${p.rows.reduce((n, r) => n + (r.from && r.to ? dayNum(r.to) - dayNum(r.from) + 1 : 1), 0)} Tage` }; });
         if ((DATA.persons || []).length) tiles.cal = { text: `${DATA.persons.length} Personen` };

@@ -81,6 +81,10 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   Unterkünfte mit `place` (Vorlage) bzw. `focus` (Thailand) übernehmen die Daten der Etappe, fehlende erscheinen als „Unterkunft fehlt“;
   ein Ablauf mit `legs: true` (nach „Tage aus den Etappen anlegen“) wird bei jeder Änderung neu angeordnet (Zeilen mit `auto: true` tragen
   den Ortsnamen als Titel, eigene Inhalte bleiben). Ohne festes Reiseende ergibt die Summe der Nächte das Ende (nur Anzeige).
+- **Ort erneut besuchen:** eigener `places`-Eintrag mit `same: "<Schlüssel des ersten Besuchs>"` (Name/`lat`/`lng` werden mitgeführt,
+  eigene `num`-Position, `nights`, `who`, `desc`, Unterkunft). Angezeigt wird die Nummer des ersten Besuchs (`TBPlanner.labels()`,
+  in `DATA.places[k].label`); auf der Karte kein eigener Punkt (der erste Besuch zeigt alle Zeiträume). Anlegen über „Neuer Stopp“ →
+  „erneut besuchen“ oder „Erneut besuchen“ im Stopp-Sheet. Löschen des ersten Besuchs entfernt die erneuten Besuche.
 - Unterkünfte `stations`: Array (Vorlage) oder Objekt aus Arrays (Thailand: `th`/`sl`). Felder u. a. `name|title`, `checkin|from`, `checkout|to`,
   `hotel`, `status` (`booked`/`open`), `code`, `price`+`currency`, `address`, `maps`, `cancel_until`, `cancel_checked`, `transfer`, `note`.
   `TB.tripSummaries()` (RPC `travelbase_trip_summaries`) liefert Stopps/Unterkünfte/Storno-Warnungen für die Übersicht.

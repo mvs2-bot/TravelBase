@@ -1004,3 +1004,14 @@ button.pl-stop-main:hover b { color: var(--p1); }
 .bk-missing b { display: block; font-size: 14px; color: var(--ink); }
 .bk-missing small { display: block; font-size: 12px; color: var(--mute); }
 .bk-missing .btn-action { min-height: 36px; }
+
+/* Ort erneut besuchen (planner.js): Auswahl im „Neuer Stopp“-Sheet und Kennzeichen in der Stoppliste */
+.pl-again { display: flex; flex-direction: column; gap: 8px; padding: 12px; margin-bottom: 14px; border-radius: var(--radius-s); background: var(--well); }
+.pl-again > span { font-size: 13px; color: var(--mute); }
+.pl-again > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.pl-again-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.pl-again-btn:hover { background: var(--hover); }
+.pl-again-btn .ic { width: 15px; height: 15px; color: var(--p1); }
+.pl-again-tag { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--p1-soft); color: var(--p1); font-size: 11px; font-weight: 600; vertical-align: 1px; }
+.pl-stop-main b .pl-again-tag .ic { width: 11px; height: 11px; margin: 0; color: inherit; vertical-align: 0; }
+@media (max-width: 599px) { .pl-again-txt { display: none; } .pl-again-tag { padding: 2px 5px; margin-left: 4px; } }
