@@ -262,10 +262,15 @@
         return [...who];
     }
     function placeColorFor(keys) {
+        if (keys.every(nobody)) return NOBODY;
         const who = new Set(); keys.forEach(k => placeWho(k).forEach(x => who.add(x)));
         return whoColors([...who]).length ? placeColor(keys[0], [...who]) : placeColor(keys[0]);
     }
+    /* Stopp, bei dem bewusst niemand angehakt ist ("who": []): gelb */
+    const NOBODY = '#eab308';
+    const nobody = k => { const p = (DATA.places || {})[k]; return !!p && Array.isArray(p.who) && !p.who.length && byPersons(); };
     function placeColor(k, whoList) {
+        if (!whoList && nobody(k)) return NOBODY;
         const cs = whoColors(whoList || placeWho(k));
         /* neue Reisen: Farbe kommt nur von den Reisenden; noch keine eingetragen = Farbe der ersten Person (Blau) */
         if (!cs.length) return DATA.mapColors ? col((DATA.places[k] || {}).color) : (DATA.persons || []).length ? col(DATA.persons[0].color) : '#2563eb';
