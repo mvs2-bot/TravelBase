@@ -144,6 +144,16 @@
         const all = Object.entries(P).map(([k, p], i) => ({ k, p, i }));
         return all.sort((a, b) => (a.p.num == null) - (b.p.num == null) || (a.p.num ?? 0) - (b.p.num ?? 0) || a.i - b.i);
     }
+    /* Erneuter Besuch eines Orts: eigener Eintrag mit "same": "<Schlüssel des Orts>" (Name/Koordinaten werden mitgeführt),
+       eigene Position, Nächte, Reisende und Unterkunft; er trägt die Nummer des ersten Besuchs */
+    function labels(P) {
+        P = P || places();
+        const out = new Map();
+        let n = 0;
+        stopList(P).forEach(({ k, p }) => { if (p.num == null) return; if (p.same && P[p.same]) return; out.set(k, ++n); });
+        stopList(P).forEach(({ k, p }) => { if (p.num != null && p.same && P[p.same]) out.set(k, out.get(p.same) ?? '↺'); });
+        return out;
+    }
     function km(a, b) {
         const R = 6371, r = x => x * Math.PI / 180;
         const dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng);
@@ -252,7 +262,7 @@
             const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr && tr.mode))}</span>` : '';
             return `<li class="pl-tl-gap">${ins(at)}${chip}</li>`;
         };
-        const nums = l.filter(x => x.p.num != null);
+        const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
                 <span class="pl-head-acts">${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}</span></div>
             ${!L.on && edit && nums.length ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : ''}
@@ -262,9 +272,9 @@
                 ${l.map(({ k, p }, i) => {
                     const g = lg.get(k), when = g ? (g.from && g.n ? legShort(g) : legText(g)) : p.date || '';
                     return `<li class="pl-stop" data-k="${esc(k)}" data-sort="stops">
-                    <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(p.num) : ic('pin')}</button>
+                    <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(lab.get(k) ?? p.num) : ic('pin')}</button>
                     <button type="button" class="pl-stop-main" data-pl="stop-open" data-k="${esc(k)}">
-                        <b>${esc(p.name || k)}${ic('chevronRight')}</b>
+                        <b>${esc(p.name || k)}${p.same ? `<span class="pl-again-tag">${ic('refresh')}<span class="pl-again-txt">erneut</span></span>` : ''}${ic('chevronRight')}</b>
                         ${when ? `<small>${esc(when)}</small>` : ''}
                     </button>
                     ${p.num != null ? stepper(k, p) : ''}
@@ -334,6 +344,7 @@
             ${trs.length ? `<h3 class="pl-d-h">Transporte</h3>${trs.map(({ f, i }) => `<button type="button" class="pl-d-item" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}>${ic(MODE_IC[f.mode || 'flight'] || 'plane')}<span><b>${esc([f.from.code || f.from.city || f.from.name, f.to.code || f.to.city || f.to.name].filter(Boolean).join(' → '))}</b><small>${esc([f.from.date && fmt(f.from.date), f.from.time].filter(Boolean).join(' '))}</small></span></button>`).join('')}` : ''}
             <div class="pl-d-acts">
                 <button type="button" class="btn-action" data-pl="stop-focus" data-k="${esc(k)}">${ic('map')}Auf der Karte</button>
+                ${edit && p.num != null ? `<button type="button" class="btn-action" data-pl="stop-again" data-k="${esc(p.same || k)}">${ic('refresh')}Erneut besuchen</button>` : ''}
                 ${window.TBActivities && TBActivities.ready ? `<button type="button" class="btn-action" data-pl="stop-acts" data-k="${esc(k)}">${ic('sparkles')}Aktivitäten</button>` : ''}
             </div>`;
     }
@@ -426,9 +437,12 @@
         const p = k ? places()[k] : null;
         if (k && !p) return;
         const cur = p || { name: '', lat: '', lng: '', num: 1 };
+        if (p && p.same) return editAgain(k);
+        const again = !p ? stopList().filter(x => x.p.num != null && !x.p.same && valid(x.p)) : [];
         sheet({
             title: p ? 'Stopp bearbeiten' : 'Neuer Stopp',
-            body: `<div class="pl-search">
+            body: `${again.length ? `<div class="pl-again"><span>Schon auf der Route – erneut besuchen:</span><div>${again.map(x => `<button type="button" class="pl-again-btn" data-again="${esc(x.k)}">${ic('refresh')}${esc(x.p.name || x.k)}</button>`).join('')}</div></div>` : ''}
+                <div class="pl-search">
                     ${field('Ort', inp('name', cur.name, 'required maxlength="120" autocomplete="off" placeholder="z. B. Kyoto"'), 'grow')}
                     <button type="button" class="btn-action pl-find">${ic('search')}Suchen</button>
                 </div>
@@ -466,9 +480,11 @@
                     });
                 };
                 find.onclick = run;
+                f.querySelectorAll('[data-again]').forEach(b => b.onclick = () => { dlg.close(); addAgain(b.dataset.again, at); });
                 f.elements.name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
                 const del = f.querySelector('.pl-del');
-                if (del) del.onclick = () => { if (confirm(`„${p.name}“ löschen?`)) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } };
+                const visits = Object.keys(places()).filter(x => places()[x].same === k).length;
+                if (del) del.onclick = () => { if (confirm(`„${p.name}“ löschen?${visits ? ` Auch ${visits === 1 ? 'der erneute Besuch wird' : `die ${visits} erneuten Besuche werden`} entfernt.` : ''}`)) { dlg.close(); commitPlaces(() => { const P = raw().places; delete P[k]; Object.keys(P).forEach(x => { if (P[x].same === k) delete P[x]; }); renumber(); }); } };
             },
             done: f => {
                 const name = val(f, 'name'), lat = parseFloat(val(f, 'lat').replace(',', '.')), lng = parseFloat(val(f, 'lng').replace(',', '.'));
@@ -490,7 +506,41 @@
                     /* neuer Stopp, während die Etappen schon Nächte haben: mit 1 Nacht starten */
                     if (!k && numbered && legs().on && o.nights == null) o.nights = 1;
                     P[key] = o;
+                    /* erneute Besuche führen Name und Koordinaten des Orts mit */
+                    Object.values(P).forEach(x => { if (x.same === key) Object.assign(x, { name: o.name, lat: o.lat, lng: o.lng }); });
                     renumber();
+                });
+            }
+        });
+    }
+    /* Ort erneut besuchen: neuer Eintrag an Position „at“ (sonst ans Ende) */
+    function addAgain(src, at) {
+        const P = places(), o = P[src];
+        if (!o || !editable()) return;
+        commitPlaces(() => {
+            const Q = raw().places, key = uniqueKey(o.name + ' 2', Q);
+            const end = Object.values(Q).reduce((m, x) => x.num != null ? Math.max(m, +x.num || 0) : m, 0) + 1;
+            Q[key] = { same: src, name: o.name, lat: o.lat, lng: o.lng, num: at != null && isFinite(at) ? at + .5 : end };
+            if (legs().on) Q[key].nights = 1;
+            renumber();
+        });
+    }
+    /* erneuten Besuch bearbeiten: nur Reisende, Notizen, Löschen (Ort selbst über den ersten Besuch) */
+    function editAgain(k) {
+        const p = places()[k], src = places()[p.same] || {};
+        sheet({
+            title: `Erneuter Besuch: ${p.name || src.name || ''}`,
+            body: `<p class="note">Name und Lage kommen vom ersten Besuch (Nr. ${esc(labels().get(p.same) ?? '')}). Hier gelten eigene Nächte, Unterkunft und Notizen.</p>
+                ${field('Notizen', area('desc', p.desc, 'maxlength="2000"'))}
+                ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(x.key)}"${!Array.isArray(p.who) || p.who.includes(x.key) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}`,
+            extra: `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
+            onOpen: f => { f.querySelector('.pl-del').onclick = () => { if (confirm('Diesen erneuten Besuch löschen?')) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } }; },
+            done: f => {
+                commitPlaces(() => {
+                    const o = raw().places[k];
+                    setOpt(o, 'desc', val(f, 'desc'));
+                    const who = [...f.querySelectorAll('input[name="who"]')];
+                    if (who.length) { const on = who.filter(x => x.checked).map(x => x.value); if (on.length === who.length) delete o.who; else o.who = on; }
                 });
             }
         });
@@ -782,7 +832,7 @@
             if (filtering && !stays.length) return '';
             return `<section class="bk-sec">
                 <div class="bk-head">
-                    <span class="pl-dot" style="--c:${esc(H.placeColor ? H.placeColor(x.k) : color(x.p.color, 'var(--p1)'))}">${esc(x.p.num ?? '')}</span>
+                    <span class="pl-dot" style="--c:${esc(H.placeColor ? H.placeColor(x.k) : color(x.p.color, 'var(--p1)'))}">${esc(labels().get(x.k) ?? x.p.num ?? '')}</span>
                     <div><h3>${esc(x.p.name || x.k)}</h3><small>${esc(legShort(x))} · ${nightsTxt(x.n)}</small></div>
                     ${edit ? `<button type="button" class="bk-add" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}" aria-label="Unterkunft in ${esc(x.p.name || x.k)} hinzufügen">${ic('plus')}<span>Unterkunft</span></button>` : ''}
                 </div>
@@ -1037,13 +1087,14 @@
         switch (a) {
             case 'stop-add': closeFab(); return editStop(null, b.dataset.at != null ? +b.dataset.at : null);
             case 'stop-open': return openStop(b.dataset.k);
-            case 'stop-acts': { const p = places()[b.dataset.k]; if (dlg) dlg.close(); return p && window.TBActivities && TBActivities.open(p.name, p.num ?? '', b); }
+            case 'stop-again': if (dlg && dlg.open) dlg.close(); return addAgain(b.dataset.k, null);
+            case 'stop-acts': { const p = places()[b.dataset.k]; if (dlg) dlg.close(); return p && window.TBActivities && TBActivities.open(p.name, labels().get(b.dataset.k) ?? p.num ?? '', b); }
             case 'fab': { const m = b.parentElement.querySelector('.pl-fab-menu'); m.hidden = !m.hidden; b.setAttribute('aria-expanded', String(!m.hidden)); b.classList.toggle('on', !m.hidden); return; }
             case 'fab-tr': closeFab(); return editTransport(null);
             case 'fab-acc': closeFab(); return editStation((groups()[0] || {}).id, null);
             case 'people': return editPeople();
             case 'stop-edit': return editStop(b.dataset.k);
-            case 'stop-focus': if (dlg && dlg.open) dlg.close(); return H.focusPlace && H.focusPlace(b.dataset.k);
+            case 'stop-focus': { if (dlg && dlg.open) dlg.close(); const p = places()[b.dataset.k]; return H.focusPlace && H.focusPlace(p && p.same && places()[p.same] ? p.same : b.dataset.k); }
             case 'row-add': return editRow(b.dataset.plan, null);
             case 'row-edit': return editRow(b.dataset.plan, i);
             case 'days-gen': return generateDays(b.dataset.plan);
@@ -1140,7 +1191,7 @@
         stopList, routeStops, totalKm, kmText, renderStops, mountStops,
         planToolbar, rowEditBtn, editRow, dayOptions, dayLabel, addToDay,
         renderAcc, warnings, gaps, cancelInfo,
-        legs, legText,
+        legs, legText, labels,
         renderTransports,
         stationStats: () => { const a = allStations(); return { total: a.length, booked: a.filter(s => S.status(s) === 'booked').length, open: a.filter(s => S.status(s) === 'open').length }; }
     };

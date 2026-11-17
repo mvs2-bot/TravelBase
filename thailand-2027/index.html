@@ -55,11 +55,10 @@
             </header>
             
             <!-- Haupt-Tabs für Desktop/Tablet -->
-            <div class="tabs" role="tablist" style="--tab-count:6">
+            <div class="tabs" role="tablist" style="--tab-count:5">
                 <button class="tab on" data-t="mapview"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
                 <button class="tab" data-t="stops"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
-                <button class="tab" data-t="thailand" title="Möglicher Ablauf Thailand"><span>🇹🇭</span>Thailand</button>
-                <button class="tab" data-t="srilanka" title="Möglicher Ablauf Sri Lanka"><span>🇱🇰</span>Sri Lanka</button>
+                <button class="tab" data-t="ablauf" title="Möglicher Ablauf Thailand &amp; Sri Lanka"><span><svg class="ic"><use href="#i-calendar"></use></svg></span>Ablauf</button>
                 <button class="tab" data-t="acc"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
                 <button class="tab tab-menu" id="menuBurger" type="button" aria-label="Menü öffnen"><span><svg class="ic"><use href="#i-list"></use></svg></span>Menü</button>
             </div>
@@ -78,8 +77,7 @@
                 <div class="popover-links">
                     <button data-t="mapview" class="pop-btn on"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
                     <button data-t="stops" class="pop-btn"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
-                    <button data-t="thailand" class="pop-btn"><span>🇹🇭</span>Möglicher Ablauf Thailand</button>
-                    <button data-t="srilanka" class="pop-btn"><span>🇱🇰</span>Möglicher Ablauf Sri Lanka</button>
+                    <button data-t="ablauf" class="pop-btn"><span><svg class="ic"><use href="#i-calendar"></use></svg></span>Möglicher Ablauf</button>
                     <button data-t="acc" class="pop-btn"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
                     <button data-t="activities" class="pop-btn"><span><svg class="ic"><use href="#i-sparkles"></use></svg></span>Mögliche Aktivitäten</button>
                     <button data-t="todos" class="pop-btn"><span><svg class="ic"><use href="#i-checkCircle"></use></svg></span>To-Dos</button>
@@ -117,11 +115,16 @@
         <!-- Etappen: Stopps mit Nächten (Inhalt aus shared/planner.js) -->
         <div id="stops" class="pane"></div>
 
-        <!-- Sektion 2: Möglicher Ablauf Thailand -->
-        <div id="thailand" class="pane">
+        <!-- Sektion 2: Möglicher Ablauf – Thailand und Sri Lanka als Unterbereiche (alte Links #thailand / #srilanka öffnen den Unterbereich) -->
+        <div id="ablauf" class="pane">
+        <div class="bk-bar plan-bar" role="tablist" aria-label="Land">
+            <button type="button" role="tab" data-sub="thailand" aria-selected="true"><span>🇹🇭</span><span>Thailand</span><small id="planCountTh"></small></button>
+            <button type="button" role="tab" data-sub="srilanka" aria-selected="false"><span>🇱🇰</span><span>Sri Lanka</span><small id="planCountSl"></small></button>
+        </div>
+        <div id="thailand" class="bk-sub on">
             <div class="box">
                 <div class="mh plan-head">
-                    <h2>🇹🇭 Möglicher Ablauf Thailand</h2>
+                    <h2>Möglicher Ablauf Thailand</h2>
                     <p class="note" style="margin-bottom:0" id="planNoteTh"></p>
                 </div>
                 <div class="controls" id="filterControlsThailand"></div>
@@ -144,11 +147,10 @@
             </div>
         </div>
 
-        <!-- Sektion 3: Möglicher Ablauf Sri Lanka -->
-        <div id="srilanka" class="pane">
+        <div id="srilanka" class="bk-sub">
             <div class="box">
                 <div class="mh plan-head">
-                    <h2>🇱🇰 Möglicher Ablauf Sri Lanka</h2>
+                    <h2>Möglicher Ablauf Sri Lanka</h2>
                     <p class="note" style="margin-bottom:0" id="planNoteSl"></p>
                 </div>
                 <div class="controls" id="filterControlsSriLanka"></div>
@@ -169,6 +171,7 @@
                 </div>
                 <div class="cards" id="mobileCardsSriLanka"></div>
             </div>
+        </div>
         </div>
 
         <!-- Sektion 4: Unterkünfte -->
@@ -589,14 +592,17 @@
         }
 
         /* 4. Filter, Tagespläne & Mobile Karten */
+        /* Kompakte Leiste: Suche + Filter als Auswahl (statt vieler Knöpfe) + Anzahl; „Tag hinzufügen“ hängt sich an (renderPlanTable) */
         function renderFilters() {
-            const searchTH = `<input type="search" id="qTH" class="q-input" placeholder="Nach Ort, Aktivität oder Transport suchen..." oninput="filterPlanThailand()">`;
-            const btnTH = (val, label, on) => `<button class="f${on ? ' on' : ''}" onclick="setFilterThailand('${val}', this)">${label}</button>`;
-            $('#filterControlsThailand').innerHTML = searchTH + btnTH('all', 'Alle', true) + (DATA.filters.th || []).map(([v, l]) => btnTH(v, l)).join('');
-
-            const searchSL = `<input type="search" id="qSL" class="q-input" placeholder="Nach Ort, Aktivität oder Transport suchen..." oninput="filterPlanSriLanka()">`;
-            const btnSL = (val, label, on) => `<button class="f${on ? ' on' : ''}" onclick="setFilterSriLanka('${val}', this)">${label}</button>`;
-            $('#filterControlsSriLanka').innerHTML = searchSL + btnSL('all', 'Alle', true) + (DATA.filters.sl || []).map(([v, l]) => btnSL(v, l)).join('');
+            [['th', '#filterControlsThailand', 'qTH'], ['sl', '#filterControlsSriLanka', 'qSL']].forEach(([k, sel, id]) => {
+                const f = (DATA.filters || {})[k] || [];
+                $(sel).innerHTML = `<input type="search" id="${id}" class="q-input" placeholder="Suchen …" aria-label="Ablauf durchsuchen">
+                    ${f.length ? `<label class="f-sel">${ic('filter')}<select aria-label="Filter"><option value="all">Alle</option>${f.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select></label>` : ''}
+                    <span class="f-count note"></span><span class="pl-slot"></span>`;
+                $(sel).querySelector('input').oninput = () => filterPlan(k);
+                const s = $(sel).querySelector('select');
+                if (s) s.onchange = () => { if (k === 'th') currentRegionThailand = s.value; else currentRegionSriLanka = s.value; filterPlan(k); };
+            });
         }
 
         function renderTableAndCards() {
@@ -618,7 +624,7 @@
             const PL = window.TBPlanner && TBPlanner.ready ? TBPlanner : null;
             const box = tbody.closest('.box');
             let slot = box.querySelector('.pl-slot');
-            if (!slot) { slot = document.createElement('div'); slot.className = 'pl-slot'; box.querySelector('.controls').before(slot); }
+            if (!slot) { slot = document.createElement('span'); slot.className = 'pl-slot'; box.querySelector('.controls').appendChild(slot); }
             slot.innerHTML = PL ? PL.planToolbar(PLAN_ID[k]) : '';
             (DATA.days[k] || []).forEach((item, idx) => {
                 const tr = document.createElement('tr');
@@ -657,6 +663,11 @@
                 const okFilter = reg === 'all' || ['data-location', 'data-region', 'data-group'].some(a => (row.getAttribute(a) || '').includes(reg));
                 row.style.display = (okSearch && okFilter) ? '' : 'none';
             });
+            const rows = document.querySelectorAll(cfg.body + ' tr'), shown = [...rows].filter(r => r.style.display !== 'none').length;
+            const box = $(cfg.body).closest('.box'), cnt = box && box.querySelector('.f-count');
+            if (cnt) cnt.textContent = shown === rows.length ? `${rows.length} Tage` : `${shown} von ${rows.length}`;
+            const tab = $(k === 'th' ? '#planCountTh' : '#planCountSl');
+            if (tab) tab.textContent = rows.length || '';
             renderMobileCards(k);
         }
 
@@ -688,22 +699,6 @@
             });
         }
 
-        function setFilterThailand(filterVal, btn) {
-            currentRegionThailand = filterVal;
-            document.querySelectorAll('#thailand .controls .f').forEach(b => b.classList.remove('on'));
-            btn.classList.add('on');
-            filterPlan('th');
-        }
-
-        function setFilterSriLanka(filterVal, btn) {
-            currentRegionSriLanka = filterVal;
-            document.querySelectorAll('#srilanka .controls .f').forEach(b => b.classList.remove('on'));
-            btn.classList.add('on');
-            filterPlan('sl');
-        }
-
-        function filterPlanThailand() { filterPlan('th'); }
-        function filterPlanSriLanka() { filterPlan('sl'); }
 
         /* 5. Interaktive Karte (Leaflet) – alle Routen fest eingebaut, kein Abruf mehr nötig */
         const ROUTE_STYLES = {
@@ -713,6 +708,31 @@
             sl: { color: '#b45309', weight: 3.5, opacity: .9 },
             train: { color: '#dc2626', weight: 3.5, opacity: .9, dashArray: '4, 4' }
         };
+
+        /* Punktfarben = Reisende (wie die Vorlage): wer laut Zeitraum (Etappe, Unterkunft oder Ablauf-Tag) an einem Ort ist,
+           färbt den Punkt; mehrere Personen = Tortenstück. "who" am Ort schränkt fest ein. Ohne Reisende bleibt die Ortsfarbe. */
+        const personKey = x => x.key || x.name;
+        const nextISO = iso => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + 1); return localISO(d); };
+        function thPlaceWho(k) {
+            const P = DATA.places || {}, p = P[k] || {}, ps = DATA.persons || [];
+            if (Array.isArray(p.who)) return p.who;
+            const ranges = [];
+            const L = window.TBPlanner && TBPlanner.ready && TBPlanner.legs ? TBPlanner.legs() : null;
+            const g = L && L.on ? L.list.find(x => x.k === k) : null;
+            if (g && g.from) ranges.push([g.from, g.to > g.from ? g.to : nextISO(g.from)]);
+            if (!ranges.length) [...(DATA.stations.th || []), ...(DATA.stations.sl || [])].forEach(st => { if (st.focus === k && /^\d{4}-\d\d-\d\d$/.test(st.from || '')) ranges.push([st.from, st.to > st.from ? st.to : nextISO(st.from)]); });
+            if (!ranges.length) [...(DATA.days.th || []), ...(DATA.days.sl || [])].forEach(d => { if (/^\d{4}-\d\d-\d\d$/.test(d.rawDate || '') && (d.focus === k || (p.name && d.locName === p.name))) ranges.push([d.rawDate, nextISO(d.rawDate)]); });
+            const on = ranges.length ? ps.filter(x => !x.start || !x.end || ranges.some(([a, b]) => x.start < b && x.end >= a)) : [];
+            return (on.length ? on : ps).map(personKey);
+        }
+        function thPlaceColor(k, keys) {
+            const ps = DATA.persons || [], who = new Set();
+            (keys || [k]).forEach(x => thPlaceWho(x).forEach(w => who.add(w)));
+            const cs = ps.filter(x => who.has(personKey(x))).map(x => col(x.color));
+            if (!cs.length) return col(((DATA.places || {})[k] || {}).color);
+            return cs.length === 1 ? cs[0] : `conic-gradient(${cs.map((c, i) => `${c} ${i / cs.length * 360}deg ${(i + 1) / cs.length * 360}deg`).join(', ')})`;
+        }
+        const solidOf = c => /^conic/.test(c) ? (c.match(/#[0-9a-f]{3,8}|rgba?\([^)]*\)/i) || ['var(--p1)'])[0] : c;
 
         function initMap() {
             const layer = (url, attr, maxZoom = 15) => L.tileLayer(url, { maxZoom, attribution: attr });
@@ -733,11 +753,17 @@
                 if (pts.length > 1) L.polyline(pts, ROUTE_STYLES[r.style] || ROUTE_STYLES.th).addTo(map);
             });
 
+            const labels = window.TBPlanner && TBPlanner.ready && TBPlanner.labels ? TBPlanner.labels(points) : new Map();
             Object.keys(points).forEach(key => {
                 const p = points[key];
                 if (!isFinite(+p.lat) || !isFinite(+p.lng)) return;
-                const c = col(p.color);
-                const marker = L.circleMarker([p.lat, p.lng], { color: c, fillColor: c, fillOpacity: .9, radius: 6 })
+                /* erneuter Besuch: kein eigener Punkt */
+                if (p.same && points[p.same]) return;
+                const again = Object.keys(points).filter(x => points[x] && points[x].same === key);
+                const fill = thPlaceColor(key, [key, ...again]), c = solidOf(fill);
+                const marker = (p.num != null
+                    ? L.marker([p.lat, p.lng], { icon: L.divIcon({ className: 'nm', html: `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${fill}">${esc(labels.get(key) ?? p.num)}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
+                    : L.circleMarker([p.lat, p.lng], { color: c, fillColor: c, fillOpacity: .9, radius: 6 }))
                     .bindPopup(`<b style="color:${c}">${ic('pin')} ${esc(p.name)}</b>${p.date ? `<br><small>${ic('calendar')} ${esc(p.date)}</small>` : ''}${p.desc ? `<br>${rich(p.desc)}` : ''}`);
                 marker.addTo(map);
                 markers[p.name] = { marker, lat: p.lat, lng: p.lng };
@@ -755,6 +781,7 @@
                         <span style="color:#b45309">━</span> Sri Lanka Route (Straße)<br>
                         <span style="color:#dc2626">┅</span> Panoramazug Kandy ➔ Ella<br>
                         <span style="color:#059669">┅</span> Flüge (Flughafen zu Flughafen)
+                        ${(DATA.persons || []).map(x => `<br><span style="color:${col(x.color)}">●</span> ${esc(x.name)}`).join('')}
                     </div>`;
                 L.DomEvent.disableClickPropagation(d);
                 d.querySelector('.lh').onclick = () => {
@@ -1227,12 +1254,23 @@
         }
 
         /* 10. Event-Handler & Tab-Steuerung */
+        /* Ablauf: Thailand und Sri Lanka sind Unterbereiche von #ablauf */
+        let PLAN_SUB = 'thailand';
+        const PLAN_SUBS = ['thailand', 'srilanka'];
+        function showPlanSub() {
+            PLAN_SUBS.forEach(id => $('#' + id).classList.toggle('on', id === PLAN_SUB));
+            document.querySelectorAll('#ablauf .plan-bar [data-sub]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.sub === PLAN_SUB)));
+        }
+        document.querySelectorAll('#ablauf .plan-bar [data-sub]').forEach(b => b.onclick = () => switchTab(b.dataset.sub));
         function switchTab(targetId) {
+            if (PLAN_SUBS.includes(targetId)) { PLAN_SUB = targetId; targetId = 'ablauf'; }
+            const hashId = targetId === 'ablauf' ? PLAN_SUB : targetId;
+            if (targetId === 'ablauf') showPlanSub();
             document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.t === targetId));
             document.querySelectorAll('.pane').forEach(x => x.classList.toggle('on', x.id === targetId));
             document.querySelectorAll('.pop-btn').forEach(x => x.classList.toggle('on', x.dataset.t === targetId));
             // URL-Hash setzen (ohne Neuladen), damit Neuladen/Teilen im selben Bereich landet
-            if (window.location.hash !== '#' + targetId) history.replaceState(null, '', location.pathname + location.search + '#' + targetId);
+            if (window.location.hash !== '#' + hashId) history.replaceState(null, '', location.pathname + location.search + '#' + hashId);
             window.scrollTo(0, 0);
             if (targetId === 'pack' && DATA) renderAnalysis();
             if (targetId === 'mapview' && map) setTimeout(() => { map.invalidateSize(); fitStartView(); }, 100);
@@ -1308,7 +1346,7 @@
         function loadTabFromHash() {
             const hash = window.location.hash.replace('#', '');
             if (!DATA || (ROLE === 'guest' && hash !== 'mapview')) return;
-            if (hash && document.getElementById(hash) && document.getElementById(hash).classList.contains('pane')) switchTab(hash);
+            if (hash && (PLAN_SUBS.includes(hash) || (document.getElementById(hash) && document.getElementById(hash).classList.contains('pane')))) switchTab(hash);
         }
         window.addEventListener('hashchange', loadTabFromHash);
 
@@ -1368,14 +1406,14 @@
             const tr = days.find(d => d.rawDate === TODAY);
             if (tr) today = { ...tr, label: 'Heute' };
             else if (start && TODAY < start && days[0]) today = { ...days[0], label: 'Los geht’s' };
-            const placeColor = name => (Object.values(DATA.places || {}).find(p => p.name === name) || {}).color;
+            const placeColor = k => (DATA.places || {})[k] ? thPlaceColor(k) : (Object.values(DATA.places || {}).find(p => p.name === k) || {}).color;
             const route = st.map((x, i) => ({
                 num: i + 1, name: String(x.title || x.name || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus),
                 when: `${x.period || ''}${x.nights ? ` · ${x.nights} ${x.nights === 1 ? 'Nacht' : 'Nächte'}` : ''}`,
                 now: !!(x.from && x.to && TODAY >= x.from && TODAY < x.to), label: 'Heute hier'
             }));
             const tiles = {
-                thailand: { text: `${(DATA.days.th || []).length} Tage` }, srilanka: { text: `${(DATA.days.sl || []).length} Tage` },
+                ablauf: { text: `${(DATA.days.th || []).length} + ${(DATA.days.sl || []).length} Tage` },
                 acc: { text: `${st.length} Stationen` }, mapview: { text: `${Object.keys(DATA.places || {}).length} Orte` }
             };
             if ((DATA.flights || []).length) tiles.flights = { text: `${DATA.flights.length} ${DATA.flights.some(f => f.mode && f.mode !== 'flight') ? 'Einträge' : 'Flüge'}` };
@@ -1404,7 +1442,8 @@
                 stationGroups: () => [{ id: 'th', label: (DATA.texts || {}).accHeadTh || 'Thailand', list: DATA.stations.th = DATA.stations.th || [] },
                                       { id: 'sl', label: (DATA.texts || {}).accHeadSl || 'Sri Lanka', list: DATA.stations.sl = DATA.stations.sl || [] }],
                 refresh: rerenderAll,
-                focusPlace: k => focusMap(k)
+                placeColor: k => thPlaceColor(k),
+                focusPlace: k => { const p = (DATA.places || {})[k]; focusMap(p && p.same && DATA.places[p.same] ? p.same : k); }
             });
         }
         /* Hinweis oben: Storno-Fristen in den nächsten 7 Tagen oder abgelaufen */
