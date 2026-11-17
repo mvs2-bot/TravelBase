@@ -1006,9 +1006,14 @@ button.pl-stop-main:hover b { color: var(--p1); }
 .bk-missing .btn-action { min-height: 36px; }
 
 /* Ort erneut besuchen (planner.js): Auswahl im „Neuer Stopp“-Sheet und Kennzeichen in der Stoppliste */
-.pl-again { display: flex; flex-direction: column; gap: 8px; padding: 12px; margin-bottom: 14px; border-radius: var(--radius-s); background: var(--well); }
-.pl-again > span { font-size: 13px; color: var(--mute); }
-.pl-again > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.pl-again { margin-bottom: 14px; border-radius: var(--radius-s); background: var(--well); }
+.pl-again summary { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: var(--p1); cursor: pointer; list-style: none; }
+.pl-again summary::-webkit-details-marker { display: none; }
+.pl-again summary .ic { width: 16px; height: 16px; }
+.pl-again summary::after { content: ''; margin-left: auto; width: 7px; height: 7px; border-right: 2px solid var(--mute); border-bottom: 2px solid var(--mute); transform: rotate(45deg); transition: transform .15s; }
+.pl-again[open] summary::after { transform: rotate(-135deg); }
+.pl-again > div { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 12px; }
+.pl-again-btn i { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; border-radius: 50%; color: #fff; font-style: normal; font-size: 11px; font-weight: 700; text-shadow: 0 0 2px rgba(0, 0, 0, .35); }
 .pl-again-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
 .pl-again-btn:hover { background: var(--hover); }
 .pl-again-btn .ic { width: 15px; height: 15px; color: var(--p1); }
@@ -1035,3 +1040,16 @@ button.pl-stop-main:hover b { color: var(--p1); }
     .controls .pl-slot .btn-action[data-pl="row-add"] { font-size: 0; gap: 0; width: 38px; min-height: 38px; padding: 0; justify-content: center; }
     .controls .pl-slot .btn-action[data-pl="row-add"] .ic { width: 18px; height: 18px; margin: 0; }
 }
+
+/* Reisebeginn antippbar (nur Admins) */
+.pl-tl-start { display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: none; font: inherit; text-align: left; color: inherit; cursor: pointer; border-radius: 12px; }
+.pl-tl-start:hover b { color: var(--p1); }
+.pl-tl-start small .ic { width: 12px; height: 12px; margin-left: 5px; vertical-align: -1px; color: var(--p1); }
+/* Ort auf der Karte wählen (Stopp-Sheet) */
+.pl-pick-wrap { position: relative; margin: 10px 0 12px; }
+.pl-pick { height: 220px; border-radius: var(--radius-s); overflow: hidden; background: var(--well); z-index: 0; }
+.pl-pick .leaflet-container, .pl-pick.leaflet-container { cursor: crosshair; font: inherit; }
+.pl-pick-hint { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 500; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--card); color: var(--text); font-size: 12px; box-shadow: var(--shadow); pointer-events: none; white-space: nowrap; }
+.pl-pick-hint .ic { width: 13px; height: 13px; color: var(--p1); }
+.pl-pick-pin { color: var(--p1); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .35)); }
+.pl-pick-pin .ic { width: 30px; height: 30px; fill: var(--card); stroke-width: 2; }

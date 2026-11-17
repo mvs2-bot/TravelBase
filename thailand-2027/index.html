@@ -1425,6 +1425,13 @@
         }
 
         /* Live-Planung (shared/planner.js): Thailand speichert Tage unter "days" ({th, sl}) und Unterkünfte unter "stations" ({th, sl}) */
+        /* Reisebeginn ohne meta.start: frühestes Datum der Reisenden, Unterkünfte oder Ablauf-Tage */
+        function firstDate() {
+            const ok = d => /^\d{4}-\d\d-\d\d$/.test(d || '');
+            const all = [...(DATA.persons || []).map(p => p.start), ...[...(DATA.stations.th || []), ...(DATA.stations.sl || [])].map(s => s.from),
+                ...[...(DATA.days.th || []), ...(DATA.days.sl || [])].map(d => d.rawDate)].filter(ok).sort();
+            return all[0] || '';
+        }
         function initPlanner() {
             if (!window.TBPlanner || !RES) return;
             DATA.days = DATA.days || {}; DATA.stations = DATA.stations || {};
@@ -1434,7 +1441,7 @@
                 get raw() { return DATA; },
                 sections: RES.sections || [],
                 meta: () => ({
-                    start: (DATA.meta || {}).start || persons.reduce((a, p) => !a || p.start < a ? p.start : a, ''),
+                    start: (DATA.meta || {}).start || firstDate(),
                     end: (DATA.meta || {}).end || persons.reduce((a, p) => p.end > a ? p.end : a, '')
                 }),
                 plans: () => [{ id: 'thailand', title: 'Thailand', rows: DATA.days.th = DATA.days.th || [] }, { id: 'srilanka', title: 'Sri Lanka', rows: DATA.days.sl = DATA.days.sl || [] }],

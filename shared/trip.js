@@ -762,6 +762,12 @@
             ensureStations: () => { RAW.stations = []; return { id: 'all', label: '', list: RAW.stations }; },
             newPlan,
             legEnd: () => LEG_END,
+            /* Reisebeginn: der Planer speichert meta.start (die Datenbank zieht travelbase_trips.start_date mit);
+               hier nur das geladene Reise-Datum angleichen, damit applyChosenStart nicht zurückschiebt */
+            setStart: async (start, end) => {
+                if (RES.trip && RES.trip.start_date) { RES.trip.start_date = start; RES.trip.end_date = end || start; }
+                return false;
+            },
             placeColor: k => placeColor(k),
             suggestPeople: async () => {
                 const me = RES.user && RES.user.name, ms = await TB.tripMembers();
