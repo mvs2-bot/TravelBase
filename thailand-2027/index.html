@@ -79,6 +79,7 @@
                     <button data-t="stops" class="pop-btn"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
                     <button data-t="ablauf" class="pop-btn"><span><svg class="ic"><use href="#i-calendar"></use></svg></span>Möglicher Ablauf</button>
                     <button data-t="acc" class="pop-btn"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
+                    <button data-t="cal" class="pop-btn"><span><svg class="ic"><use href="#i-users"></use></svg></span>Anwesenheit</button>
                     <button data-t="activities" class="pop-btn"><span><svg class="ic"><use href="#i-sparkles"></use></svg></span>Mögliche Aktivitäten</button>
                     <button data-t="todos" class="pop-btn"><span><svg class="ic"><use href="#i-checkCircle"></use></svg></span>To-Dos</button>
                     <button data-t="misc" class="pop-btn"><span><svg class="ic"><use href="#i-info"></use></svg></span>Infos &amp; mehr</button>
@@ -180,6 +181,16 @@
                         <tbody id="accBodySriLanka"></tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <!-- Anwesenheit (aus den Etappen, shared/planner.js renderPresence) -->
+        <div id="cal" class="pane">
+            <div class="box">
+                <h2 id="calTitle"><svg class="ic"><use href="#i-users"></use></svg>Anwesenheit</h2>
+                <p class="note">Aus den Etappen und den Reisenden je Etappe. Zahl = Tag der eigenen Reise. Gestrichelt <svg class="ic"><use href="#i-plane"></use></svg> = An- oder Abreisetag (Etappen der Art „Anreise“/„Abreise“, z. B. lange Flüge).</p>
+                <div class="mcal" id="calMonth"></div>
+                <div class="cal" id="calBody"></div>
             </div>
         </div>
 
@@ -1430,6 +1441,7 @@
             });
             safe(initPlanner);
             safe(renderStats);
+            safe(renderPresenceTH);
             safe(renderAccommodations);
             safe(renderFlights);
             safe(renderInfos);
@@ -1552,9 +1564,13 @@
         /* Ideen aus „Mögliche Aktivitäten“ erscheinen im Ablauf */
         let actTimer = 0;
         document.addEventListener('tb:activities', () => { clearTimeout(actTimer); actTimer = setTimeout(() => { if (DATA) safe(renderTableAndCards); }, 50); });
+        function renderPresenceTH() {
+            if (window.TBPlanner && TBPlanner.ready && TBPlanner.renderPresence) TBPlanner.renderPresence({ title: $('#calTitle'), body: $('#calBody'), month: $('#calMonth') });
+        }
         function rerenderAll() {
             const y = window.scrollY;
             safe(renderStats);
+            safe(renderPresenceTH);
             safe(calculateWorkDays);
             safe(renderAccommodations);
             safe(renderFlights);
