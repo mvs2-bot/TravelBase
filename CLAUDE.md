@@ -154,6 +154,12 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   `TB.tripSummaries()` (RPC `travelbase_trip_summaries`) liefert Stopps/Unterkünfte/Storno-Warnungen für die Übersicht.
 - `exportBackup()` (nur Admins): JSON aller `BACKUP_TABLES` der Reisen, auf denen man Admin ist – läuft mit dem Login des Admins, RLS gilt.
   Neue `travelbase_`-Tabellen dort ergänzen.
+- **Alte Reisen (Import, ohne Nummern/Nächte, Daten bleiben unverändert):** `stopList` ordnet die Etappen nach dem ersten Datum des Orts
+  (`byDate`: Tagesplan-Zeilen `focus` + `from`/`date`, sonst Datumstext des Orts wie „14.12. - 16.12.2025 / 2 Nächte“; dann kein Ziehen).
+  Verkehrsmittel zwischen zwei Stopps kommt ohne eingetragenen Transport aus den gespeicherten `routes` (`legacyMode`: `via` bzw. `path`
+  durch beide Orte, Stilname walk/ferry/flight/bus/train/drive → Symbol, Zeit, Linienstil `SEG_STYLE.walk`), auch für Kartenlinien aus den Etappen.
+  Die Karte neben den Etappen zeigt ohne Etappen-Nächte die gespeicherten Strecken (`H.drawStored`). Ohne Reisende färbt `places[k].color` die Punkte
+  (passt zur Legende alter Reisen), sonst Blau. Abgeschlossene Reisen bieten leere Bereiche Unterkünfte / Flüge & Transporte nicht mehr an.
 - Test-Hilfe: `?heute=YYYY-MM-DD` überschreibt „heute“ in der Vorlage.
 
 ## Design-System
