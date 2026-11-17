@@ -80,7 +80,16 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   allein durch die Etappen. Ideen aus „Mögliche Aktivitäten“ (`TBActivities.ideas(name)`, Ereignis `tb:activities`) stehen am ersten Tag eines Orts;
   „In Ablauf übernehmen“ geht auch auf Etappen-Tage ohne Eintrag (`<plan>:@YYYY-MM-DD`, `addToDay` gibt die echte Referenz zurück).
 - **Route (Handy) und Aktivitäten-Orte** = Etappen (gleiche Nummern/Farben); ohne Nächte wie bisher (Vorlage: Tagesplan, Thailand: Unterkünfte).
-- **Wischen:** Zeilen mit `.sw-row` + `.sw-acts` (To-Dos, Packliste) zeigen auf dem Handy per Wischen nach links Bearbeiten/Löschen
+- **Art der Etappe** `places[k].kind`: `arrive` (Anreise) / `depart` (Abreise), z. B. lange Flüge mit Nächten; brauchen keine Unterkunft.
+  **Anwesenheitskalender** (`#cal`, Vorlage und Thailand) entsteht aus den Etappen: `TBPlanner.presence()` / `renderPresence({title, body, month})`
+  je Person aus `who` der Etappen; Anreise-/Abreise-Etappen = Reisetage (gestrichelt), ohne eigene Anreise ist der erste, ohne eigene Abreise der Tag
+  nach der letzten Nacht ein Reisetag; Lücken (Etappen nur anderer Personen) zählen als vor Ort. Vorlage: Tab erscheint automatisch, sobald Etappen
+  Nächte und Reisende haben (alte Reisen mit `calendar` + `persons.start/end/home` ohne Etappen-Nächte wie bisher).
+- **Etappe „Anzeigen bei“** (Stopp-Sheet): `places[k].noStay` (Unterkünfte), `noRoute` (Route am Handy), `noActs` (mögliche Aktivitäten, bei erneuten
+  Besuchen gilt der erste Besuch; die Seite übergibt solche Orte mit `hide: true` an `TBActivities.setStops`).
+- **Aktivitäten-Orte:** Orte ohne passende Etappe bleiben als eigener Abschnitt sichtbar; eindeutige alte Namen („2. Chiang Mai“, „Bangkok Stadtzentrum“)
+  hängt `activities.js` beim Laden still an die Etappe um (`location_name`-Update, nur mit Schreibrecht).
+- **Wischen:** Zeilen mit `.sw-row` + `.sw-acts` (To-Dos, Packliste, mögliche Aktivitäten, Flüge & Transporte) zeigen auf dem Handy per Wischen nach links Bearbeiten/Löschen
   (`shared/trip-mobile.js`); Bearbeiten über `TBPlanner.sheet` / `TBPlanner.ui`.
 - **Punktfarben = Reisende** (wie Südamerika): ohne `mapColors` färben `persons` (`{key,name,color}`, gepflegt über „Reisende“ in den Etappen)
   die Punkte auf Karte, Etappen und Route; `places[k].who` schränkt ein (fehlt = alle, `[]` = bewusst niemand → Gelb `#eab308`). Ohne Reisende Blau. Stopps haben keine eigene Farbauswahl mehr.
