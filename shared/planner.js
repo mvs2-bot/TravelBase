@@ -459,6 +459,67 @@
                 ${window.TBActivities && TBActivities.ready ? `<button type="button" class="btn-action" data-pl="stop-acts" data-k="${esc(k)}">${ic('sparkles')}Aktivitäten</button>` : ''}
             </div>`;
     }
+    /* Desktop (ab 1100 px): Karte rechts neben dem Etappen-Zeitstrahl, damit man beim Planen die Route sieht.
+       Punkt antippen → Stopp in der Liste; „Auf der Karte“ in der Liste → Karte daneben, ohne den Bereich zu wechseln. */
+    let SM = null;
+    const wide = () => !!(window.matchMedia && matchMedia('(min-width: 1100px)').matches);
+    function sideMap(P) {
+        const pane = document.getElementById('stops');
+        if (!pane || !window.L || !window.ResizeObserver) return;
+        let box = pane.querySelector('.pl-sidemap');
+        if (!box) {
+            pane.insertAdjacentHTML('beforeend', `<div class="box pl-sidemap"><div class="pl-smap" aria-label="Karte der Etappen"></div></div>`);
+            box = pane.querySelector('.pl-sidemap');
+            pane.classList.add('pl-split');
+        }
+        const hdr = document.querySelector('.sticky-header');
+        if (hdr) document.documentElement.style.setProperty('--hdr-h', hdr.offsetHeight + 'px');
+        if (!SM) {
+            const map = L.map(box.firstElementChild, { zoomControl: true, attributionControl: true });
+            L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
+            SM = { map, layer: L.layerGroup().addTo(map), fitted: false, pts: [], marks: {} };
+            new ResizeObserver(() => { if (!box.offsetWidth) return; map.invalidateSize(); if (!SM.fitted) fitSide(); }).observe(box);
+        }
+        drawSide(P || places());
+    }
+    function fitSide() {
+        if (!SM || !SM.pts.length || !SM.map.getContainer().offsetWidth) return;
+        SM.map.fitBounds(L.latLngBounds(SM.pts), { padding: [36, 36], maxZoom: 9 });
+        SM.fitted = true;
+    }
+    function drawSide(P) {
+        SM.layer.clearLayers(); SM.pts = []; SM.marks = {};
+        const lab = labels(P);
+        stopList(P).forEach(({ k, p }) => {
+            if (!valid(p) || (p.same && P[p.same])) return;
+            const ll = [+p.lat, +p.lng], c = H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)');
+            const m = L.marker(ll, { icon: L.divIcon({ className: 'pl-smk', html: `<span style="--c:${esc(c)}">${p.num != null ? esc(lab.get(k) ?? p.num) : ''}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }), title: p.name || k })
+                .bindTooltip(esc(p.name || k), { direction: 'top', offset: [0, -12] })
+                .on('click', () => flashStop(k)).addTo(SM.layer);
+            SM.marks[k] = m; SM.pts.push(ll);
+        });
+        if (!drawRoute(SM.layer, P)) {
+            const l = routeStops(P).filter(x => !x.p.noRoute).map(x => [+x.p.lat, +x.p.lng]);
+            if (l.length > 1) L.polyline(l, SEG_STYLE.road).addTo(SM.layer);
+        }
+        if (!SM.fitted) fitSide();
+    }
+    function flashStop(k) {
+        const li = document.querySelector(`#stopPanel .pl-stop[data-k="${CSS.escape(k)}"]`);
+        if (!li) return;
+        li.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        li.classList.remove('pl-flash'); void li.offsetWidth; li.classList.add('pl-flash');
+    }
+    function sideFocus(k) {
+        const pane = document.getElementById('stops');
+        if (!SM || !wide() || !pane || !pane.classList.contains('on')) return false;
+        const p = places()[k];
+        if (!valid(p)) return false;
+        SM.map.flyTo([+p.lat, +p.lng], Math.max(SM.map.getZoom() || 0, 9), { duration: .6 });
+        const m = SM.marks[k];
+        if (m) setTimeout(() => m.openTooltip(), 650);
+        return true;
+    }
     /* Stopp-Liste in den eigenen Bereich „Etappen“ (#stops) hängen – gibt es den nicht, neben die Karte (Split-View) –
        und die Distanz in den Karten-Kopf schreiben */
     function mountStops(P) {
@@ -477,6 +538,7 @@
             panel = document.getElementById('stopPanel');
         }
         renderStops(panel, P);
+        if (pane) sideMap(P);
         if (!pane && panel.parentElement) panel.parentElement.classList.toggle('has-panel', !panel.hidden);
         const n = routeStops(P).length;
         let el = document.getElementById('mapKm');
@@ -1586,7 +1648,7 @@
             case 'people': return editPeople();
             case 'trip-dates': return editTripDates();
             case 'stop-edit': return editStop(b.dataset.k);
-            case 'stop-focus': { if (dlg && dlg.open) dlg.close(); const p = places()[b.dataset.k]; return H.focusPlace && H.focusPlace(p && p.same && places()[p.same] ? p.same : b.dataset.k); }
+            case 'stop-focus': { if (dlg && dlg.open) dlg.close(); const p = places()[b.dataset.k], fk = p && p.same && places()[p.same] ? p.same : b.dataset.k; if (sideFocus(fk)) return; return H.focusPlace && H.focusPlace(fk); }
             case 'row-add': return editRow(b.dataset.plan, null, b.dataset.iso ? (legDays().find(x => x.iso === b.dataset.iso) || { iso: b.dataset.iso, day: '', keys: [] }) : null);
             case 'row-edit': return editRow(b.dataset.plan, i);
             case 'row-del': { const p = planById(b.dataset.plan), r = p && p.rows[i]; if (r && editable() && confirm(`„${r.day || 'Tag'}${R.title(r) ? ' · ' + R.title(r) : ''}“ löschen?`)) commit([H.planKey], () => p.rows.splice(i, 1)); return; }
@@ -1686,13 +1748,17 @@
     function plusAdd(form, anchor, title) {
         if (!form || !anchor || form.dataset.plus) return;
         form.dataset.plus = '1';
-        form.hidden = true;
+        /* Desktop (ab 1100 px): Eingabezeile bleibt sichtbar – schneller zum Eintragen; Handy: „+“ öffnet ein Sheet */
+        const mqW = matchMedia('(min-width: 1100px)');
         const btn = document.createElement('button');
         btn.type = 'button'; btn.className = 'add-plus'; btn.setAttribute('aria-label', title); btn.title = title;
         btn.innerHTML = ic('plus');
         anchor.appendChild(btn);
         const home = form.parentNode, next = form.nextSibling;
         let d = null;
+        const sync = () => { if (!(d && d.open)) form.hidden = !mqW.matches; btn.hidden = mqW.matches; form.classList.toggle('add-inline', mqW.matches); };
+        mqW.addEventListener('change', sync);
+        sync();
         const close = () => { if (d && d.open) d.close(); };
         btn.onclick = () => {
             if (!d) {
@@ -1702,7 +1768,7 @@
                 document.body.appendChild(d);
                 d.querySelector('.pl-x').onclick = close;
                 d.addEventListener('click', e => { if (e.target === d) close(); });
-                d.addEventListener('close', () => { form.hidden = true; home.insertBefore(form, next); });
+                d.addEventListener('close', () => { home.insertBefore(form, next); sync(); });
             }
             d.querySelector('.pl-body').appendChild(form);
             form.hidden = false;
@@ -1711,7 +1777,7 @@
             if (first) setTimeout(() => first.focus(), 50);
         };
         /* nach dem Hinzufügen (Seite leert das Textfeld) schließen */
-        const after = () => setTimeout(() => { const t = form.querySelector('input[type=text], input:not([type])'); if (t && !t.value) close(); }, 60);
+        const after = () => setTimeout(() => { const t = form.querySelector('input[type=text], input:not([type])'); if (t && !t.value) { if (d && d.open) close(); else if (mqW.matches) t.focus(); } }, 60);
         form.addEventListener('click', e => { if (e.target.closest('button')) after(); });
         form.addEventListener('keydown', e => { if (e.key === 'Enter') after(); });
     }
