@@ -1427,7 +1427,8 @@
             };
             const route = st.map((x, i) => ({
                 num: i + 1, name: String(x.title || x.name || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus, x),
-                when: `${x.period || ''}${x.nights ? ` · ${x.nights} ${x.nights === 1 ? 'Nacht' : 'Nächte'}` : ''}`,
+                when: [x.period || (/^\d{4}-\d\d-\d\d$/.test(x.from || '') ? `${x.from.slice(8)}.${x.from.slice(5, 7)}.${/^\d{4}-\d\d-\d\d$/.test(x.to || '') ? `–${x.to.slice(8)}.${x.to.slice(5, 7)}.` : ''}` : ''),
+                    x.nights ? `${x.nights} ${x.nights === 1 ? 'Nacht' : 'Nächte'}` : ''].filter(Boolean).join(' · '),
                 now: !!(x.from && x.to && TODAY >= x.from && TODAY < x.to), label: 'Heute hier'
             }));
             const tiles = {

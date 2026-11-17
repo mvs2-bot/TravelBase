@@ -239,7 +239,7 @@
             if (!edit) return n == null ? '' : `<span class="pl-n-ro">${n ? `${n} ${nightsWord(n)}` : 'Zwischenstopp'}</span>`;
             return `<div class="pl-nights" role="group" aria-label="Nächte in ${esc(p.name || k)}">
                 <button type="button" data-pl="n-dec" data-k="${esc(k)}" aria-label="Eine Nacht weniger"${n === 0 ? ' disabled' : ''}>${ic('minus')}</button>
-                <span><b>${n == null ? '–' : n}</b><small>${n == null ? 'Nächte' : nightsWord(n)}</small></span>
+                <span title="${n == null ? 'Nächte offen' : `${n} ${nightsWord(n)}`}"><b>${n == null ? '–' : n}</b><small>N.</small></span>
                 <button type="button" data-pl="n-inc" data-k="${esc(k)}" aria-label="Eine Nacht mehr">${ic('plus')}</button>
             </div>`;
         };
