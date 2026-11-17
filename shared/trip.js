@@ -172,11 +172,11 @@
            oder man sie anlegen darf und die Reise einen Ablauf oder Etappen hat (Gäste bekommen keine) */
         const st = DATA.stations, stN = Array.isArray(st) ? st.length : st && typeof st === 'object' ? Object.values(st).reduce((n, a) => n + (Array.isArray(a) ? a.length : 0), 0) : 0;
         if (stN || (canEdit() && (DATA.plans || (DATA.places && window.TBPlanner && TBPlanner.mountStops)))) s.push({ id: 'acc', icon: ic('bed'), label: 'Unterkünfte', tab: true });
-        // Mögliche Aktivitäten: eingeschaltet über "activities": true in den Reisedaten (shared/activities.js)
-        if (DATA.activities) s.push({ id: 'activities', icon: ic('sparkles'), label: 'Mögliche Aktivitäten' });
         /* Anwesenheit: alte Reisen mit calendar; sonst automatisch, sobald Etappen Nächte und Reisende haben */
         const legsOn = Object.values(DATA.places || {}).some(p => p && p.num != null && p.nights != null);
         if ((DATA.calendar || legsOn) && (DATA.persons || []).length) s.push({ id: 'cal', icon: ic('users'), label: 'Anwesenheit', tab: true });
+        // Mögliche Aktivitäten (Reihenfolge wie Thailand: nach Anwesenheit); eingeschaltet über "activities": true (shared/activities.js)
+        if (DATA.activities) s.push({ id: 'activities', icon: ic('sparkles'), label: 'Mögliche Aktivitäten' });
         // To-Dos als eigener Bereich; eine ältere Seite aus dem Cache ohne #todos zeigt sie weiter unter „Infos & mehr“
         const todoPane = DATA.todos && !!$('#todos');
         if (todoPane) s.push({ id: 'todos', icon: ic('checkCircle'), label: 'To-Dos' });
