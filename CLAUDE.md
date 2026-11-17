@@ -81,6 +81,8 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   „In Ablauf übernehmen“ geht auch auf Etappen-Tage ohne Eintrag (`<plan>:@YYYY-MM-DD`, `addToDay` gibt die echte Referenz zurück).
 - **Route (Handy) und Aktivitäten-Orte** = Etappen (gleiche Nummern/Farben); ohne Nächte wie bisher (Vorlage: Tagesplan, Thailand: Unterkünfte).
 - **Art der Etappe** `places[k].kind`: `arrive` (Anreise) / `depart` (Abreise), z. B. lange Flüge mit Nächten; brauchen keine Unterkunft.
+  `places[k].parallel: true` (nur mit `kind`): verbraucht keine Reisezeit – Anreise endet am Beginn der nächsten Etappe, Abreise beginnt am Ende
+  der vorigen (z. B. eine Person reist später nach). Auch erneute Besuche (`same`) können Anreise/Abreise sein; erneut besuchen geht für alle Orte, auch unnummerierte.
   **Anwesenheitskalender** (`#cal`, Vorlage und Thailand) entsteht aus den Etappen: `TBPlanner.presence()` / `renderPresence({title, body, month})`
   je Person aus `who` der Etappen; Anreise-/Abreise-Etappen = Reisetage (gestrichelt), ohne eigene Anreise ist der erste, ohne eigene Abreise der Tag
   nach der letzten Nacht ein Reisetag; Lücken (Etappen nur anderer Personen) zählen als vor Ort. Vorlage: Tab erscheint automatisch, sobald Etappen
