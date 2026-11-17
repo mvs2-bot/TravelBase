@@ -199,7 +199,10 @@
         : g.n ? `Tag ${g.d0 + 1} – ${g.d1 + 1}` : `Tag ${g.d0 + 1} · Zwischenstopp`;
     const nightsWord = n => n === 1 ? 'Nacht' : 'Nächte';
     /* Etappe braucht eine Unterkunft: Nächte > 0 und nicht als „Keine Unterkunft nötig“ markiert (places[k].noStay, z. B. Nachtflug) */
-    const needsStay = g => g.n > 0 && !g.p.noStay;
+    const needsStay = g => g.n > 0 && !g.p.noStay && !g.p.kind;
+    /* Art der Etappe: places[k].kind = 'arrive' (Anreise) | 'depart' (Abreise), z. B. lange Flüge mit Nächten; sonst Aufenthalt */
+    const KINDS = [['', 'Aufenthalt'], ['arrive', 'Anreise'], ['depart', 'Abreise']];
+    const kindLabel = k => (KINDS.find(x => x[0] === k) || ['', ''])[1];
     const legShort = g => g.from ? `${fmt(g.from)} – ${fmt(g.to)}` : `Tag ${g.d0 + 1} – ${g.d1 + 1}`;
     /* − / +: sofort anzeigen, gesammelt speichern (kurz nach dem letzten Klick) */
     let nTimer = 0;
@@ -276,7 +279,7 @@
                 ${gap(0, null)}
                 ${l.map(({ k, p }, i) => {
                     const g = lg.get(k), when = g ? (g.from && g.n ? legShort(g) : legText(g)) : p.date || '';
-                    const whenX = p.noStay && g && g.n ? `${when} · ohne Unterkunft` : when;
+                    const whenX = [p.kind ? kindLabel(p.kind) : '', p.noStay && !p.kind && g && g.n ? `${when} · ohne Unterkunft` : when].filter(Boolean).join(' · ');
                     return `<li class="pl-stop" data-k="${esc(k)}" data-sort="stops">
                     <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(lab.get(k) ?? p.num) : ic('pin')}</button>
                     <button type="button" class="pl-stop-main" data-pl="stop-open" data-k="${esc(k)}">
@@ -552,6 +555,8 @@
                 ${field('Zeitraum / Datum (Text)', inp('date', cur.date, 'maxlength="80" placeholder="z. B. 12.–15.04. oder Tag 3–5"'))}
                 ${field('Beschreibung', area('desc', cur.desc, 'maxlength="2000"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(cur.who) || cur.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
+                ${field('Art der Etappe', sel('kind', cur.kind || '', KINDS))}
+                <p class="note pl-kind-note">Anreise / Abreise: z. B. lange Flüge, auch mit Nächten. Zählen im Anwesenheitskalender als Reisetage und brauchen keine Unterkunft.</p>
                 <div class="pl-row">
                     <label class="pl-check"><input type="checkbox" name="numbered"${cur.num != null ? ' checked' : ''}><span>Nummerierter Stopp der Route</span></label>
                 </div>
@@ -580,6 +585,8 @@
                     });
                 };
                 const pick = pickMap(f, cur, k);
+                /* Anreise/Abreise: Unterkunft und Aktivitäten standardmäßig aus */
+                f.elements.kind.onchange = () => { if (f.elements.kind.value) ['noStay', 'noActs'].forEach(n => { if (f.elements[n]) f.elements[n].checked = false; }); };
                 find.onclick = run;
                 f.querySelectorAll('[data-again]').forEach(b => b.onclick = () => { dlg.close(); addAgain(b.dataset.again, at); });
                 f.elements.name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
@@ -604,7 +611,7 @@
                     const who = [...f.querySelectorAll('input[name="who"]')];
                     if (who.length) { const on = who.filter(x => x.checked).map(x => x.value); if (on.length === who.length) delete o.who; else o.who = on; }
                     setOpt(o, 'date', val(f, 'date')); setOpt(o, 'desc', val(f, 'desc'));
-                    readShowIn(f, o);
+                    readShowIn(f, o); setOpt(o, 'kind', val(f, 'kind'));
                     if (!numbered) delete o.num;
                     /* „+“ zwischen zwei Stopps: an dieser Stelle einfügen, sonst ans Ende */
                     else if (o.num == null) o.num = at != null && isFinite(at) ? at + .5 : Object.values(P).reduce((m, x) => x.num != null && x !== o ? Math.max(m, +x.num || 0) : m, 0) + 1;
@@ -859,6 +866,74 @@
             if (on.length) { const a = on[0], b = on[on.length - 1]; out.set(key, { start: a.from, end: b.n ? b.to : b.from }); }
         });
         return out;
+    }
+    /* Anwesenheit je Person aus den Etappen: Tag → 'on' (vor Ort) | 'fl' (An-/Abreise).
+       Anreise-/Abreise-Etappen sind Reisetage (Abreise inkl. Ankunftstag zu Hause); ohne eigene Anreise ist der erste Tag
+       ein Anreisetag, ohne eigene Abreise der Tag nach der letzten Nacht ein Abreisetag. */
+    function presence() {
+        const L = legs(), ps = persons();
+        if (!L.on || !L.start || !ps.length) return [];
+        const whoOf = g => H.placeWho ? H.placeWho(g.k) : Array.isArray(g.p.who) ? g.p.who : ps.map(pkey);
+        return ps.map(x => {
+            const key = pkey(x), on = L.list.filter(g => g.from && whoOf(g).includes(key));
+            if (!on.length) return null;
+            const days = new Map(), put = (iso, v) => { if (v === 'fl' || !days.has(iso)) days.set(iso, v); };
+            on.forEach(g => {
+                const k = g.p.kind;
+                if (!g.n) { put(g.from, k ? 'fl' : 'on'); return; }
+                for (let d = dn(g.from); d < dn(g.to); d++) put(isoOf(d), k ? 'fl' : 'on');
+                if (k === 'depart') put(g.to, 'fl');
+            });
+            const a = on[0], b = on[on.length - 1];
+            if (a.p.kind !== 'arrive') days.set(a.from, 'fl');
+            if (!b.p.kind && b.n) days.set(b.to, 'fl');
+            /* Lücken (Etappen nur anderer Reisender dazwischen, z. B. Abreise einer Person): weiter vor Ort */
+            let isos = [...days.keys()].sort();
+            for (let d = dn(isos[0]) + 1; d < dn(isos[isos.length - 1]); d++) if (!days.has(isoOf(d))) days.set(isoOf(d), 'on');
+            isos = [...days.keys()].sort();
+            return { key, name: x.name || key, color: color(x.color, 'var(--p1)'), start: isos[0], end: isos[isos.length - 1], days };
+        }).filter(Boolean);
+    }
+    /* Anwesenheitskalender (Vorlage und Thailand): Monatsansicht + Tabelle; Zahl = Tag der eigenen Reise */
+    function renderPresence(o) {
+        const ps = presence(), body = o && o.body;
+        if (!body) return false;
+        if (!ps.length) { body.innerHTML = '<p class="note">Sobald die Etappen Nächte und einen Reisebeginn haben, entsteht hier der Kalender.</p>'; if (o.month) o.month.innerHTML = ''; return false; }
+        const first = ps.reduce((m, p) => p.start < m ? p.start : m, ps[0].start), last = ps.reduce((m, p) => p.end > m ? p.end : m, ps[0].end);
+        const d0 = dn(first), n = dn(last) - d0 + 1, today = H.today;
+        if (o.title) o.title.innerHTML = ic('users') + `Anwesenheit · ${n} Tage`;
+        body.style.setProperty('--pc', ps.length);
+        const cell = (p, iso) => {
+            const v = p.days.get(iso);
+            if (!v) return '';
+            const nr = dn(iso) - dn(p.start) + 1;
+            return `<div class="bar${v === 'fl' ? ' fl' : ''}" style="${v === 'fl' ? `color:${esc(p.color)}` : `background:${esc(p.color)}`}" title="${esc(p.name)}: Tag ${nr}${v === 'fl' ? ' (An-/Abreise)' : ''}">${v === 'fl' ? ic('plane') : ''}${nr}</div>`;
+        };
+        let h = `<div class="cr hd"><div>Tag</div>${ps.map(p => `<div style="color:${esc(p.color)}">${esc(p.name)}</div>`).join('')}</div>`;
+        for (let d = 0; d < n; d++) {
+            const iso = isoOf(d0 + d), wd = new Date((d0 + d) * 864e5).getUTCDay();
+            h += `<div class="cr${wd === 0 || wd === 6 ? ' we' : ''}${iso === today ? ' today' : ''}"><div class="cd">Tag ${d + 1}<small>${'So Mo Di Mi Do Fr Sa'.split(' ')[wd]} ${fmt(iso)}</small></div>`
+                + ps.map(p => `<div class="cc">${cell(p, iso)}</div>`).join('') + '</div>';
+        }
+        body.innerHTML = h;
+        if (o.month) {
+            const months = [];
+            for (let y = +first.slice(0, 4), mo = +first.slice(5, 7); y * 12 + mo <= +last.slice(0, 4) * 12 + +last.slice(5, 7); mo === 12 ? (y++, mo = 1) : mo++) months.push([y, mo]);
+            const one = ([y, mo]) => {
+                const f = Date.UTC(y, mo - 1, 1) / 864e5, len = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+                let g = '<div></div>'.repeat((new Date(f * 864e5).getUTCDay() + 6) % 7);
+                for (let d = 0; d < len; d++) {
+                    const iso = isoOf(f + d);
+                    const dots = ps.map(p => p.days.has(iso) ? `<i class="${p.days.get(iso) === 'fl' ? 'fl' : ''}" style="color:${esc(p.color)}" title="${esc(p.name)}"></i>` : '').join('');
+                    g += `<div class="md${dots ? ' on' : ''}${iso === today ? ' now' : ''}">${d + 1}<span>${dots}</span></div>`;
+                }
+                return `<div><div class="mn"><b>${'Januar Februar März April Mai Juni Juli August September Oktober November Dezember'.split(' ')[mo - 1]} ${y}</b></div>`
+                    + `<div class="mg">${'Mo Di Mi Do Fr Sa So'.split(' ').map(w => `<div class="wd">${w}</div>`).join('')}${g}</div></div>`;
+            };
+            o.month.innerHTML = `<div class="mw" style="--n:${months.length}">${months.map(one).join('')}</div>`
+                + `<div class="ml">${ps.map(p => `<span><i style="color:${esc(p.color)}"></i>${esc(p.name)}</span>`).join('')}</div>`;
+        }
+        return true;
     }
     /* Für „In Ablauf übernehmen“ (shared/activities.js): alle Tage als Auswahl, auch Etappen-Tage ohne Eintrag */
     function dayOptions() {
@@ -1437,7 +1512,7 @@
         stopList, routeStops, totalKm, kmText, renderStops, mountStops,
         planToolbar, rowEditBtn, editRow, dayOptions, dayLabel, addToDay,
         renderAcc, warnings, gaps, cancelInfo,
-        legs, legText, labels, legDays, ablauf, personRanges, stayKey: s => stayKey(s),
+        legs, legText, labels, legDays, ablauf, personRanges, presence, renderPresence, stayKey: s => stayKey(s),
         saveKeys: (keys, mutate) => commit(keys, mutate),
         sheet: o => sheet(o), ui: { field, inp, area, sel: (n, v, o) => sel(n, v, o), val: (f, n) => val(f, n) },
         renderTransports,

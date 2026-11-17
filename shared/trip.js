@@ -172,7 +172,9 @@
         if ((Array.isArray(DATA.stations) && (DATA.stations.length || canEdit())) || (!DATA.stations && canEdit() && DATA.plans)) s.push({ id: 'acc', icon: ic('bed'), label: 'Unterkünfte', sub: 'bookings' });
         // Mögliche Aktivitäten: eingeschaltet über "activities": true in den Reisedaten (shared/activities.js)
         if (DATA.activities) s.push({ id: 'activities', icon: ic('sparkles'), label: 'Mögliche Aktivitäten' });
-        if (DATA.calendar && (DATA.persons || []).length) s.push({ id: 'cal', icon: ic('users'), label: 'Anwesenheit', tab: true });
+        /* Anwesenheit: alte Reisen mit calendar; sonst automatisch, sobald Etappen Nächte und Reisende haben */
+        const legsOn = Object.values(DATA.places || {}).some(p => p && p.num != null && p.nights != null);
+        if ((DATA.calendar || legsOn) && (DATA.persons || []).length) s.push({ id: 'cal', icon: ic('users'), label: 'Anwesenheit', tab: true });
         // To-Dos als eigener Bereich; eine ältere Seite aus dem Cache ohne #todos zeigt sie weiter unter „Infos & mehr“
         const todoPane = DATA.todos && !!$('#todos');
         if (todoPane) s.push({ id: 'todos', icon: ic('checkCircle'), label: 'To-Dos' });
@@ -493,6 +495,9 @@
 
     /* ---------- Anwesenheitskalender ---------- */
     function renderCal() {
+        /* aus den Etappen (inkl. Anreise/Abreise), sobald diese Nächte haben; sonst wie bisher aus persons.start/end/home */
+        const PLc = window.TBPlanner && TBPlanner.ready && TBPlanner.renderPresence ? TBPlanner : null;
+        if (PLc && PLc.legs(RAW.places || {}).on && PLc.renderPresence({ title: $('#calTitle'), body: $('#calBody'), month: $('#calMonth') })) return;
         const ps = DATA.persons || [], m = DATA.meta || {};
         if (!DATA.calendar || !ps.length || !m.start) return;
         /* "home" = Ankunft zu Hause; Rückflüge nach Europa gehen über Nacht und belegen zwei Flugtage */
@@ -868,6 +873,7 @@
         safe(renderNav);
         safe(renderPlanPanes);
         safe(rebuildMap);
+        safe(renderCal);
         safe(renderMisc);
         safe(renderAcc);
         safe(mobileData);
