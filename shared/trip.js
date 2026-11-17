@@ -171,7 +171,9 @@
         /* Unterkünfte (eigener Bereich wie bei Thailand): wenn Daten da sind (Array oder Gruppen wie { th: [], sl: [] })
            oder man sie anlegen darf und die Reise einen Ablauf oder Etappen hat (Gäste bekommen keine) */
         const st = DATA.stations, stN = Array.isArray(st) ? st.length : st && typeof st === 'object' ? Object.values(st).reduce((n, a) => n + (Array.isArray(a) ? a.length : 0), 0) : 0;
-        if (stN || (canEdit() && (DATA.plans || (DATA.places && window.TBPlanner && TBPlanner.mountStops)))) s.push({ id: 'acc', icon: ic('bed'), label: 'Unterkünfte', tab: true });
+        /* abgeschlossene Reisen: leere Bereiche zum Anlegen (Unterkünfte, Transporte) nicht mehr anbieten */
+        const m = DATA.meta || {}, endIso = m.end || m.start || (RES && RES.trip && (RES.trip.end_date || RES.trip.start_date)), past = !!endIso && endIso < TODAY;
+        if (stN || (canEdit() && !past && (DATA.plans || (DATA.places && window.TBPlanner && TBPlanner.mountStops)))) s.push({ id: 'acc', icon: ic('bed'), label: 'Unterkünfte', tab: true });
         /* Anwesenheit: alte Reisen mit calendar; sonst automatisch, sobald Etappen Nächte und Reisende haben */
         const legsOn = Object.values(DATA.places || {}).some(p => p && p.num != null && p.nights != null);
         if ((DATA.calendar || legsOn) && (DATA.persons || []).length) s.push({ id: 'cal', icon: ic('users'), label: 'Anwesenheit', tab: true });
@@ -181,7 +183,7 @@
         const todoPane = DATA.todos && !!$('#todos');
         if (todoPane) s.push({ id: 'todos', icon: ic('checkCircle'), label: 'To-Dos' });
         if ((DATA.persons || []).some(p => p.start) || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links || (ROLE === 'admin' && DATA.plans)) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
-        if ((DATA.flights || []).length || (canEdit() && DATA.plans)) s.push({ id: 'flights', icon: ic('plane'), label: (DATA.flights || []).some(f => f.mode && f.mode !== 'flight') || canEdit() ? 'Flüge & Transporte' : 'Flüge' });
+        if ((DATA.flights || []).length || (canEdit() && !past && DATA.plans)) s.push({ id: 'flights', icon: ic('plane'), label: (DATA.flights || []).some(f => f.mode && f.mode !== 'flight') || canEdit() ? 'Flüge & Transporte' : 'Flüge' });
         if (DATA.climate) s.push({ id: 'climate', icon: ic('cloudSun'), label: 'Klima & Wetter' });
         return s;
     }
@@ -250,10 +252,27 @@
         if (!whoList && nobody(k)) return NOBODY;
         const cs = whoColors(whoList || placeWho(k));
         /* neue Reisen: Farbe kommt nur von den Reisenden; noch keine eingetragen = Farbe der ersten Person (Blau) */
-        if (!cs.length) return DATA.mapColors ? col((DATA.places[k] || {}).color) : (DATA.persons || []).length ? col(DATA.persons[0].color) : '#2563eb';
+        /* alte Reisen ohne Reisende: Farbe des Orts (passt zur Legende, z. B. Regionen), sonst Blau */
+        if (!cs.length) return DATA.mapColors ? col((DATA.places[k] || {}).color) : (DATA.persons || []).length ? col(DATA.persons[0].color) : (DATA.places[k] || {}).color ? col(DATA.places[k].color) : '#2563eb';
         return cs.length === 1 ? cs[0] : `conic-gradient(${cs.map((c, i) => `${c} ${i / cs.length * 360}deg ${(i + 1) / cs.length * 360}deg`).join(', ')})`;
     }
     const legend = () => [...(byPersons() ? DATA.persons.map(p => [p.color, '●', p.name]) : []), ...(DATA.legend || [])].map(([c, sym, t]) => [col(c, 'var(--mute)'), esc(sym), t]);
+    /* gespeicherte Strecken (routes: path oder via) in eine Karte bzw. Ebene zeichnen; false, wenn es keine gibt */
+    function drawStored(target) {
+        const P = DATA.places || {}, styles = { ...DEFAULT_STYLES, ...(DATA.routeStyles || {}) };
+        let n = 0;
+        (DATA.routes || []).forEach(r => {
+            const pts = r.path || (r.via || []).map(k => P[k] && [P[k].lat, P[k].lng]).filter(Boolean);
+            if (pts.length < 2) return;
+            n++;
+            const st = styles[r.style] || DEFAULT_STYLES.road, cs = whoColors(r.who);
+            if (!cs.length) return L.polyline(pts, st).addTo(target);
+            /* mehrere Personen: Linie in Streifen ihrer Farben (Flüge behalten eine Lücke) */
+            const seg = 10, gap = st.dashArray ? 8 : 0, period = seg * cs.length + gap;
+            cs.forEach((color, i) => L.polyline(pts, { ...st, color, dashArray: period > seg ? `${seg} ${period - seg}` : null, dashOffset: String(-i * seg) }).addTo(target));
+        });
+        return n > 0;
+    }
     function initMap() {
         const layer = (url, attr, maxZoom = 15) => L.tileLayer(url, { maxZoom, attribution: attr });
         const baseLayers = {
@@ -267,19 +286,11 @@
         map = L.map('map', { layers: [baseLayers[first]] });
         L.control.layers(baseLayers, null, { collapsed: true, position: 'topright' }).addTo(map);
 
-        const P = DATA.places || {}, styles = { ...DEFAULT_STYLES, ...(DATA.routeStyles || {}) };
+        const P = DATA.places || {};
         /* Linien: aus den Etappen (Reihenfolge + eingetragene Transporte), sonst die gespeicherten Strecken */
         const PLm = window.TBPlanner && TBPlanner.ready && TBPlanner.drawRoute ? TBPlanner : null;
         const byLegs = !!(PLm && PLm.drawRoute(map, RAW.places || {}));
-        if (!byLegs) (DATA.routes || []).forEach(r => {
-            const pts = r.path || (r.via || []).map(k => P[k] && [P[k].lat, P[k].lng]).filter(Boolean);
-            if (pts.length < 2) return;
-            const st = styles[r.style] || DEFAULT_STYLES.road, cs = whoColors(r.who);
-            if (!cs.length) return L.polyline(pts, st).addTo(map);
-            /* mehrere Personen: Linie in Streifen ihrer Farben (Flüge behalten eine Lücke) */
-            const seg = 10, gap = st.dashArray ? 8 : 0, period = seg * cs.length + gap;
-            cs.forEach((color, i) => L.polyline(pts, { ...st, color, dashArray: period > seg ? `${seg} ${period - seg}` : null, dashOffset: String(-i * seg) }).addTo(map));
-        });
+        if (!byLegs) drawStored(map);
         /* Ohne eigene Strecken: automatische Linie durch die Stopps in Reihenfolge */
         const PL = window.TBPlanner;
         if (!byLegs && !(DATA.routes || []).length && PL) {
@@ -778,7 +789,8 @@
             tiles.acc = { text: w ? `${w}× Storno-Frist!` : st.total ? `${st.booked}/${st.total} gebucht` : 'Noch leer' };
         }
         if (window.TBPlanner && TBPlanner.ready && TBPlanner.legs) {
-            const g = TBPlanner.legs(RAW.places || {}), n = Object.values(P).filter(p => p && p.num != null).length;
+            /* alte Reisen ohne Nummern: alle Orte zählen */
+            const g = TBPlanner.legs(RAW.places || {}), n = Object.values(P).filter(p => p && p.num != null).length || Object.values(P).filter(p => p && !(p.same && P[p.same])).length;
             tiles.stops = { text: g.on ? `${n} Stopps · ${g.total} ${g.total === 1 ? 'Nacht' : 'Nächte'}` : n ? `${n} Stopps` : 'Noch leer' };
         }
         if (DATA.climate) tiles.climate = { text: `${(DATA.climate.rows || []).length} Orte` };
@@ -826,6 +838,7 @@
                 return [me, ...ms.filter(x => x.trip_id === TRIP_ID && x.role !== 'guest').map(x => x.name)].filter(Boolean);
             },
             refresh: rerender,
+            drawStored: target => window.L ? drawStored(target) : false,
             focusPlace: k => focusPlaces([k])
         });
     }

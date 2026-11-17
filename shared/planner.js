@@ -149,10 +149,47 @@
     function stopList(P) {
         P = P || places();
         const all = Object.entries(P).map(([k, p], i) => ({ k, p, i }));
+        /* alte Reisen ohne Nummern (Import): nach dem ersten Datum des Orts (Tagesplan bzw. Datumstext), nur Anzeige */
+        const dt = byDate(P);
+        if (dt) return all.sort((a, b) => (dt.get(a.k) ?? 1e12) - (dt.get(b.k) ?? 1e12) || a.i - b.i);
         const slots = all.filter(x => x.p && x.p.num != null);
         const sorted = slots.slice().sort((a, b) => (+a.p.num || 0) - (+b.p.num || 0) || a.i - b.i);
         let j = 0;
         return all.map(x => x.p && x.p.num != null ? sorted[j++] : x);
+    }
+    /* Datum eines Orts bei alten Reisen ohne Nummern und Nächte: frühester Tag aus den Tagesplan-Zeilen (focus + from/date)
+       bzw. aus dem Datumstext des Orts („14.12. - 16.12.2025 / 2 Nächte“, „Sa, 18.07. 2026“, „04.09. (Etappe 1)“).
+       Ohne Jahr gilt das Jahr des Reisebeginns. Liefert null, sobald ein Ort eine Nummer hat oder kein Datum erkennbar ist. */
+    let DT = null;
+    function dayOfText(t, y0, s0) {
+        const m = String(t || '').match(/(\d{4})-(\d{2})-(\d{2})|(\d{1,2})\.(\d{1,2})\.\s*(\d{4}|\d{2}(?!\d))?/);
+        if (!m) return null;
+        if (m[1]) return dn(`${m[1]}-${m[2]}-${m[3]}`);
+        let y = m[6] ? (m[6].length === 2 ? 2000 + +m[6] : +m[6]) : y0;
+        if (!y) return null;
+        const iso = d => `${d}-${String(m[5]).padStart(2, '0')}-${String(m[4]).padStart(2, '0')}`;
+        if (!ISO.test(iso(y))) return null;
+        let n = dn(iso(y));
+        /* Datum ohne Jahr kurz nach dem Jahreswechsel (Reise über Silvester) */
+        if (!m[6] && s0 != null && n < s0 - 30) n = dn(iso(y + 1));
+        return n;
+    }
+    function byDate(P) {
+        if (Object.values(P).some(p => p && (p.num != null || p.nights != null))) return null;
+        const m = H ? H.meta() || {} : {}, s0 = ISO.test(m.start || '') ? dn(m.start) : null, y0 = s0 != null ? +m.start.slice(0, 4) : null;
+        const sig = JSON.stringify([Object.keys(P), m.start, (H && H.plans ? H.plans() : []).length]);
+        if (DT && DT.P === P && DT.sig === sig) return DT.map;
+        const out = new Map(), put = (k, n) => { if (n != null && P[k] && !(out.get(k) <= n)) out.set(k, n); };
+        /* gleicher Tag: Reihenfolge der Tagesplan-Zeilen; Orte nur mit Datumstext (z. B. Abflughafen) vor den Zeilen des Tages */
+        let ri = 0;
+        (H && H.plans ? H.plans() : []).forEach(pl => (pl.rows || []).forEach(r => {
+            const n = ISO.test(r.from || '') ? dn(r.from) : dayOfText(r.date, y0, s0), i = ++ri;
+            (Array.isArray(r.focus) ? r.focus : r.focus ? [r.focus] : []).forEach(k => put(k, n == null ? null : n * 1000 + Math.min(i, 998)));
+        }));
+        Object.entries(P).forEach(([k, p]) => { if (p && !out.has(k)) { const n = dayOfText(p.date, y0, s0); put(k, n == null ? null : n * 1000); } });
+        const map = out.size >= 2 ? out : null;
+        DT = { P, sig, map };
+        return map;
     }
     /* Erneuter Besuch eines Orts: eigener Eintrag mit "same": "<Schlüssel des Orts>" (Name/Koordinaten werden mitgeführt),
        eigene Position, Nächte, Reisende und Unterkunft; er trägt die Nummer des ersten Besuchs */
@@ -211,7 +248,8 @@
                keine zweite Linie zwischen den Orten selbst (z. B. Bangkok → Colombo neben BKK → CMB, wenn die Flughäfen nicht auf der Route sind) */
             const tb = transportBetween(a.p, b.p);
             if (tb && !tb.f.noMap) continue;
-            out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: km(a.p, b.p) >= 800 ? 'flight' : 'road' });
+            const lm = legacyMode(a.k, b.k, P);
+            out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: lm === 'walk' || lm === 'ferry' || lm === 'flight' ? lm : km(a.p, b.p) >= 800 ? 'flight' : 'road' });
         }
         return out;
     }
@@ -279,7 +317,7 @@
     const homePoints = P => legs(P || places()).on ? transportSegments(P).filter(s => s.home).map(s => [s.home.lat, s.home.lng]) : [];
     const SEG_STYLE = { flight: { color: '#059669', weight: 2.5, opacity: .85, dashArray: '6, 6' }, ferry: { color: '#0d9488', weight: 3, opacity: .9, dashArray: '2, 7' },
         home: { color: '#059669', weight: 2, opacity: .6, dashArray: '3, 7' },
-        train: { color: '#dc2626', weight: 3, opacity: .9, dashArray: '4, 4' }, road: { color: '#0d9488', weight: 3.5, opacity: .9 }, bus: { color: '#0d9488', weight: 3.5, opacity: .9 }, car: { color: '#0d9488', weight: 3.5, opacity: .9 } };
+        train: { color: '#dc2626', weight: 3, opacity: .9, dashArray: '4, 4' }, road: { color: '#0d9488', weight: 3.5, opacity: .9 }, walk: { color: '#ca8a04', weight: 3.5, opacity: .9, dashArray: '6, 8' }, bus: { color: '#0d9488', weight: 3.5, opacity: .9 }, car: { color: '#0d9488', weight: 3.5, opacity: .9 } };
     /* zeichnet die Strecken der Etappen in eine Leaflet-Karte; true, wenn die Etappen die Linien bestimmen */
     function drawRoute(map, P) {
         if (!window.L || !map || !legs(P || places()).on) return false;
@@ -391,12 +429,12 @@
             </div>`;
         };
         const next = new Map();
-        for (let i = 1; i < rs.length; i++) next.set(rs[i - 1].k, { km: Math.round(km(rs[i - 1].p, rs[i].p)), to: rs[i].p });
+        for (let i = 1; i < rs.length; i++) next.set(rs[i - 1].k, { km: Math.round(km(rs[i - 1].p, rs[i].p)), to: rs[i].p, k: rs[i].k });
         el.hidden = !l.length && !edit;
         const total = totalKm(P);
         /* Reiseende: fester Zeitraum, sonst die Summe der Nächte */
         const end = m.end && !(H.legEnd && H.legEnd()) ? m.end : L.end;
-        const drag = edit && l.length > 1;
+        const drag = edit && l.length > 1 && !byDate(P);
         const dayLong = iso => ISO.test(iso || '') ? `${WD[new Date(iso + 'T12:00:00Z').getUTCDay()]}. ${fmtY(iso)}` : '';
         /* Pille „Nächte geplant“ wie bei Polarsteps (oben rechts neben „Reise beginnt“) */
         const pct = goal ? Math.min(100, Math.round(L.total / goal * 100)) : 100;
@@ -421,7 +459,9 @@
         const trs = pos => (trAfter.get(pos) || []).map(trLi).join('');
         const gap = (at, k, nk) => {
             const x = k && next.get(k), tr = x && !trAfter.has(l.findIndex(y => y.k === k)) && transportBetween(P[k], x.to);
-            const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr && tr.mode))}</span>` : '';
+            /* ohne eingetragenen Transport: Verkehrsmittel aus den gespeicherten Strecken (alte Reisen, z. B. Wanderetappen) */
+            const lm = x && !tr ? legacyMode(k, x.k, P) : null;
+            const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : lm ? `${MODE_TXT[lm]} · Luftlinie, Zeit grob geschätzt` : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : lm ? MODE_IC[lm] : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr ? tr.mode : lm))}</span>` : '';
             /* eingetragener Transport: Status dezent daneben (gebucht / geplant) und ggf. Link zur Flugstatus-Seite */
             const f = tr && tr.f, st = f ? (f.planned ? ['warn', 'geplant'] : ['ok', 'gebucht']) : null, su = f && url(f.status);
             const badge = f ? `<span class="pl-tr-st ${st[0]}" title="${esc([f.airline, (f.flightNos || []).join(', '), f.booking && 'Buchung ' + f.booking].filter(Boolean).join(' · '))}">${ic(st[0] === 'ok' ? 'check' : 'clock')}${st[1]}</span>${su ? `<a class="pl-tr-link" href="${esc(su)}" target="_blank" rel="noopener" title="Flugstatus prüfen">Status ↗</a>` : ''}` : '';
@@ -430,7 +470,7 @@
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
                 <span class="pl-head-acts">${edit ? `<button type="button" class="pl-ins-tg${insOn() ? ' on' : ''}" data-pl="ins-toggle" aria-pressed="${insOn()}" title="„+“ zwischen den Etappen ein- oder ausblenden">${ic('plus')}</button>` : ''}${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}</span></div>
-            ${!L.on && edit && nums.length ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : ''}
+            ${!L.on && edit && nums.length && !(m.end && H.today && m.end < H.today) ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : ''}
             ${l.length ? `<ol class="pl-tl">
                 <li class="pl-tl-row">${H.role === 'admin' && edit ? `<button type="button" class="pl-tl-start" data-pl="trip-dates" title="Reisebeginn ändern"><span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen – antippen')}${ic('pencil')}</small></div></button>` : `<span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen')}</small></div>`}${pill}</li>
                 ${trs(-1)}${gap(0, null, l[0] && l[0].k)}
@@ -460,7 +500,8 @@
         if (detailK && dlg && dlg.open) renderDetail();
     }
     /* Verkehrsmittel zwischen zwei Stopps: eingetragener Transport mit passenden Orten, sonst Schätzung */
-    const MODE_IC = { flight: 'plane', train: 'train', ferry: 'ship', bus: 'bus', car: 'car' };
+    const MODE_IC = { flight: 'plane', train: 'train', ferry: 'ship', bus: 'bus', car: 'car', walk: 'walk' };
+    const MODE_TXT = { flight: 'Flug', train: 'Zug', ferry: 'Fähre', bus: 'Bus', car: 'Auto', walk: 'Zu Fuß' };
     const placeWords = p => String(p && p.name || '').toLowerCase().split(/[\s,/·()&-]+/).filter(w => w.length > 2);
     const endHits = (end, p) => { const t = [end && end.city, end && end.name, end && end.code].filter(Boolean).join(' ').toLowerCase(); return !!t && placeWords(p).some(w => t.includes(w)); };
     /* Übereinstimmung Transport-Ende ↔ Ort: 3 = Flughafen-Code im Namen, 1 = Ortsname, 0 = keine */
@@ -493,16 +534,37 @@
         l.forEach(({ k }, j) => { const g = lg.get(k); if (g && g.from && g.from < d) pos = j; });
         return pos;
     }
+    /* Verkehrsmittel aus den gespeicherten Strecken alter Reisen (routes: { via: [a, b] } oder { path } durch beide Orte),
+       erkannt am Namen des Stils: „walk“ → zu Fuß, „ferry“ → Fähre, „flight…“ → Flug, „bus“, „train/transit“, „drive/car“ */
+    const STYLE_MODE = [[/walk|hike|wander|trek|fuss|foot/i, 'walk'], [/ferry|faehre|boat|ship/i, 'ferry'], [/flight|flug|plane/i, 'flight'],
+        [/bus/i, 'bus'], [/train|rail|zug|transit/i, 'train'], [/drive|car|auto|road/i, 'car']];
+    function legacyMode(ka, kb, P) {
+        P = P || places();
+        const a = P[ka], b = P[kb], R = raw().routes;
+        if (!Array.isArray(R) || !valid(a) || !valid(b)) return null;
+        const near = (pt, p) => Array.isArray(pt) && km({ lat: +pt[0], lng: +pt[1] }, p) <= 2;
+        const r = R.find(r => {
+            if (!r || !r.style) return false;
+            if (Array.isArray(r.via)) { const i = r.via.indexOf(ka), j = r.via.indexOf(kb); return i >= 0 && j >= 0 && Math.abs(i - j) === 1; }
+            if (!Array.isArray(r.path)) return false;
+            const i = r.path.findIndex(pt => near(pt, a)), j = r.path.findIndex(pt => near(pt, b));
+            return i >= 0 && j >= 0 && i !== j;
+        });
+        const hit = r && STYLE_MODE.find(([re]) => re.test(r.style));
+        /* kurzes Stück auf einer Flug-Strecke (z. B. Flughafen → Ort) ist kein Flug */
+        if (hit && hit[1] === 'flight' && km(a, b) < 150) return null;
+        return hit ? hit[1] : null;
+    }
     function transportBetween(a, b) {
         const f = (raw().flights || []).find(f => f && f.from && f.to && endHits(f.from, a) && endHits(f.to, b));
         if (!f) return null;
         const mode = f.mode || 'flight';
         return { f, mode, icon: MODE_IC[mode] || 'plane', label: (MODES.find(x => x[0] === mode) || ['', 'Transport'])[1] + ' eingetragen' };
     }
-    /* Zeit grob: Flug ≈ km/750 + 25 min, Fähre ≈ 30 km/h, sonst Straße/Schiene (Luftlinie × 1,3 bei 60 km/h) */
+    /* Zeit grob: Flug ≈ km/750 + 25 min, Fähre ≈ 30 km/h, zu Fuß ≈ 4 km/h (Luftlinie × 1,25), sonst Straße/Schiene (Luftlinie × 1,3 bei 60 km/h) */
     function travelText(k, mode) {
         if (!mode && k >= 800) mode = 'flight';
-        const h = mode === 'flight' ? k / 750 + .4 : mode === 'ferry' ? k * 1.2 / 30 : k * 1.3 / 60;
+        const h = mode === 'flight' ? k / 750 + .4 : mode === 'ferry' ? k * 1.2 / 30 : mode === 'walk' ? k * 1.25 / 4 : k * 1.3 / 60;
         if (h < 1) return `ca. ${Math.max(10, Math.round(h * 6) * 10)} min`;
         const hh = Math.floor(h), mm = Math.round((h - hh) * 6) * 10;
         return `ca. ${hh} h${mm && hh < 10 ? ` ${mm === 60 ? '' : mm + ' min'}` : ''}`.trim();
@@ -587,7 +649,8 @@
             SM.marks[k] = m; SM.pts.push(ll);
         });
         SM.pts.push(...homePoints(P));
-        if (!drawRoute(SM.layer, P)) {
+        /* ohne Etappen-Nächte: die gespeicherten Strecken wie auf der Karte (alte Reisen), sonst eine Linie durch die Stopps */
+        if (!drawRoute(SM.layer, P) && !(H.drawStored && H.drawStored(SM.layer))) {
             const l = routeStops(P).filter(x => !x.p.noRoute).map(x => [+x.p.lat, +x.p.lng]);
             if (l.length > 1) L.polyline(l, SEG_STYLE.road).addTo(SM.layer);
         }
