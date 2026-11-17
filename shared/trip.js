@@ -340,11 +340,13 @@
         if (!map || fitted || !$('#map').offsetWidth) return;
         map.invalidateSize();
         if (DATA.view) map.setView(DATA.view.center, DATA.view.zoom);
-        else if (DATA.bounds) map.fitBounds(DATA.bounds, { padding: [20, 20] });
-        else if (ALL_POINTS.length) map.fitBounds(ALL_POINTS, { padding: [30, 30] });
+        /* Flüge von/nach zu Hause (Heimat-Flughäfen aus den Etappen-Transporten): Ausschnitt reicht bis dorthin */
+        else if (DATA.bounds) { const b = L.latLngBounds(DATA.bounds); homePts().forEach(q => b.extend(q)); map.fitBounds(b, { padding: [20, 20] }); }
+        else if (ALL_POINTS.length) map.fitBounds([...ALL_POINTS, ...homePts()], { padding: [30, 30] });
         else map.setView([20, 0], 2);
         fitted = true;
     }
+    const homePts = () => window.TBPlanner && TBPlanner.ready && TBPlanner.homePoints ? TBPlanner.homePoints(RAW.places || {}) : [];
     function focusPlaces(keys) {
         const P = DATA.places || {};
         const ms = (keys || []).map(k => markers[k] || (P[k] && markers[P[k].same])).filter(Boolean);

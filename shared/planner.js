@@ -209,7 +209,8 @@
             if (km(a.p, b.p) >= 800 && (onlyArr(a) || onlyDep(b))) continue;
             /* ein eingetragener Transport zwischen a und b hat seine eigene Linie (transportSegments, ggf. zwischen den Flughäfen):
                keine zweite Linie zwischen den Orten selbst (z. B. Bangkok → Colombo neben BKK → CMB, wenn die Flughäfen nicht auf der Route sind) */
-            if (transportBetween(a.p, b.p)) continue;
+            const tb = transportBetween(a.p, b.p);
+            if (tb && !tb.f.noMap) continue;
             out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: km(a.p, b.p) >= 800 ? 'flight' : 'road' });
         }
         return out;
@@ -249,19 +250,48 @@
             const d0 = f.from.date, d = ISO.test((f.to && f.to.date) || '') ? f.to.date : d0;
             return ISO.test(d0 || '') ? by(f, g => g.from >= d0 && dn(g.from) <= dn(d) + 1, g => Math.abs(dn(g.from) - dn(d))) : null;
         };
-        return (raw().flights || []).filter(f => f && f.from && f.to).map(f => {
-            const a = best(f.from) || dep(f), b = best(f.to) || arr(f);
-            return a && b && a !== b && !(+a.lat === +b.lat && +a.lng === +b.lng) ? { from: [+a.lat, +a.lng], to: [+b.lat, +b.lng], mode: f.mode || 'flight' } : null;
+        return (raw().flights || []).filter(f => f && f.from && f.to && !f.noMap).map(f => {
+            const ha = !best(f.from) && homeAirport(f.from), hb = !best(f.to) && homeAirport(f.to);
+            const a = best(f.from) || ha || dep(f), b = best(f.to) || hb || arr(f);
+            if (!a || !b || a === b || (+a.lat === +b.lat && +a.lng === +b.lng)) return null;
+            const home = ha || hb;
+            return { from: [+a.lat, +a.lng], to: [+b.lat, +b.lng], mode: home ? 'home' : f.mode || 'flight', home: home ? { lat: home.lat, lng: home.lng, name: home.name } : null };
         }).filter(Boolean);
     }
+    /* Heimat-Flughäfen ohne eigene Etappe (Flug von/nach zu Hause): Linie bis dorthin, Karte zeigt sie mit (Weltansicht).
+       Erkannt über den Code bzw. den Stadtnamen; „Europa“ ohne Code bleibt ohne Linie. */
+    const AIRPORTS = {
+        MUC: [48.354, 11.786, 'München'], VIE: [48.110, 16.570, 'Wien'], FRA: [50.038, 8.562, 'Frankfurt'], ZRH: [47.458, 8.555, 'Zürich'],
+        NUE: [49.499, 11.078, 'Nürnberg'], STR: [48.690, 9.222, 'Stuttgart'], SZG: [47.793, 13.004, 'Salzburg'], BER: [52.366, 13.503, 'Berlin'],
+        HAM: [53.630, 9.988, 'Hamburg'], DUS: [51.289, 6.767, 'Düsseldorf'], GVA: [46.238, 6.109, 'Genf'], INN: [47.260, 11.344, 'Innsbruck'],
+        GRZ: [46.991, 15.440, 'Graz'], LNZ: [48.233, 14.188, 'Linz'], MAD: [40.472, -3.561, 'Madrid'], BCN: [41.297, 2.078, 'Barcelona'],
+        LIS: [38.774, -9.134, 'Lissabon'], CDG: [49.010, 2.548, 'Paris'], AMS: [52.310, 4.768, 'Amsterdam'], LHR: [51.470, -0.454, 'London'],
+        FCO: [41.800, 12.239, 'Rom'], IST: [41.262, 28.742, 'Istanbul'], CPH: [55.618, 12.656, 'Kopenhagen'], BRU: [50.901, 4.484, 'Brüssel']
+    };
+    function homeAirport(end) {
+        if (!end) return null;
+        const code = String(end.code || '').trim().toUpperCase();
+        let hit = AIRPORTS[code] && [code, AIRPORTS[code]];
+        if (!hit) { const t = [end.city, end.name].filter(Boolean).join(' ').toLowerCase(); hit = t && Object.entries(AIRPORTS).find(([, x]) => t.includes(x[2].toLowerCase())); }
+        return hit ? { lat: hit[1][0], lng: hit[1][1], name: `${hit[1][2]} (${hit[0]})` } : null;
+    }
+    /* Punkte der Heimat-Flughäfen (für den Kartenausschnitt) */
+    const homePoints = P => legs(P || places()).on ? transportSegments(P).filter(s => s.home).map(s => [s.home.lat, s.home.lng]) : [];
     const SEG_STYLE = { flight: { color: '#059669', weight: 2.5, opacity: .85, dashArray: '6, 6' }, ferry: { color: '#0d9488', weight: 3, opacity: .9, dashArray: '2, 7' },
+        home: { color: '#059669', weight: 2, opacity: .6, dashArray: '3, 7' },
         train: { color: '#dc2626', weight: 3, opacity: .9, dashArray: '4, 4' }, road: { color: '#0d9488', weight: 3.5, opacity: .9 }, bus: { color: '#0d9488', weight: 3.5, opacity: .9 }, car: { color: '#0d9488', weight: 3.5, opacity: .9 } };
     /* zeichnet die Strecken der Etappen in eine Leaflet-Karte; true, wenn die Etappen die Linien bestimmen */
     function drawRoute(map, P) {
         if (!window.L || !map || !legs(P || places()).on) return false;
         /* zuerst die eingetragenen Transporte, dann die Strecken zwischen den Etappen (ohne doppelte Linien) */
         const seen = new Set(), key = s => [s.from.join(','), s.to.join(',')].sort().join('|');
-        [...transportSegments(P), ...routeSegments(P)].forEach(s => { const q = key(s); if (seen.has(q)) return; seen.add(q); L.polyline([s.from, s.to], SEG_STYLE[s.mode] || SEG_STYLE.road).addTo(map); });
+        const homes = new Set();
+        [...transportSegments(P), ...routeSegments(P)].forEach(s => {
+            const q = key(s); if (seen.has(q)) return; seen.add(q);
+            L.polyline([s.from, s.to], SEG_STYLE[s.mode] || SEG_STYLE.road).addTo(map);
+            /* Heimat-Flughafen: kleiner Punkt mit Namen */
+            if (s.home && !homes.has(s.home.name)) { homes.add(s.home.name); L.circleMarker([s.home.lat, s.home.lng], { radius: 4, color: '#059669', weight: 2, fillColor: '#ffffff', fillOpacity: 1 }).bindTooltip(esc(s.home.name), { direction: 'top' }).addTo(map); }
+        });
         return true;
     }
     function totalKm(P) {
@@ -546,6 +576,7 @@
                 .on('click', () => flashStop(k)).addTo(SM.layer);
             SM.marks[k] = m; SM.pts.push(ll);
         });
+        SM.pts.push(...homePoints(P));
         if (!drawRoute(SM.layer, P)) {
             const l = routeStops(P).filter(x => !x.p.noRoute).map(x => [+x.p.lat, +x.p.lng]);
             if (l.length > 1) L.polyline(l, SEG_STYLE.road).addTo(SM.layer);
@@ -1610,7 +1641,8 @@
                 ${field('Ticket- / Status-Link', inp('status', f.status, 'type="url" maxlength="500" placeholder="https://…"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer reist mit? (keiner angehakt = alle)</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="whoP" value="${esc(x.name || pkey(x))}"${Array.isArray(f.who) && f.who.some(w => w === x.name || w === pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name || pkey(x))}</span></label>`).join('')}</fieldset>`
                     : field('Mitreisende – mit Komma getrennt', inp('who', (Array.isArray(f.who) ? f.who : []).join(', '), 'maxlength="200"'))}
-                ${field('Notiz', area('note', f.note, 'rows="2" maxlength="1000"'))}`,
+                ${field('Notiz', area('note', f.note, 'rows="2" maxlength="1000"'))}
+                <label class="pl-check"><input type="checkbox" name="onMap"${f.noMap ? '' : ' checked'}><span>Linie auf der Karte (Start und Ziel als Etappe oder Flughafen-Kürzel, z. B. MUC)</span></label>`,
             extra: isNew ? '' : `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: fm => {
                 const del = fm.querySelector('.pl-del');
@@ -1634,6 +1666,7 @@
                     if (nos.length) o.flightNos = nos; else delete o.flightNos;
                     if (who.length) o.who = who; else delete o.who;
                     if (val(fm, 'planned') === '1') o.planned = true; else delete o.planned;
+                    if (fm.elements.onMap.checked) delete o.noMap; else o.noMap = true;
                     const F = raw().flights = raw().flights || [];
                     if (isNew) F.push(o); else if (legacy) F[idx] = o;
                 });
@@ -1898,7 +1931,7 @@
         stopList, routeStops, totalKm, kmText, renderStops, mountStops,
         planToolbar, rowEditBtn, editRow, dayOptions, dayLabel, addToDay,
         renderAcc, warnings, gaps, cancelInfo,
-        legs, legText, labels, legDays, ablauf, personRanges, presence, renderPresence, routeSegments, drawRoute, stayKey: s => stayKey(s),
+        legs, legText, labels, legDays, ablauf, personRanges, presence, renderPresence, routeSegments, drawRoute, homePoints, stayKey: s => stayKey(s),
         saveKeys: (keys, mutate) => commit(keys, mutate),
         sheet: o => sheet(o), ui: { field, inp, area, sel: (n, v, o) => sel(n, v, o), val: (f, n) => val(f, n) },
         renderTransports, renderInfos, enhanceLists,
