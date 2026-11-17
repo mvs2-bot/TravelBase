@@ -990,7 +990,8 @@
             const statusTag = `<span class="pl-st ${STATUS[st][1]}">${esc(s.statusText && !s._edited ? stripTags(s.statusText) : STATUS[st][0])}</span>`;
             const cancel = c ? `<span class="pl-cancel ${c.warn ? 'warn' : ''}${c.days < 0 ? ' late' : ''}">${ic(c.warn ? 'alert' : 'hourglass')}${esc(c.text)}</span>` : '';
             const maps = mapsHref(s), price = money(s.price, s.currency);
-            const legacy = (s.bookings || []).map(b => `<div class="pl-legacy">${b.name ? `<b>${rich(b.name)}</b> ` : ''}${[b.room, b.by, b.cancel].filter(Boolean).map(rich).join(' · ')}</div>`).join('');
+            /* alte Buchungsangaben aus dem Import: nur zeigen, was noch nicht in der Notiz steht */
+            const legacy = legacyOpen(s).map(b => `<div class="pl-legacy">${b.name ? `<b>${rich(b.name)}</b> ` : ''}${[b.room, b.by, b.cancel].filter(Boolean).map(rich).join(' · ')}</div>`).join('');
             const details = `${s.address ? `<div class="pl-addr"><span>${ic('pin')}<span lang="">${esc(s.address)}</span></span>${copyBtn(s.address, 'Adresse kopieren')}</div>` : ''}
                 ${maps ? `<a class="pl-link" href="${esc(maps)}" target="_blank" rel="noopener">${ic('map')}Google Maps ↗</a>` : ''}
                 ${t.time || t.text ? `<div class="pl-transfer">${t.time ? `<span class="travel-time-pill">${esc(t.time)}</span>` : ''}${rich(t.text)}</div>` : ''}
@@ -1055,10 +1056,12 @@
         const bookedN = legN ? LS.reduce((n, x) => n + Math.min(x.n, all.filter(s => stayKey(s) === x.k && S.status(s) === 'booked').reduce((m, s) => m + (S.nights(s) || x.n), 0)), 0)
             : all.filter(s => S.status(s) === 'booked').reduce((n, s) => n + S.nights(s), 0);
         const totalN = legN || all.reduce((n, s) => n + S.nights(s), 0);
+        const legN0 = all.filter(s => 'bookings' in s).length;
         pane.innerHTML = `<div class="box bk-box">
             <div class="mh"><h2>${ic('bed')}Unterkünfte</h2>
                 <span class="pl-sum"><span class="pl-st ok">${booked} gebucht</span>${openN ? `<span class="pl-st warn">${openN} offen</span>` : ''}</span></div>
             ${totalN ? `<div class="bk-prog big${bookedN >= totalN ? ' done' : ''}"><span><b>${bookedN} / ${totalN}</b> Nächte gebucht</span><i style="--pct:${Math.round(bookedN / totalN * 100)}"></i></div>` : ''}
+            ${edit && legN0 ? `<div class="tb-banner pl-gap">${ic('info')}<span>${legN0 === 1 ? 'Eine Unterkunft hat' : `${legN0} Unterkünfte haben`} noch alte Buchungsangaben aus dem Import, die man nicht bearbeiten kann.</span><button type="button" class="btn-action" data-pl="acc-legacy">In Notizen übernehmen</button></div>` : ''}
             ${warn.length ? `<div class="tb-banner pl-warn">${ic('alert')}<span><b>Storno-Fristen-Wächter:</b> ${warn.map(w => `${esc(w.name)} – ${esc(w.text)}`).join(' · ')}</span></div>` : ''}
             ${gp.length && !legSecs ? `<div class="tb-banner pl-gap">${ic('bed')}<span><b>Nächte ohne Unterkunft:</b> ${gp.map(x => `${fmt(x.from)}–${fmt(x.to)} (${nightsTxt(x.nights)})`).join(' · ')}</span></div>` : ''}
             ${all.length > 4 ? `<div class="controls pl-filter">
@@ -1071,6 +1074,27 @@
         if (qi) qi.oninput = () => { accFilter.q = qi.value; const pos = qi.selectionStart; renderAcc(pane); const n = pane.querySelector('[data-pl-q]'); n.focus(); n.setSelectionRange(pos, pos); };
     }
     const stripTags = s => String(s || '').replace(/<[^>]*>/g, '');
+    /* Alte Buchungsangaben (stations[].bookings aus dem Import) → Notiz */
+    const plainNorm = x => stripTags(x).replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/[\s·–—\-|,;:]+/g, ' ').trim().toLowerCase();
+    const legacyLine = b => [stripTags(b.name), [b.room, b.by, b.cancel].filter(Boolean).map(stripTags).join(' · ')].filter(Boolean).join(' – ');
+    const legacyOpen = s => (Array.isArray(s.bookings) ? s.bookings : []).filter(b => b && legacyLine(b) && !plainNorm(s.note).includes(plainNorm(legacyLine(b))));
+    /* Notiz mit den noch fehlenden alten Angaben; bookings entfällt danach */
+    function legacyNote(s, note) {
+        const add = legacyOpen(Object.assign({}, s, { note })).map(legacyLine);
+        return [note, ...add].filter(Boolean).join('\n');
+    }
+    function migrateLegacy(s) {
+        if (!('bookings' in s)) return false;
+        setOpt(s, 'note', legacyNote(s, s.note || ''));
+        const m = (s.bookings || []).map(b => b && b.maps).find(Boolean);
+        if (m && !s.maps) s.maps = m;
+        delete s.bookings;
+        return true;
+    }
+    function migrateAllLegacy() {
+        if (!editable()) return;
+        commit(['stations'], () => { allStations().forEach(migrateLegacy); });
+    }
     function editStation(gid, idx, legKey) {
         if (!editable()) return;
         let g = groups().find(x => x.id === gid) || groups()[0];
@@ -1113,7 +1137,8 @@
                     ${field('Transferzeit', inp('ttime', t.time, 'maxlength="40" placeholder="z. B. 2:30 h"'))}
                     ${field('Transfer-Notiz / Weiterreise', inp('ttext', stripTags(t.text), 'maxlength="300"'))}
                 </div>
-                ${field('Notiz', area('note', s.note, 'rows="2" maxlength="2000"'))}`,
+                ${field('Notiz', area('note', legacyNote(s, s.note || ''), 'rows="3" maxlength="2000"'))}
+                ${legacyOpen(s).length ? `<p class="note">Alte Buchungsangaben aus dem Import stehen jetzt in der Notiz und können dort bearbeitet werden.</p>` : ''}`,
             extra: isNew ? '' : `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: f => {
                 const del = f.querySelector('.pl-del');
@@ -1140,6 +1165,7 @@
                     if (price) o.price = +price; else delete o.price;
                     setOpt(o, 'currency', price ? val(f, 'currency') : '');
                     setOpt(o, 'address', val(f, 'address')); setOpt(o, 'maps', val(f, 'maps')); setOpt(o, 'note', val(f, 'note'));
+                    if ('bookings' in o) { const m = (o.bookings || []).map(b => b && b.maps).find(Boolean); if (m && !o.maps) o.maps = m; delete o.bookings; }
                     const tt = val(f, 'ttime'), tx = val(f, 'ttext');
                     if (tt || tx || typeof o.transfer === 'object') o.transfer = { time: tt, text: tx }; else delete o.transfer;
                     /* Etappe als Schlüssel speichern (bleibt beim Umbenennen des Orts erhalten) */
@@ -1314,6 +1340,7 @@
             case 'acc-add': return editStation(b.dataset.g, null);
             case 'acc-edit': return editStation(b.dataset.g, i);
             case 'acc-filter': accFilter.st = b.dataset.st; return renderAcc();
+            case 'acc-legacy': return migrateAllLegacy();
             case 'tr-add': return editTransport(null);
             case 'tr-edit': return editTransport(i);
             case 'tr-sort': return sortTransports();
