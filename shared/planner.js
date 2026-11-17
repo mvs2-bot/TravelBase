@@ -187,9 +187,12 @@
         if (!l.some(x => nightsOf(x.k, x.p) != null)) return { on: false, list: [], total: 0 };
         const s = ISO.test(start || '') ? start : null;
         let off = 0;
+        /* parallele An-/Abreise (places[k].parallel, z. B. eine Person reist eine Woche später nach): verbraucht keine Zeit der Reise.
+           Anreise endet am Beginn der nächsten Etappe, Abreise beginnt am Ende der vorigen. */
         const list = l.map(({ k, p }) => {
-            const n = nightsOf(k, p) ?? 0, o = { k, p, n, d0: off, d1: off + n };
-            off += n;
+            const n = nightsOf(k, p) ?? 0, par = !!(p.kind && p.parallel);
+            const o = par && p.kind === 'arrive' ? { k, p, n, d0: off - n, d1: off, parallel: true } : { k, p, n, d0: off, d1: off + n, parallel: par };
+            if (!par) off += n;
             if (s) { o.from = isoOf(dn(s) + o.d0); o.to = isoOf(dn(s) + o.d1); }
             return o;
         });
@@ -203,6 +206,8 @@
     /* Art der Etappe: places[k].kind = 'arrive' (Anreise) | 'depart' (Abreise), z. B. lange Flüge mit Nächten; sonst Aufenthalt */
     const KINDS = [['', 'Aufenthalt'], ['arrive', 'Anreise'], ['depart', 'Abreise']];
     const kindLabel = k => (KINDS.find(x => x[0] === k) || ['', ''])[1];
+    const parallelBox = p => `<label class="pl-check pl-parallel"><input type="checkbox" name="parallel"${p.parallel ? ' checked' : ''}><span>Parallel zu den anderen Etappen (z. B. eine Person reist später nach oder früher ab) – nur bei Anreise / Abreise</span></label>`;
+    const readKind = (f, o) => { setOpt(o, 'kind', val(f, 'kind')); if (o.kind && f.elements.parallel && f.elements.parallel.checked) o.parallel = true; else delete o.parallel; };
     const legShort = g => g.from ? `${fmt(g.from)} – ${fmt(g.to)}` : `Tag ${g.d0 + 1} – ${g.d1 + 1}`;
     /* − / +: sofort anzeigen, gesammelt speichern (kurz nach dem letzten Klick) */
     let nTimer = 0;
@@ -279,7 +284,7 @@
                 ${gap(0, null)}
                 ${l.map(({ k, p }, i) => {
                     const g = lg.get(k), when = g ? (g.from && g.n ? legShort(g) : legText(g)) : p.date || '';
-                    const whenX = [p.kind ? kindLabel(p.kind) : '', p.noStay && !p.kind && g && g.n ? `${when} · ohne Unterkunft` : when].filter(Boolean).join(' · ');
+                    const whenX = [p.kind ? kindLabel(p.kind) + (p.kind && p.parallel ? ' (parallel)' : '') : '', p.noStay && !p.kind && g && g.n ? `${when} · ohne Unterkunft` : when].filter(Boolean).join(' · ');
                     return `<li class="pl-stop" data-k="${esc(k)}" data-sort="stops">
                     <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(lab.get(k) ?? p.num) : ic('pin')}</button>
                     <button type="button" class="pl-stop-main" data-pl="stop-open" data-k="${esc(k)}">
@@ -356,7 +361,7 @@
             ${trs.length ? `<h3 class="pl-d-h">Transporte</h3>${trs.map(({ f, i }) => `<button type="button" class="pl-d-item" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}>${ic(MODE_IC[f.mode || 'flight'] || 'plane')}<span><b>${esc([f.from.code || f.from.city || f.from.name, f.to.code || f.to.city || f.to.name].filter(Boolean).join(' → '))}</b><small>${esc([f.from.date && fmt(f.from.date), f.from.time].filter(Boolean).join(' '))}</small></span></button>`).join('')}` : ''}
             <div class="pl-d-acts">
                 <button type="button" class="btn-action" data-pl="stop-focus" data-k="${esc(k)}">${ic('map')}Auf der Karte</button>
-                ${edit && p.num != null ? `<button type="button" class="btn-action" data-pl="stop-again" data-k="${esc(p.same || k)}">${ic('refresh')}Erneut besuchen</button>` : ''}
+                ${edit ? `<button type="button" class="btn-action" data-pl="stop-again" data-k="${esc(p.same || k)}">${ic('refresh')}Erneut besuchen</button>` : ''}
                 ${window.TBActivities && TBActivities.ready ? `<button type="button" class="btn-action" data-pl="stop-acts" data-k="${esc(k)}">${ic('sparkles')}Aktivitäten</button>` : ''}
             </div>`;
     }
@@ -538,7 +543,7 @@
         if (k && !p) return;
         const cur = p || { name: '', lat: '', lng: '', num: 1 };
         if (p && p.same) return editAgain(k);
-        const again = !p ? stopList().filter(x => x.p.num != null && !x.p.same && valid(x.p)) : [];
+        const again = !p ? stopList().filter(x => !x.p.same && valid(x.p)) : [];
         sheet({
             title: p ? 'Stopp bearbeiten' : 'Neuer Stopp',
             body: `${again.length ? `<details class="pl-again"><summary>${ic('refresh')}Einen Ort der Route erneut besuchen</summary><div>${again.map(x => `<button type="button" class="pl-again-btn" data-again="${esc(x.k)}"><i style="background:${esc(H.placeColor ? H.placeColor(x.k) : 'var(--p1)')}">${esc(labels().get(x.k) ?? '')}</i>${esc(x.p.name || x.k)}</button>`).join('')}</div></details>` : ''}
@@ -556,6 +561,7 @@
                 ${field('Beschreibung', area('desc', cur.desc, 'maxlength="2000"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(cur.who) || cur.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
                 ${field('Art der Etappe', sel('kind', cur.kind || '', KINDS))}
+                ${parallelBox(cur)}
                 <p class="note pl-kind-note">Anreise / Abreise: z. B. lange Flüge, auch mit Nächten. Zählen im Anwesenheitskalender als Reisetage und brauchen keine Unterkunft.</p>
                 <div class="pl-row">
                     <label class="pl-check"><input type="checkbox" name="numbered"${cur.num != null ? ' checked' : ''}><span>Nummerierter Stopp der Route</span></label>
@@ -611,7 +617,7 @@
                     const who = [...f.querySelectorAll('input[name="who"]')];
                     if (who.length) { const on = who.filter(x => x.checked).map(x => x.value); if (on.length === who.length) delete o.who; else o.who = on; }
                     setOpt(o, 'date', val(f, 'date')); setOpt(o, 'desc', val(f, 'desc'));
-                    readShowIn(f, o); setOpt(o, 'kind', val(f, 'kind'));
+                    readShowIn(f, o); readKind(f, o);
                     if (!numbered) delete o.num;
                     /* „+“ zwischen zwei Stopps: an dieser Stelle einfügen, sonst ans Ende */
                     else if (o.num == null) o.num = at != null && isFinite(at) ? at + .5 : Object.values(P).reduce((m, x) => x.num != null && x !== o ? Math.max(m, +x.num || 0) : m, 0) + 1;
@@ -645,13 +651,15 @@
             body: `<p class="note">Name und Lage kommen vom ersten Besuch (Nr. ${esc(labels().get(p.same) ?? '')}). Hier gelten eigene Nächte, Unterkunft und Notizen.</p>
                 ${field('Notizen', area('desc', p.desc, 'maxlength="2000"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(p.who) || p.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
+                ${field('Art der Etappe', sel('kind', p.kind || '', KINDS))}
+                ${parallelBox(p)}
                 ${showIn(p, false)}`,
             extra: `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: f => { f.querySelector('.pl-del').onclick = () => { if (confirm('Diesen erneuten Besuch löschen?')) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } }; },
             done: f => {
                 commitPlaces(() => {
                     const o = raw().places[k];
-                    setOpt(o, 'desc', val(f, 'desc')); readShowIn(f, o);
+                    setOpt(o, 'desc', val(f, 'desc')); readShowIn(f, o); readKind(f, o);
                     const who = [...f.querySelectorAll('input[name="who"]')];
                     if (who.length) { const on = who.filter(x => x.checked).map(x => x.value); if (on.length === who.length) delete o.who; else o.who = on; }
                 });
