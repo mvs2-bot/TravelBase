@@ -6,6 +6,9 @@
    Bereiche
      Stopps      Liste neben der Karte: hinzufügen, bearbeiten (Ortssuche über OpenStreetMap Nominatim), löschen,
                  umsortieren; Luftlinien-Distanzen zwischen den Stopps und gesamt
+     Etappen     Nächte je nummeriertem Stopp (places[k].nights, − / +) sind die zentrale Planung: Ankunft = Reisebeginn
+                 + Nächte davor. Unterkünfte (place-Verknüpfung), Tagesplan (plan.legs = true) und ein offenes Reiseende
+                 richten sich danach.
      Ablauf      Tageszeilen bearbeiten, hinzufügen, löschen, umsortieren; leere Tage aus Start/Ende erzeugen
      Unterkünfte Tabelle (Desktop) / Karten (Handy), Storno-Fristen-Wächter, Lücken zwischen Stationen
      Transporte  Flug, Zug, Fähre, Bus, Mietwagen (Karten aus shared/flights.js) inkl. Buchungscode & Preis
@@ -162,24 +165,91 @@
     }
     const kmText = n => n.toLocaleString('de-DE') + ' km';
 
+    /* ---------- Etappen: Nächte je Stopp ---------- */
+    const pendingN = {};
+    const nightsOf = (k, p) => k in pendingN ? pendingN[k]
+        : p.nights === '' || p.nights == null || !isFinite(+p.nights) ? null : Math.max(0, Math.round(+p.nights));
+    /* Etappen = nummerierte Stopps in Reihenfolge; aktiv, sobald einer davon Nächte hat */
+    function legs(P, start) {
+        P = P || places();
+        if (start === undefined) start = H ? (H.meta() || {}).start : null;
+        const l = stopList(P).filter(x => x.p.num != null);
+        if (!l.some(x => nightsOf(x.k, x.p) != null)) return { on: false, list: [], total: 0 };
+        const s = ISO.test(start || '') ? start : null;
+        let off = 0;
+        const list = l.map(({ k, p }) => {
+            const n = nightsOf(k, p) ?? 0, o = { k, p, n, d0: off, d1: off + n };
+            off += n;
+            if (s) { o.from = isoOf(dn(s) + o.d0); o.to = isoOf(dn(s) + o.d1); }
+            return o;
+        });
+        return { on: true, list, total: off, start: s, end: s ? isoOf(dn(s) + off) : null };
+    }
+    const legText = g => g.from ? (g.n ? `${label(g.from)} – ${label(g.to)}` : `${label(g.from)} · Zwischenstopp`)
+        : g.n ? `Tag ${g.d0 + 1} – ${g.d1 + 1}` : `Tag ${g.d0 + 1} · Zwischenstopp`;
+    const nightsWord = n => n === 1 ? 'Nacht' : 'Nächte';
+    const legShort = g => g.from ? `${fmt(g.from)} – ${fmt(g.to)}` : `Tag ${g.d0 + 1} – ${g.d1 + 1}`;
+    /* − / +: sofort anzeigen, gesammelt speichern (kurz nach dem letzten Klick) */
+    let nTimer = 0;
+    function stepNights(k, d) {
+        const p = places()[k];
+        if (!p || !editable()) return;
+        const cur = nightsOf(k, p);
+        pendingN[k] = Math.min(99, Math.max(0, (cur ?? (d > 0 ? 0 : 1)) + d));
+        renderStops(document.getElementById('stopPanel'));
+        clearTimeout(nTimer);
+        nTimer = setTimeout(flushNights, 900);
+    }
+    async function flushNights() {
+        if (!Object.keys(pendingN).length) return;
+        if (busy) { nTimer = setTimeout(flushNights, 500); return; }
+        const sync = legPlans();
+        const keys = ['places', ...(sync.length ? [H.planKey] : [])];
+        const vals = { ...pendingN };
+        Object.keys(pendingN).forEach(k => delete pendingN[k]);
+        await commit(keys, () => {
+            Object.entries(vals).forEach(([k, n]) => { if (raw().places && raw().places[k]) raw().places[k].nights = n; });
+            sync.forEach(p => syncPlan(p));
+        });
+    }
+
     function renderStops(el, P) {
         if (!el) return;
-        const l = stopList(P), rs = routeStops(P), edit = canEdit();
+        P = P || places();
+        const l = stopList(P), rs = routeStops(P), edit = canEdit(), L = legs(P), m = H.meta() || {};
+        const lg = new Map(L.list.map(g => [g.k, g]));
+        /* Ziel: Nächte des Reisezeitraums (sofern fest), sonst nur die Summe */
+        const goal = m.start && m.end && !(H.legEnd && H.legEnd()) ? dn(m.end) - dn(m.start) : 0;
+        const ring = L.on ? `<div class="pl-nightsum${goal && L.total > goal ? ' over' : ''}">
+                <span class="pl-ring" style="--pct:${goal ? Math.min(100, Math.round(L.total / goal * 100)) : 100}"><b>${L.total}${goal ? `<small>/${goal}</small>` : ''}</b></span>
+                <span>${goal ? 'Nächte geplant' : `${nightsWord(L.total)} geplant`}${goal && L.total > goal ? `<small>${L.total - goal} mehr als der Reisezeitraum</small>` : goal && L.total < goal ? `<small>noch ${goal - L.total} offen</small>` : L.end ? `<small>Reiseende ${fmtY(L.end)}</small>` : ''}</span>
+            </div>` : edit && l.some(x => x.p.num != null) ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : '';
+        const stepper = (k, p) => {
+            const n = nightsOf(k, p);
+            if (!edit) return n == null ? '' : `<span class="pl-n-ro">${n ? `${n} ${nightsWord(n)}` : 'Zwischenstopp'}</span>`;
+            return `<div class="pl-nights" role="group" aria-label="Nächte in ${esc(p.name || k)}">
+                <button type="button" data-pl="n-dec" data-k="${esc(k)}" aria-label="Eine Nacht weniger"${n === 0 ? ' disabled' : ''}>${ic('minus')}</button>
+                <span><b>${n == null ? '–' : n}</b><small>${n == null ? 'Nächte' : nightsWord(n)}</small></span>
+                <button type="button" data-pl="n-inc" data-k="${esc(k)}" aria-label="Eine Nacht mehr">${ic('plus')}</button>
+            </div>`;
+        };
         const next = new Map();
         for (let i = 1; i < rs.length; i++) next.set(rs[i - 1].k, Math.round(km(rs[i - 1].p, rs[i].p)));
         el.hidden = !l.length && !edit;
         const total = totalKm(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Stopps<small class="pl-count">${l.length || ''}</small></h2>
                 ${edit ? `<button type="button" data-pl="stop-add">${ic('plus')}Stopp</button>` : ''}</div>
+            ${ring}
             ${rs.length > 1 ? `<p class="note pl-total">${ic('route')}${kmText(total)} Luftlinie entlang der Route</p>` : ''}
             ${l.length ? `<ol class="pl-stops">${l.map(({ k, p }, i) => `
                 <li class="pl-stop" data-k="${esc(k)}">
                     <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(p.num) : ic('pin')}</button>
                     <div class="pl-stop-main">
                         <b>${esc(p.name || k)}</b>
-                        ${p.date ? `<small>${esc(p.date)}</small>` : ''}
+                        ${lg.has(k) ? `<small>${esc(legText(lg.get(k)))}</small>` : p.date ? `<small>${esc(p.date)}</small>` : ''}
                         ${next.has(k) ? `<span class="pl-leg">${ic('arrowDown')}${kmText(next.get(k))}</span>` : ''}
                     </div>
+                    ${p.num != null ? stepper(k, p) : ''}
                     ${edit ? `<div class="pl-acts">
                         <button type="button" data-pl="stop-up" data-k="${esc(k)}" aria-label="Nach oben"${i === 0 ? ' disabled' : ''}>${ic('arrowUp')}</button>
                         <button type="button" data-pl="stop-down" data-k="${esc(k)}" aria-label="Nach unten"${i === l.length - 1 ? ' disabled' : ''}>${ic('arrowDown')}</button>
@@ -323,15 +393,50 @@
     function planToolbar(planId) {
         if (!canEdit()) return '';
         const p = planById(planId), m = H.meta() || {};
-        const gen = p && !p.rows.length && m.start && m.end;
+        const L = legs(), byLegs = !TH() && L.on && L.start;
+        const gen = p && !p.rows.length && m.start && m.end && !byLegs;
         return `<div class="pl-toolbar">
             <button type="button" class="btn-action" data-pl="row-add" data-plan="${esc(planId)}">${ic('plus')}Tag hinzufügen</button>
+            ${byLegs && p && !p.legs ? `<button type="button" class="btn-action ok" data-pl="days-legs" data-plan="${esc(planId)}">${ic('wand')}Tage aus den Etappen anlegen (${L.total + 1} Tage)</button>` : ''}
+            ${byLegs && p && p.legs ? `<span class="note pl-legs-on">${ic('route')}Folgt den Etappen – Nächte bei den Stopps ändern</span>` : ''}
             ${gen ? `<button type="button" class="btn-action ok" data-pl="days-gen" data-plan="${esc(planId)}">${ic('wand')}${dn(m.end) - dn(m.start) + 1} leere Tage anlegen (${fmt(m.start)}–${fmt(m.end)})</button>` : ''}
             ${p && !p.rows.length && !gen ? `<span class="note">Noch keine Tage. Tipp: Mit Start- und Enddatum der Reise lassen sich alle Tage auf einmal anlegen.</span>` : ''}
         </div>`;
     }
     /* Bearbeiten-Knopf für eine Zeile (Tabelle und Karte) */
     const rowEditBtn = (planId, i) => canEdit() ? `<button type="button" class="row-edit" data-pl="row-edit" data-plan="${esc(planId)}" data-i="${i}" aria-label="Tag bearbeiten" title="Bearbeiten">${ic('pencil')}</button>` : '';
+
+    /* Tagesplan nach Etappen: ein Tag je Datum mit den Orten des Tages (Ankunft, Aufenthalt, Abreise).
+       Inhalte vorhandener Tage bleiben; leere Tage außerhalb der Reise fallen weg. Nur Vorlage (Thailand hat eigene Tage je Land). */
+    const legPlans = () => TH() ? [] : plansOf().filter(p => p.legs);
+    function syncPlan(p) {
+        const L = legs();
+        if (!L.on || !L.start) return;
+        ensureIds(p.rows);
+        const byDate = new Map(p.rows.filter(r => ISO.test(r.from || '')).map(r => [r.from, r]));
+        const used = new Set(), out = [];
+        for (let d = 0; d <= L.total; d++) {
+            const iso = isoOf(dn(L.start) + d);
+            const here = L.list.filter(g => g.d0 <= d && d <= g.d1 && (g.n || g.d0 === d));
+            const auto = here.map(g => g.p.name || g.k).filter((x, i, a) => a.indexOf(x) === i).join(' → ');
+            let r = byDate.get(iso);
+            if (r) used.add(r); else r = { _id: uid(), title: '' };
+            r.from = iso; delete r.to;
+            if (!r.date || /^\d{2}\.\d{2}\. \(\w\w\)$/.test(r.date) || /^Tag \d+$/.test(r.date)) r.date = label(iso);
+            if (!r.day || /^Tag \d+$/.test(r.day)) r.day = `Tag ${d + 1}`;
+            if (!r.title || r.auto) { r.title = auto; r.auto = true; }
+            if (here.length) r.focus = [...new Set(here.map(g => g.k))]; else delete r.focus;
+            out.push(r);
+        }
+        const keep = p.rows.filter(r => !used.has(r) && !out.includes(r) && (!r.auto && r.title || r.details || (r.extra || []).length));
+        p.rows.splice(0, p.rows.length, ...out, ...keep);
+    }
+    function planFromLegs(planId) {
+        const p = planById(planId), L = legs();
+        if (!p || !L.on || !editable()) return;
+        if (!L.start) return alert('Die Reise hat noch kein Startdatum. Ohne Datum lassen sich die Tage nicht anlegen.');
+        commit([H.planKey], () => { p.legs = true; syncPlan(p); });
+    }
 
     function generateDays(planId) {
         const p = planById(planId), m = H.meta() || {};
@@ -388,6 +493,7 @@
                 commit([H.planKey], () => {
                     const o = isNew ? { _id: uid() } : r;
                     o.day = val(f, 'day');
+                    if (o.title !== val(f, 'title')) delete o.auto;
                     o.title = val(f, 'title');
                     setOpt(o, 'details', val(f, 'details')); setOpt(o, 'transport', val(f, 'transport')); setOpt(o, 'hotel', val(f, 'hotel'));
                     if (TH()) {
@@ -431,10 +537,18 @@
     }
 
     /* ---------- Unterkünfte ---------- */
+    /* Unterkunft ↔ Etappe: über place (Vorlage), focus (Thailand) oder gleichen Ortsnamen */
+    const stayKey = s => s.place || (s.focus && placeKeyByName(s.focus)) || placeKeyByName(s.name ?? s.title ?? '');
+    function legFor(s) {
+        const k = stayKey(s);
+        if (!k) return null;
+        const g = legs().list.find(x => x.k === k && x.n > 0);
+        return g && g.from ? g : null;
+    }
     const S = {
         name: s => s.name ?? s.title ?? '',
-        cin: s => s.checkin || s.from || '',
-        cout: s => s.checkout || s.to || '',
+        cin: s => { const g = legFor(s); return g ? g.from : s.checkin || s.from || ''; },
+        cout: s => { const g = legFor(s); return g ? g.to : s.checkout || s.to || ''; },
         status: s => s.status === 'booked' ? 'booked' : s.status === 'none' ? 'none' : 'open',
         nights: s => { const a = S.cin(s), b = S.cout(s); return ISO.test(a) && ISO.test(b) ? Math.max(0, dn(b) - dn(a)) : (+s.nights || 0); },
         transfer: s => typeof s.transfer === 'object' && s.transfer ? s.transfer : { time: '', text: s.transfer || '' }
@@ -522,8 +636,24 @@
                 </article>`
             };
         };
-        const blocks = gs.map(g => {
+        /* Etappen mit Nächten ohne Unterkunft: als offene Platzhalter */
+        const have = new Set(all.map(stayKey).filter(Boolean));
+        const missing = legs().list.filter(x => x.n > 0 && !have.has(x.k));
+        const ph = (x, g) => ({
+            tr: `<tr class="is-open pl-ph"><td><strong>${esc(x.p.name || x.k)}</strong></td><td class="pl-nowrap">${esc(legShort(x))}<div><span class="stay-badge">${x.n} ${nightsWord(x.n)}</span></div></td>
+                <td colspan="${edit ? 4 : 3}"><span class="pl-st warn">Unterkunft fehlt</span>${edit ? ` <button type="button" class="btn-action pl-ph-add" data-pl="acc-leg" data-g="${esc(g.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</td></tr>`,
+            card: `<article class="pl-card is-open pl-ph"><div class="pl-card-top"><div><b>${esc(x.p.name || x.k)}</b><small>${esc(legShort(x))} · ${x.n} ${nightsWord(x.n)}</small></div><span class="pl-st warn">Unterkunft fehlt</span></div>
+                ${edit ? `<button type="button" class="btn-action pl-ph-add" data-pl="acc-leg" data-g="${esc(g.id)}" data-k="${esc(x.k)}">${ic('plus')}Unterkunft eintragen</button>` : ''}</article>`
+        });
+        const blocks = gs.map((g, gi) => {
             const items = g.list.map((s, i) => ({ s, i })).filter(x => match(x.s)).map(x => row(x.s, g, x.i));
+            if (gi === 0 && accFilter.st !== 'booked' && !q) {
+                /* Platzhalter nach Ankunft einsortieren */
+                missing.forEach(x => {
+                    const at = items.findIndex(it => { const s = g.list[+(/data-i="(\d+)"/.exec(it.tr) || [])[1]]; return s && ISO.test(S.cin(s)) && x.from && S.cin(s) > x.from; });
+                    items.splice(at < 0 ? items.length : at, 0, ph(x, g));
+                });
+            }
             return `${gs.length > 1 || g.label ? `<h3 class="pl-group">${esc(g.label || '')}</h3>` : ''}
                 ${items.length ? `<div class="tw pl-table"><table>
                     <thead><tr><th>Station</th><th>Zeitraum</th><th>Unterkunft &amp; Status</th><th>Buchung</th><th>Adresse &amp; Transfer</th>${edit ? '<th></th>' : ''}</tr></thead>
@@ -553,14 +683,15 @@
         });
     }
     const stripTags = s => String(s || '').replace(/<[^>]*>/g, '');
-    function editStation(gid, idx) {
+    function editStation(gid, idx, legKey) {
         if (!editable()) return;
         let g = groups().find(x => x.id === gid) || groups()[0];
         if (!g && H.ensureStations) g = H.ensureStations();
         if (!g) return;
         const isNew = idx == null || idx < 0;
-        const s = isNew ? {} : g.list[idx];
+        const s = isNew ? (legKey && places()[legKey] ? (TH() ? { title: places()[legKey].name, focus: places()[legKey].name } : { name: places()[legKey].name, place: legKey }) : {}) : g.list[idx];
         const t = S.transfer(s);
+        const lg = legFor(s);
         const pl = stopList();
         const last = g.list[g.list.length - 1];
         const defIn = isNew ? (last && S.cout(last)) || (H.meta() || {}).start || '' : S.cin(s);
@@ -569,9 +700,10 @@
             body: `${field('Station / Ort', inp('name', S.name(s), 'required maxlength="120" list="plPlaces" placeholder="z. B. Kyoto"'))}
                 <datalist id="plPlaces">${pl.map(({ p }) => `<option value="${esc(p.name)}">`).join('')}</datalist>
                 <div class="pl-row">
-                    ${field('Check-in', `<input type="date" name="cin" value="${esc(defIn)}">`)}
-                    ${field('Check-out', `<input type="date" name="cout" value="${esc(S.cout(s))}">`)}
+                    ${field('Check-in', `<input type="date" name="cin" value="${esc(lg ? lg.from : defIn)}"${lg ? ' readonly' : ''}>`)}
+                    ${field('Check-out', `<input type="date" name="cout" value="${esc(S.cout(s))}"${lg ? ' readonly' : ''}>`)}
                 </div>
+                ${lg ? `<p class="note pl-legs-on">${ic('route')}Daten folgen der Etappe ${esc(lg.p.name || lg.k)} (${lg.n} ${nightsWord(lg.n)}) – ändern über − / + bei den Stopps.</p>` : ''}
                 ${field('Unterkunft', inp('hotel', s.hotel, 'maxlength="300" placeholder="Name des Hotels / der Unterkunft"'))}
                 <div class="pl-row">
                     ${field('Status', sel('status', S.status(s), [['open', 'Noch offen'], ['booked', 'Gebucht'], ['none', 'Keine nötig (z. B. Nachtfahrt)']]))}
@@ -620,8 +752,8 @@
                     setOpt(o, 'address', val(f, 'address')); setOpt(o, 'maps', val(f, 'maps')); setOpt(o, 'note', val(f, 'note'));
                     const tt = val(f, 'ttime'), tx = val(f, 'ttext');
                     if (tt || tx || typeof o.transfer === 'object') o.transfer = { time: tt, text: tx }; else delete o.transfer;
-                    const pk = placeKeyByName(name);
-                    if (pk && !TH()) o.place = pk;
+                    const pk = (s.place && S.name(s) === name && s.place) || placeKeyByName(name);
+                    if (pk && !TH()) o.place = pk; else if (!TH()) delete o.place;
                     if (TH() && isNew) { o.focus = pk ? places()[pk].name : name; if (!o.transfer) o.transfer = { time: '', text: '' }; if (!o.hotel) o.hotel = ''; }
                     if (isNew) {
                         /* nach Datum einsortieren */
@@ -763,6 +895,10 @@
             case 'row-add': return editRow(b.dataset.plan, null);
             case 'row-edit': return editRow(b.dataset.plan, i);
             case 'days-gen': return generateDays(b.dataset.plan);
+            case 'days-legs': return planFromLegs(b.dataset.plan);
+            case 'n-inc': return stepNights(b.dataset.k, 1);
+            case 'n-dec': return stepNights(b.dataset.k, -1);
+            case 'acc-leg': return editStation(b.dataset.g, null, b.dataset.k);
             case 'acc-add': return editStation(b.dataset.g, null);
             case 'acc-edit': return editStation(b.dataset.g, i);
             case 'acc-up': return moveStation(b.dataset.g, i, -1);
@@ -787,6 +923,7 @@
         stopList, routeStops, totalKm, kmText, renderStops, mountStops,
         planToolbar, rowEditBtn, editRow, dayOptions, dayLabel, addToDay,
         renderAcc, warnings, gaps, cancelInfo,
+        legs, legText,
         renderTransports,
         stationStats: () => { const a = allStations(); return { total: a.length, booked: a.filter(s => S.status(s) === 'booked').length, open: a.filter(s => S.status(s) === 'open').length }; }
     };

@@ -635,6 +635,33 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
 .pl-leg { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--p1); }
 .pl-leg .ic { width: 12px; height: 12px; }
 .pl-acts { display: flex; gap: 2px; flex: 0 0 auto; }
+/* Etappen: Nächte je Stopp (− / +), Summe als Ring */
+.pl-stop:has(.pl-nights) { flex-wrap: wrap; row-gap: 4px; }
+.pl-stop:has(.pl-nights) .pl-stop-main { flex: 1 1 calc(100% - 36px); }
+.pl-stop:has(.pl-nights) .pl-acts { margin-left: auto; }
+.pl-nights { display: inline-flex; align-items: center; gap: 2px; margin-left: 36px; background: var(--well); border-radius: 999px; padding: 2px; }
+.pl-nights button { border: 0; background: var(--card); color: var(--ink); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; padding: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); cursor: pointer; }
+.pl-nights button:hover:not(:disabled) { color: var(--p1); }
+.pl-nights button:disabled { opacity: .35; cursor: default; box-shadow: none; }
+.pl-nights button .ic { width: 16px; height: 16px; stroke-width: 2.4; }
+.pl-nights > span { min-width: 54px; text-align: center; line-height: 1.05; }
+.pl-nights b { display: block; font-size: 16px; font-weight: 700; color: var(--ink); }
+.pl-nights small { display: block; font-size: 10.5px; color: var(--mute); }
+.pl-n-ro { flex: 0 0 auto; font-size: 12px; font-weight: 600; color: var(--p1); background: var(--p1-soft); border-radius: 999px; padding: 2px 9px; }
+.pl-nightsum { display: flex; align-items: center; gap: 12px; background: var(--well); border-radius: var(--radius-s); padding: 10px 12px; margin-bottom: 10px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.pl-nightsum small { display: block; font-size: 12px; font-weight: 400; color: var(--mute); }
+.pl-nightsum.over small { color: var(--danger); }
+.pl-ring { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+    background: radial-gradient(closest-side, var(--card) 80%, transparent 81%), conic-gradient(var(--p1) calc(var(--pct) * 1%), var(--line) 0); }
+.pl-nightsum.over .pl-ring { background: radial-gradient(closest-side, var(--card) 80%, transparent 81%), conic-gradient(var(--danger) 100%, var(--line) 0); }
+.pl-ring b { font-size: 14px; font-weight: 700; color: var(--ink); }
+.pl-ring small { display: inline; font-size: 11px; font-weight: 500; color: var(--mute); }
+.pl-hint { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 10px; }
+.pl-hint .ic, .pl-legs-on .ic { color: var(--p1); flex: 0 0 auto; }
+.pl-legs-on { display: inline-flex; align-items: center; gap: 6px; }
+.pl-ph td, .pl-card.pl-ph { background: color-mix(in srgb, var(--warn-soft) 45%, transparent); }
+.pl-ph-add { min-height: 32px; margin-left: 8px; }
+.pl-card .pl-ph-add { margin: 8px 0 0; }
 .pl-acts button { border: 0; background: none; color: var(--mute); width: 32px; height: 32px; border-radius: 8px; display: inline-grid; place-items: center; padding: 0; }
 .pl-acts button:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
 .pl-acts button:disabled { opacity: .3; cursor: default; }
