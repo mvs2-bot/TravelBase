@@ -753,7 +753,7 @@
         /* Route: Tagesplan-Zeilen nach Ort zusammenfassen; ohne Tagesplan (Gäste) die Orte nach Nummer */
         let route = [];
         const fmt = iso => iso ? fmtDM(iso) : '';
-        const placeStops = Object.entries(P).filter(([, p]) => p && p.num != null).sort((a, b) => a[1].num - b[1].num).map(([k, p]) => ({ num: p.label ?? p.num, name: p.name, color: placeColor(k), when: p.date || '' }));
+        const placeStops = Object.entries(P).filter(([, p]) => p && p.num != null).sort((a, b) => a[1].num - b[1].num).map(([k, p]) => ({ k, num: p.label ?? p.num, name: p.name, color: placeColor(k), when: p.date || '' }));
         if (rows.length) {
             rows.forEach(r => (r.focus || []).forEach((k, i, all) => {
                 const last = route[route.length - 1], p = P[k] || {};
@@ -776,6 +776,10 @@
         }));
         /* ohne Tagesplan (Gäste) oder ohne Ortszuordnung in den Zeilen: die Orte nach Nummer */
         if (!route.length) route = placeStops;
+        /* Etappen-Häkchen: places[k].noRoute blendet in der Route aus, noActs bei den möglichen Aktivitäten (erneute Besuche: der erste Besuch zählt für Aktivitäten) */
+        const flagOf = (x, f) => { const p = x.k && P[x.k]; if (!p) return false; return f === 'noActs' && p.same && P[p.same] ? !!P[p.same][f] : !!p[f]; };
+        const actRoute = route.concat(placeStops).map(x => flagOf(x, 'noActs') ? { ...x, hide: true } : x);
+        route = route.filter(x => !flagOf(x, 'noRoute'));
         /* kurze Zusatzinfos unter den Kacheln */
         const tiles = {};
         if (DATA.places) tiles.mapview = { text: `${Object.values(P).filter(p => !(p && p.same && P[p.same])).length} Orte` };
@@ -798,7 +802,7 @@
         TBTripMobile.setData({ flags: TRIP_FLAGS, past, maybe: TRIP_MAYBE, today, route, tiles, people });
         if (DATA.activities) {
             /* Aktivitäten: Orte der Route, dazu alle nummerierten Stopps, die (noch) in keiner Zeile stehen */
-            const stops = route.concat(placeStops);
+            const stops = actRoute;
             if (window.TBActivities && TBActivities.ready && TBActivities.setStops) return TBActivities.setStops(stops);
             const go = () => TBActivities.init({ tripId: TRIP_ID, slug: TRIP_SLUG, stops });
             if (window.TBActivities) return go();

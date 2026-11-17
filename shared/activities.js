@@ -38,6 +38,7 @@
             if (!TB.isNetErr(e)) console.error('Aktivitäten laden', e);
         }
         renderAll();
+        reattach();
     }
     function editable() {
         if (online && navigator.onLine) return true;
@@ -64,7 +65,7 @@
         const pl = planner();
         const day = a => a.planned_day && pl ? pl.dayLabel(a.planned_day) : '';
         const row = a => editing && editing.id === a.id ? `<li class="act-edit">${form(a)}</li>` : `
-            <li class="todo-item act-item${a.done ? ' done' : ''}">
+            <li class="todo-item act-item sw-row${a.done ? ' done' : ''}">
                 ${ext ? `<label class="act-done" title="Erledigt"><input type="checkbox" data-act="done" data-id="${esc(a.id)}"${a.done ? ' checked' : ''} aria-label="Erledigt: ${esc(a.title)}"><span></span></label>` : ''}
                 <div class="act-main">
                     <b>${esc(a.title)}</b>
@@ -73,8 +74,7 @@
                     ${editing && editing.pick === a.id ? `<form class="act-pick" data-id="${esc(a.id)}"><select name="day" required><option value="">Tag wählen …</option>${pl.dayOptions().map(o => `<option value="${esc(o.ref)}"${o.ref === a.planned_day ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select><button class="f on" type="submit">${ic('check')}Übernehmen</button><button class="f" type="button" data-act="cancel">Abbrechen</button></form>` : ''}
                 </div>
                 ${ext && pl && pl.canEdit() && pl.dayOptions().length ? `<button type="button" data-act="plan" data-id="${esc(a.id)}" aria-label="In Ablauf übernehmen" title="In Ablauf übernehmen">${ic('calendarPlus')}</button>` : ''}
-                <button type="button" data-act="edit" data-id="${esc(a.id)}" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button>
-                <button type="button" data-act="del" data-id="${esc(a.id)}" aria-label="Löschen" title="Löschen">${ic('trash')}</button>
+                <span class="sw-acts"><button type="button" class="sw-edit" data-act="edit" data-id="${esc(a.id)}" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button><button type="button" class="sw-del" data-act="del" data-id="${esc(a.id)}" aria-label="Löschen" title="Löschen">${ic('trash')}</button></span>
             </li>`;
         const adding = editing && editing.loc === name && !editing.id && !editing.pick;
         const total = forLoc(name).length;
@@ -84,6 +84,7 @@
     const head = p => `<span class="act-num" style="--c:${esc(p.color || 'var(--p1)')}">${esc(p.num ?? '')}</span>${esc(p.name)}`;
 
     function renderAll() {
+        buildPlaces();
         const pane = document.getElementById('activities');
         if (pane) pane.innerHTML = `<div class="box">
                 <h2>${ic('sparkles')}Mögliche Aktivitäten</h2>
@@ -251,12 +252,50 @@
         if (back) back.focus({ preventScroll: true });
     }
 
-    function setStops(stops) {
+    let stopsIn = [];
+    /* Orte = Etappen; Orte mit gespeicherten Aktivitäten, die nicht (mehr) dazugehören, bleiben darunter sichtbar.
+       Wird bei jedem Rendern neu berechnet, weil die Aktivitäten erst nach den Etappen geladen werden. */
+    function buildPlaces() {
         const seen = new Set();
-        places = (stops || []).filter(s => s.name && !seen.has(s.name) && seen.add(s.name));
-        /* Orte mit gespeicherten Aktivitäten, die nicht (mehr) in der Route sind, bleiben sichtbar */
+        /* hide: Etappe mit „nicht bei den möglichen Aktivitäten“ – auch ihre gespeicherten Aktivitäten bleiben ausgeblendet */
+        places = stopsIn.filter(s => s.name && !seen.has(s.name) && seen.add(s.name) && !s.hide);
         list.forEach(a => { if (a.location_name && !seen.has(a.location_name)) { seen.add(a.location_name); places.push({ name: a.location_name }); } });
-        if (tripId) renderAll();
+    }
+    /* Alte Ortsnamen (z. B. „3. Udon Thani“, „Bangkok Stadtzentrum“, „Chiang Mai (Altstadt)“) eindeutig einer Etappe zuordnen und dort eintragen */
+    const norm = x => String(x || '').toLowerCase().replace(/^\s*\d+\.\s*/, '').replace(/\(.*?\)/g, ' ').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    function stopFor(loc) {
+        const n = norm(loc);
+        if (!n) return null;
+        const hits = stopsIn.filter(s => s.name && s.name !== loc).map(s => ({ s, m: norm(s.name) }))
+            .filter(({ m }) => m && (m === n || n.startsWith(m + ' ') || m.startsWith(n + ' ')));
+        if (!hits.length) return null;
+        hits.sort((a, b) => b.m.length - a.m.length);
+        const best = hits.filter(h => h.m === hits[0].m).map(h => h.s.name);
+        return new Set(best).size === 1 ? best[0] : null;
+    }
+    let fixing = false;
+    const tried = new Set();
+    async function reattach() {
+        if (fixing || !online || !navigator.onLine || !tripId || !stopsIn.length) return;
+        const names = new Set(stopsIn.map(s => s.name));
+        const moves = [...new Set(list.map(a => a.location_name).filter(l => l && !names.has(l) && !tried.has(l)))].map(l => [l, stopFor(l)]).filter(([, t]) => t);
+        if (!moves.length) return;
+        fixing = true;
+        try {
+            for (const [from, to] of moves) {
+                tried.add(from);
+                /* still: ohne Schreibrecht (z. B. Gäste) bleibt der alte Name einfach als eigener Ort sichtbar */
+                try { const r = await q(TB.withTimeout(TB.sb.from('travelbase_activities').update({ location_name: to }).eq('trip_id', tripId).eq('location_name', from).select('id'), 10000)); if (!r || !r.length) continue; }
+                catch (e) { continue; }
+                list.forEach(a => { if (a.location_name === from) a.location_name = to; });
+            }
+            TB.cacheSet(cacheKey, list);
+        } finally { fixing = false; }
+        renderAll();
+    }
+    function setStops(stops) {
+        stopsIn = stops || [];
+        if (tripId) { renderAll(); reattach(); }
     }
     function init(o) {
         if (tripId || !o || !o.tripId || !window.TB || !TB.sb) return;

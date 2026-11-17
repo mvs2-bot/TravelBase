@@ -1477,11 +1477,14 @@
             };
             /* Route = Etappen (gleiche Nummern und Farben wie im Bereich Etappen); ohne Etappen wie bisher aus den Unterkünften */
             const lab = PL ? PL.labels() : new Map(), dm = iso => `${iso.slice(8)}.${iso.slice(5, 7)}.`;
-            const legRoute = LG.on && LG.list.length ? LG.list.map(g => ({
+            /* Etappen-Häkchen: places[k].noRoute = nicht in der Route, noActs = nicht bei den möglichen Aktivitäten */
+            const PP = DATA.places || {}, flagOf = (k, f) => { const p = PP[k]; if (!p) return false; return f === 'noActs' && p.same && PP[p.same] ? !!PP[p.same][f] : !!p[f]; };
+            const legAll = LG.on && LG.list.length ? LG.list.map(g => ({
                 k: g.k, num: lab.get(g.k) ?? g.p.num, name: g.p.name || g.k, color: thPlaceColor(g.k),
                 when: [g.from ? (g.n ? `${dm(g.from)}–${dm(g.to)}` : dm(g.from)) : '', g.n ? `${g.n} ${g.n === 1 ? 'Nacht' : 'Nächte'}` : 'Zwischenstopp'].filter(Boolean).join(' · '),
                 now: !!(g.from && TODAY >= g.from && TODAY < (g.n ? g.to : nextISO(g.from))), label: 'Heute hier'
             })) : null;
+            const legRoute = legAll && legAll.filter(x => !flagOf(x.k, 'noRoute'));
             const route = legRoute || st.map((x, i) => ({
                 num: i + 1, name: String(x.title || x.name || '').replace(/^\d+\.\s*/, ''), color: placeColor(x.focus, x),
                 when: [x.period || (/^\d{4}-\d\d-\d\d$/.test(x.from || '') ? `${x.from.slice(8)}.${x.from.slice(5, 7)}.${/^\d{4}-\d\d-\d\d$/.test(x.to || '') ? `–${x.to.slice(8)}.${x.to.slice(5, 7)}.` : ''}` : ''),
@@ -1498,7 +1501,7 @@
             TBTripMobile.setData({ flags: TRIP_FLAGS, past, today, route, tiles, people: persons.map(p => p.name).join(', ') });
             /* Aktivitäten: je Ort einmal, Farbe wie der Kartenpunkt (alle Besuche) */
             const P = DATA.places || {};
-            const actStops = legRoute ? legRoute.map(x => { const k0 = P[x.k] && P[x.k].same && P[P[x.k].same] ? P[x.k].same : x.k; return { num: x.num, name: x.name, color: thPlaceColor(k0, [k0, ...Object.keys(P).filter(y => P[y] && P[y].same === k0)]) }; }) : route;
+            const actStops = legAll ? legAll.map(x => { const k0 = P[x.k] && P[x.k].same && P[P[x.k].same] ? P[x.k].same : x.k; return { hide: flagOf(x.k, 'noActs'), num: x.num, name: x.name, color: thPlaceColor(k0, [k0, ...Object.keys(P).filter(y => P[y] && P[y].same === k0)]) }; }) : route;
             if (window.TBActivities && TBActivities.ready && TBActivities.setStops) TBActivities.setStops(actStops);
             else if (window.TBActivities) TBActivities.init({ tripId: TRIP_ID, slug: TRIP_SLUG, stops: actStops });
         }
