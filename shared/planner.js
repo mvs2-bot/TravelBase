@@ -267,7 +267,7 @@
                 <span class="pl-head-acts">${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}</span></div>
             ${!L.on && edit && nums.length ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : ''}
             ${l.length ? `<ol class="pl-tl">
-                <li class="pl-tl-row"><span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen')}</small></div>${pill}</li>
+                <li class="pl-tl-row">${H.role === 'admin' && edit ? `<button type="button" class="pl-tl-start" data-pl="trip-dates" title="Reisebeginn ändern"><span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen – antippen')}${ic('pencil')}</small></div></button>` : `<span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen')}</small></div>`}${pill}</li>
                 ${gap(0, null)}
                 ${l.map(({ k, p }, i) => {
                     const g = lg.get(k), when = g ? (g.from && g.n ? legShort(g) : legText(g)) : p.date || '';
@@ -376,6 +376,33 @@
     /* ---------- Reisende: Name + Farbe; färben Punkte auf Karte, Etappen und Route (wie die Südamerika-Reise) ---------- */
     const PALETTE = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#64748b'];
     const persons = () => Array.isArray(raw().persons) ? raw().persons : [];
+    /* Reisezeitraum (nur Admins): Beginn (und optional ein festes Ende). Die Vorlage kann das Setzen übernehmen
+       (Vielleicht-Reise mit gewähltem Startdatum → H.setStart), sonst steht es in meta.start / meta.end. */
+    function editTripDates() {
+        if (!editable() || H.role !== 'admin') return;
+        const m = H.meta() || {}, L = legs();
+        sheet({
+            title: 'Reisezeitraum',
+            body: `<div class="pl-row">
+                    ${field('Reise beginnt', `<input type="date" name="start" value="${esc(ISO.test(m.start || '') ? m.start : '')}" required>`)}
+                    ${field('Reiseende (optional)', `<input type="date" name="end" value="${esc(ISO.test((raw().meta || {}).end || '') ? raw().meta.end : '')}">`)}
+                </div>
+                <p class="note">${L.on ? `Die Etappen ergeben ${L.total} ${nightsWord(L.total)}. ` : ''}Ohne festes Ende ergibt die Summe der Nächte das Reiseende. Alle Daten der Etappen, Unterkünfte und des Ablaufs richten sich nach dem Beginn.</p>`,
+            done: async f => {
+                const start = val(f, 'start'), end = val(f, 'end');
+                if (!ISO.test(start)) { alert('Bitte ein Startdatum wählen.'); return false; }
+                if (end && end < start) { alert('Das Reiseende liegt vor dem Beginn.'); return false; }
+                if (H.setStart && await H.setStart(start, end)) return true;
+                commit(['meta'], () => {
+                    const o = raw().meta = raw().meta || {}, old = o.start;
+                    o.start = start;
+                    if (end) o.end = end; else delete o.end;
+                    /* Zeitraum-Text im Kopf mitziehen, falls vorhanden */
+                    if (o.period && (old !== start || end)) o.period = end ? `${fmt(start)} – ${fmtY(end)}` : `ab ${fmtY(start)}`;
+                });
+            }
+        });
+    }
     async function editPeople() {
         if (!editable()) return;
         let list = persons().map(x => ({ key: x.key, name: x.name, color: x.color }));
@@ -432,6 +459,51 @@
             raw().places = out;
         });
     }
+    /* Kleine Karte im Stopp-Sheet: Tippen setzt Breite/Länge (Marker ziehbar), ohne Namen wird er per Nominatim ergänzt */
+    function pickMap(f, cur, k) {
+        const box = f.querySelector('.pl-pick'), none = { set() {} };
+        if (!box || !window.L) return none;
+        const pts = Object.entries(places()).filter(([x, p]) => x !== k && valid(p) && !p.same).map(([, p]) => [+p.lat, +p.lng]);
+        const map = L.map(box, { zoomControl: true, attributionControl: true });
+        L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
+        pts.forEach(q => L.circleMarker(q, { radius: 4, color: '#8e8e93', fillOpacity: .7, weight: 1 }).addTo(map));
+        let mk = null;
+        const set = (lat, lng, fly) => {
+            if (!isFinite(lat) || !isFinite(lng)) return;
+            if (mk) mk.setLatLng([lat, lng]);
+            else { mk = L.marker([lat, lng], { draggable: true, icon: L.divIcon({ className: 'pl-pick-pin', html: ic('pin'), iconSize: [30, 30], iconAnchor: [15, 28] }) }).addTo(map); mk.on('dragend', () => { const q = mk.getLatLng(); put(q.lat, q.lng); }); }
+            if (fly) map.setView([lat, lng], Math.max(map.getZoom() || 0, 9));
+        };
+        const put = async (lat, lng) => {
+            f.elements.lat.value = lat.toFixed(5); f.elements.lng.value = lng.toFixed(5);
+            if (val(f, 'name')) return;
+            try { const n = await reverseGeocode(lat, lng); if (n && !val(f, 'name')) f.elements.name.value = n; } catch (e) {}
+        };
+        map.on('click', e => { set(e.latlng.lat, e.latlng.lng); put(e.latlng.lat, e.latlng.lng); });
+        const read = () => [parseFloat(val(f, 'lat').replace(',', '.')), parseFloat(val(f, 'lng').replace(',', '.'))];
+        ['lat', 'lng'].forEach(n => f.elements[n].addEventListener('change', () => { const [a, b] = read(); set(a, b, true); }));
+        /* erst nach dem Öffnen des Sheets messen, sonst rechnet Leaflet mit 0 px */
+        setTimeout(() => {
+            map.invalidateSize();
+            const [a, b] = read();
+            if (isFinite(a) && isFinite(b)) { set(a, b); map.setView([a, b], 9); }
+            else if (pts.length > 1) map.fitBounds(pts, { padding: [20, 20], maxZoom: 9 });
+            else if (pts.length) map.setView(pts[0], 7);
+            else map.setView([30, 10], 2);
+        }, 60);
+        dlg.addEventListener('close', () => map.remove(), { once: true });
+        return { set };
+    }
+    async function reverseGeocode(lat, lng) {
+        const wait = 1100 - (Date.now() - lastGeo);
+        if (wait > 0) await new Promise(r => setTimeout(r, wait));
+        lastGeo = Date.now();
+        const u = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=12&accept-language=de&lat=${lat.toFixed(5)}&lon=${lng.toFixed(5)}`;
+        const r = await TB.withTimeout(fetch(u, { headers: { Accept: 'application/json' } }), 8000);
+        if (!r.ok) return '';
+        const j = await r.json(), a = (j && j.address) || {};
+        return a.city || a.town || a.village || a.municipality || a.county || (j && j.name) || (j && j.display_name ? String(j.display_name).split(',')[0] : '');
+    }
     function editStop(k, at) {
         if (!editable()) return;
         const p = k ? places()[k] : null;
@@ -441,12 +513,13 @@
         const again = !p ? stopList().filter(x => x.p.num != null && !x.p.same && valid(x.p)) : [];
         sheet({
             title: p ? 'Stopp bearbeiten' : 'Neuer Stopp',
-            body: `${again.length ? `<div class="pl-again"><span>Schon auf der Route – erneut besuchen:</span><div>${again.map(x => `<button type="button" class="pl-again-btn" data-again="${esc(x.k)}">${ic('refresh')}${esc(x.p.name || x.k)}</button>`).join('')}</div></div>` : ''}
+            body: `${again.length ? `<details class="pl-again"><summary>${ic('refresh')}Einen Ort der Route erneut besuchen</summary><div>${again.map(x => `<button type="button" class="pl-again-btn" data-again="${esc(x.k)}"><i style="background:${esc(H.placeColor ? H.placeColor(x.k) : 'var(--p1)')}">${esc(labels().get(x.k) ?? '')}</i>${esc(x.p.name || x.k)}</button>`).join('')}</div></details>` : ''}
                 <div class="pl-search">
                     ${field('Ort', inp('name', cur.name, 'required maxlength="120" autocomplete="off" placeholder="z. B. Kyoto"'), 'grow')}
                     <button type="button" class="btn-action pl-find">${ic('search')}Suchen</button>
                 </div>
                 <ul class="pl-results" hidden></ul>
+                ${window.L ? `<div class="pl-pick-wrap"><div class="pl-pick" aria-label="Ort auf der Karte wählen"></div><span class="pl-pick-hint">${ic('pin')}Auf die Karte tippen, um den Ort zu setzen</span></div>` : ''}
                 <div class="pl-row">
                     ${field('Breite (lat)', inp('lat', cur.lat, 'inputmode="decimal" required'))}
                     ${field('Länge (lng)', inp('lng', cur.lng, 'inputmode="decimal" required'))}
@@ -477,8 +550,10 @@
                         f.elements.lat.value = (+r.lat).toFixed(5); f.elements.lng.value = (+r.lon).toFixed(5);
                         if (!p || !val(f, 'name')) f.elements.name.value = r.name || r.display_name.split(',')[0];
                         res.hidden = true;
+                        pick.set(+r.lat, +r.lon, true);
                     });
                 };
+                const pick = pickMap(f, cur, k);
                 find.onclick = run;
                 f.querySelectorAll('[data-again]').forEach(b => b.onclick = () => { dlg.close(); addAgain(b.dataset.again, at); });
                 f.elements.name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
@@ -1093,6 +1168,7 @@
             case 'fab-tr': closeFab(); return editTransport(null);
             case 'fab-acc': closeFab(); return editStation((groups()[0] || {}).id, null);
             case 'people': return editPeople();
+            case 'trip-dates': return editTripDates();
             case 'stop-edit': return editStop(b.dataset.k);
             case 'stop-focus': { if (dlg && dlg.open) dlg.close(); const p = places()[b.dataset.k]; return H.focusPlace && H.focusPlace(p && p.same && places()[p.same] ? p.same : b.dataset.k); }
             case 'row-add': return editRow(b.dataset.plan, null);
