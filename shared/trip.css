@@ -1398,3 +1398,44 @@ h2 .add-plus .ic { width: 17px; height: 17px; }
     .card.ab-sw .row-edit { display: none; }
 }
 .pl-sheet .pl-short { max-width: 110px; }
+
+/* ---------- Desktop (17.11.2026): Seitenleiste mit allen Bereichen, Etappen mit Karte daneben ---------- */
+.d-side, .pl-sidemap { display: none; }
+@media (min-width: 1200px) {
+    body.d-sidebar { padding-left: 252px; }
+    body.d-sidebar .wrap { max-width: 1400px; }
+    body.d-sidebar .tabs { display: none; }
+    body.d-sidebar .sticky-header { margin-bottom: 16px; }
+    body.d-sidebar:not(.tb-loading) .d-side { display: flex; }
+    .d-side { flex-direction: column; gap: 1px; position: fixed; z-index: 1001; left: 16px; top: 16px; bottom: 16px; width: 220px; overflow-y: auto;
+        padding: 12px 10px; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .d-side-home { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; text-decoration: none; color: var(--p1); padding: 4px 8px 2px; }
+    .d-side-home .ic { width: 15px; height: 15px; }
+    .d-side-t { font-size: 15px; font-weight: 700; color: var(--ink); padding: 4px 10px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--sep); line-height: 1.3; }
+    .d-side button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; background: none; border-radius: 10px;
+        font-size: 14px; color: var(--text); text-align: left; cursor: pointer; transition: background .12s; }
+    .d-side button:hover { background: var(--hover); }
+    .d-side button.on { background: var(--p1-soft); color: var(--p1); font-weight: 600; }
+    .d-side button .ic { width: 18px; height: 18px; flex: 0 0 18px; color: var(--p1); }
+    .d-side button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (min-width: 1100px) {
+    #stops.pl-split.on { display: grid; grid-template-columns: minmax(440px, 600px) minmax(0, 1fr); gap: 16px; align-items: start; }
+    #stops.pl-split .stop-panel { max-width: none; margin: 0; }
+    #stops.pl-split .pl-sidemap { display: block; position: sticky; top: calc(var(--hdr-h, 150px) + 12px); padding: 0; overflow: hidden;
+        height: calc(100vh - var(--hdr-h, 150px) - 32px); min-height: 420px; margin: 0; }
+    .pl-smap { width: 100%; height: 100%; }
+}
+.pl-smk span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--c, var(--p1)); color: var(--on-p1);
+    font-size: 11.5px; font-weight: 700; box-shadow: 0 0 0 2px var(--card), var(--shadow); }
+.pl-stop.pl-flash { animation: plFlash 1.4s ease; border-radius: 12px; }
+@keyframes plFlash { 0%, 40% { background: var(--p1-soft); } 100% { background: transparent; } }
+@media (min-width: 1100px) {
+    /* Ablauf: Etappen-Tage ohne Eintrag als schmale Zeilen, Datum neben dem Tag */
+    tr.ab-virt td { padding-top: 5px !important; padding-bottom: 5px !important; }
+    tr.ab-virt .dt { display: inline; margin-left: 6px; }
+    tr.ab-virt .ab-plan { padding-top: 3px; padding-bottom: 3px; }
+    tr.ab-virt .ab-ideas { margin: 0 0 4px; }
+    /* Eingabezeilen von To-Dos und Packliste direkt unter der Suche */
+    .pack-add-form.add-inline { margin-top: -4px; }
+}

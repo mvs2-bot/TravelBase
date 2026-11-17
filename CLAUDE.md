@@ -120,6 +120,10 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   Überall (Karte, Etappen, Route, Aktivitäten) dieselbe Funktion. Reisezeiträume der Personen kommen aus den Etappen (`TBPlanner.personRanges()`).
   Thailand-Arbeitstage: ab heute (zählt mit) bis zum Tag vor dem eigenen Reisebeginn, minus gesetzliche Feiertage und `workdays.vacation` (`{ bayern, wien }`, Admins tragen ein).
   Feiertage für `bayern`/`wien` berechnet die Seite selbst (`HOLIDAYS` + Ostern, `holidayMap`); `workdays.holidays` gilt nur noch für andere Regionen.
+- **Desktop:** ab 1200 px Seitenleiste `.d-side` mit allen Bereichen statt Reitern + Menü (`desktopNav()` in `trip-mobile.js`, spiegelt die `.pop-btn`,
+  `body.d-sidebar`). Ab 1100 px im Bereich Etappen eine Karte rechts neben dem Zeitstrahl (`sideMap`/`drawSide` in `planner.js`, `#stops.pl-split`):
+  Punkt anklicken markiert den Stopp in der Liste, „Auf der Karte“ fliegt dorthin, ohne den Bereich zu wechseln. To-Do- und Packlisten-Eingabe
+  bleiben am Desktop als Zeile sichtbar (`plusAdd` mit `.add-inline`), am Handy „+“ mit Sheet.
 - **Reihenfolge der Stopps** (`stopList`): Daten-Reihenfolge von `places`; nummerierte Stopps untereinander nach `num`, nicht nummerierte behalten ihren Platz
   dazwischen (Ziehen schreibt die Reihenfolge neu). Route am Handy: Zeitstrahl mit Nächten als Chip am Namen (`.m-n`), Zeitraum darunter.
 - **Etappen** (zentrale Planung, wie Stippl): `places[k].nights` je nummeriertem Stopp (− / + in der Stoppliste). Ankunft = Reisebeginn + Nächte davor.

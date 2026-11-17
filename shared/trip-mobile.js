@@ -156,6 +156,43 @@
         if (routeView) routeView.querySelectorAll('.m-num').forEach(b => b.onclick = () => TBActivities.open(b.dataset.loc, b.dataset.num, b));
     }
 
+    /* Desktop (ab 1200 px): alle Bereiche als Seitenleiste links – ein Klick statt Reiter + Menü.
+       Die Leiste spiegelt die .pop-btn der Seite (Klick löst den Original-Knopf aus, aktiver Bereich wird mitgezogen). */
+    function desktopNav() {
+        const dq = matchMedia('(min-width: 1200px)');
+        const src = () => [...document.querySelectorAll('.nav-popover .pop-btn[data-t]')].filter(b => !b.hidden && b.style.display !== 'none');
+        const side = document.createElement('nav');
+        side.className = 'd-side'; side.setAttribute('aria-label', 'Bereiche der Reise');
+        document.body.appendChild(side);
+        let sig = '';
+        const build = () => {
+            const bs = src(), now = bs.map(b => b.dataset.t + ':' + b.textContent.trim()).join('|');
+            if (now !== sig) {
+                sig = now;
+                const title = (document.getElementById('tripTitle') || {}).textContent || '';
+                side.innerHTML = `<a class="d-side-home" href="../">${ic('chevronLeft')}Alle Reisen</a>${title ? `<div class="d-side-t">${esc(title)}</div>` : ''}`
+                    + bs.map(b => `<button type="button" data-t="${esc(b.dataset.t)}">${(b.querySelector('span') || {}).innerHTML || ''}<span>${esc(b.textContent.trim())}</span></button>`).join('');
+            }
+            side.querySelectorAll('button[data-t]').forEach(x => { const o = bs.find(b => b.dataset.t === x.dataset.t); x.classList.toggle('on', !!(o && o.classList.contains('on'))); });
+            document.body.classList.toggle('d-sidebar', dq.matches && bs.length > 1);
+        };
+        side.addEventListener('click', e => {
+            const x = e.target.closest('button[data-t]');
+            if (!x) return;
+            const o = src().find(b => b.dataset.t === x.dataset.t);
+            if (o) { o.click(); const pop = document.getElementById('navPopover'); if (pop) pop.classList.remove('open'); window.scrollTo(0, 0); }
+            build();
+        });
+        let t = 0;
+        const later = () => { if (!t) t = requestAnimationFrame(() => { t = 0; build(); }); };
+        const pop = document.querySelector('.nav-popover');
+        if (pop) new MutationObserver(later).observe(pop, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+        const tt = document.getElementById('tripTitle');
+        if (tt) new MutationObserver(() => { sig = ''; later(); }).observe(tt, { childList: true, characterData: true, subtree: true });
+        dq.addEventListener('change', build);
+        build();
+    }
+
     function init() {
         const header = document.querySelector('.sticky-header header');
         const sticky = document.querySelector('.sticky-header');
@@ -190,6 +227,7 @@
         const links = document.getElementById('popLinks');
         if (links) new MutationObserver(render).observe(links, { childList: true });
         mq.addEventListener('change', e => { if (e.matches) render(); });
+        desktopNav();
         /* Neuladen mit #bereich: der Browser springt sonst unter die Kopfzeile */
         window.addEventListener('load', () => { if (mq.matches) setTimeout(() => window.scrollTo(0, 0), 0); });
         /* Start hängt (schwaches Netz, Bibliothek fehlt): nach 8 s „Neu laden“ anbieten */
