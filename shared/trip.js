@@ -443,26 +443,51 @@
         const hotel = r => r.hotel ? `<span class="pill hotel-pill${/noch offen|offen$/i.test(r.hotel) ? ' hotel-open' : ''}">${rich(r.hotel)}</span>` : '';
         const PL = window.TBPlanner, edit = i => PL && PL.ready ? PL.rowEditBtn(p.id, i) : '';
         const tbody = $(`tbody[data-plan="${p.id}"]`), cards = $(`.cards[data-plan="${p.id}"]`);
-        tbody.innerHTML = rows.map((r, i) => `
+        /* Tage aus den Etappen, die noch keinen Eintrag haben (nur im ersten Ablauf), dazu die Ideen aus „Mögliche Aktivitäten“ */
+        const virt = [];
+        if (PL && PL.ready && PL.legDays && p === (DATA.plans || [])[0] && sel === 'all') {
+            const seen = new Set();
+            p.rows.forEach(r => { if (!r.from) return; for (let d = dayNum(r.from); d <= dayNum(r.to || r.from) && d - dayNum(r.from) < 400; d++) seen.add(new Date(d * 864e5).toISOString().slice(0, 10)); });
+            const P = DATA.places || {};
+            PL.legDays().forEach(v => { if (seen.has(v.iso)) return; const name = v.keys.map(k => (P[k] || {}).name || k).filter((x, i, a) => a.indexOf(x) === i).join(' → '); if (!q || name.toLowerCase().includes(q)) virt.push({ v, name }); });
+        }
+        const A = window.TBActivities && TBActivities.ideas ? TBActivities : null, shown = new Set();
+        const ideas = keys => (keys || []).map(k => (DATA.places[k] || {}).name).filter(n => n && !shown.has(n) && shown.add(n)).map(n => { const xs = A ? A.ideas(n) : []; return xs.length ? `<div class="ab-ideas">${ic('sparkles')}<span><b>Ideen:</b> ${xs.slice(0, 6).map(a => esc(a.title)).join(' · ')}${xs.length > 6 ? ` · +${xs.length - 6}` : ''}</span></div>` : ''; }).join('');
+        /* gespeicherte und Etappen-Tage nach Datum mischen */
+        const items = [];
+        let vi = 0;
+        rows.forEach(r => { while (vi < virt.length && r.from && virt[vi].v.iso < r.from) items.push(virt[vi++]); items.push({ r }); });
+        while (vi < virt.length) items.push(virt[vi++]);
+        const canAdd = PL && PL.ready && PL.canEdit();
+        const vRow = x => `<tr class="row ab-virt${x.v.iso === TODAY ? ' today-row' : ''}" data-v="${esc(x.v.keys.join(','))}">
+                <td><span class="dn${dnCls}"${dnStyle}>Tag ${x.v.day}</span><div class="dt">${esc(fmtDM(x.v.iso))}</div></td><td></td>
+                <td><div class="tt">${esc(x.name || 'Reisetag')}</div></td>
+                <td>${ideas(x.v.keys)}${canAdd ? `<button type="button" class="ab-plan" data-pl="row-add" data-plan="${esc(p.id)}" data-iso="${esc(x.v.iso)}">${ic('plus')}Tag planen</button>` : '<span class="note">Noch nichts geplant.</span>'}</td><td></td><td></td></tr>`;
+        const vCard = x => `<div class="card ab-virt" data-v="${esc(x.v.keys.join(','))}">
+                <div class="ab-vline"><span class="dn${dnCls}"${dnStyle}>Tag ${x.v.day}</span><span class="card-date">${esc(fmtDM(x.v.iso))}</span><b>${esc(x.name || 'Reisetag')}</b>${canAdd ? `<button type="button" class="ab-plan ic-only" data-pl="row-add" data-plan="${esc(p.id)}" data-iso="${esc(x.v.iso)}" aria-label="Tag planen" title="Tag planen">${ic('plus')}</button>` : ''}</div>${ideas(x.v.keys)}</div>`;
+        tbody.innerHTML = items.map(x => x.v ? vRow(x) : rowHtml(x.r)).join('') || `<tr><td colspan="6">${p.rows.length ? 'Keine Treffer.' : 'Noch keine Tage im Ablauf.'}</td></tr>`;
+        shown.clear();
+        cards.innerHTML = items.map(x => x.v ? vCard(x) : cardHtml(x.r)).join('');
+        function rowHtml(r) { return `
             <tr class="row${isToday(r) ? ' today-row' : ''}" data-i="${p.rows.indexOf(r)}">
                 <td><span class="dn${dnCls}"${dnStyle}>${esc(r.day)}</span>${edit(p.rows.indexOf(r))}<div class="dt">${esc(r.date)}</div>${whoBadge(r)}</td>
                 <td>${(r.regions || []).map(regionBadge).join(' ')}</td>
                 <td><div class="tt">${esc(r.title)}${isToday(r) ? `<span class="today-tag">${ic('star')}Heute</span>` : ''}</div></td>
-                <td>${rich(r.details)}</td>
+                <td>${rich(r.details)}${ideas(r.focus)}</td>
                 <td>${pills(r)}</td>
                 <td>${hotel(r)}</td>
-            </tr>`).join('') || `<tr><td colspan="6">${p.rows.length ? 'Keine Treffer.' : 'Noch keine Tage im Ablauf.'}</td></tr>`;
-        cards.innerHTML = rows.map(r => `
+            </tr>`; }
+        function cardHtml(r) { return `
             <div class="card${isToday(r) ? ' today-card' : ''}" data-i="${p.rows.indexOf(r)}">
                 <div class="card-header">
                     <div class="card-meta"><span class="dn${dnCls}"${dnStyle}>${esc(r.day)}</span> <span class="card-date">${esc(r.date)}</span> ${whoBadge(r)}</div>
                     <span>${(r.regions || []).map(regionBadge).join(' ')}${edit(p.rows.indexOf(r))}</span>
                 </div>
                 <div class="card-title">${esc(r.title)}${isToday(r) ? `<span class="today-tag">${ic('star')}Heute</span>` : ''}</div>
-                <div class="card-details">${rich(r.details)}</div>
+                <div class="card-details">${rich(r.details)}${ideas(r.focus)}</div>
                 <div class="card-footer">${pills(r)} ${hotel(r)}</div>
-            </div>`).join('');
-        const pick = e => { if (e.target.closest('.row-edit, a')) return; const el = e.target.closest('[data-i]'); if (el && p.rows[+el.dataset.i]) focusPlaces(p.rows[+el.dataset.i].focus); };
+            </div>`; }
+        const pick = e => { if (e.target.closest('.row-edit, a, [data-pl]')) return; const v = e.target.closest('[data-v]'); if (v) return focusPlaces(v.dataset.v.split(',').filter(Boolean)); const el = e.target.closest('[data-i]'); if (el && p.rows[+el.dataset.i]) focusPlaces(p.rows[+el.dataset.i].focus); };
         tbody.onclick = pick; cards.onclick = pick;
     }
 
@@ -633,15 +658,16 @@
             if (term && !`${item.text} ${item.tag}`.toLowerCase().includes(term)) return;
             shown++;
             const li = document.createElement('li');
-            li.className = 'todo-item' + (item.done ? ' done' : '');
+            li.className = 'todo-item sw-row' + (item.done ? ' done' : '');
             const c = tagColor(item.tag);
             li.innerHTML = `<label><input type="checkbox" ${item.done ? 'checked' : ''}><span></span></label>
                 <span class="todo-tag${c ? ' rc' : ''}" ${c ? `style="--c:${c}"` : ''}></span>
-                <button type="button" aria-label="Löschen" title="Löschen">${ic('trash')}</button>`;
+                <span class="sw-acts"><button type="button" class="sw-edit" aria-label="Bearbeiten" title="Bearbeiten">${ic('pencil')}</button><button type="button" class="sw-del" aria-label="Löschen" title="Löschen">${ic('trash')}</button></span>`;
             li.querySelector('label span').textContent = item.text;
             li.querySelector('.todo-tag').textContent = item.tag;
             li.querySelector('input').onchange = () => toggleTodo(idx);
-            li.querySelector('button').onclick = () => deleteTodo(idx);
+            li.querySelector('.sw-edit').onclick = () => editTodo(idx);
+            li.querySelector('.sw-del').onclick = () => deleteTodo(idx);
             ul.appendChild(li);
         });
         $('#todoEmpty').hidden = !(term && todoList.length && !shown);
@@ -669,6 +695,28 @@
             todoList.push(row);
             TB.cacheSet(LIST_CACHE, todoList);
             renderTodos();
+        });
+    }
+    /* To-Do bearbeiten (Text und Kategorie); auf dem Handy per Wischen nach links */
+    function editTodo(idx) {
+        const item = todoList[idx];
+        if (!item || !editable()) return;
+        const save = (text, tag) => {
+            text = String(text || '').trim();
+            if (!text) return;
+            Object.assign(item, { text, tag });
+            renderTodos();
+            dbWrite(() => q(TB.sb.from('travelbase_todos').update({ text, tag }).eq('id', item.id)));
+        };
+        const PL = window.TBPlanner && TBPlanner.ready && TBPlanner.sheet ? TBPlanner : null;
+        if (!PL) { const t = prompt('To-Do:', item.text); if (t !== null) save(t, item.tag); return; }
+        const tags = (DATA.todos.tags || [{ label: 'Allgemein' }]).map(t => [t.label, t.label]);
+        if (item.tag && !tags.some(t => t[0] === item.tag)) tags.push([item.tag, item.tag]);
+        const u = PL.ui;
+        PL.sheet({
+            title: 'To-Do bearbeiten',
+            body: u.field('Aufgabe', u.area('text', item.text, 'rows="2" maxlength="500" required')) + u.field('Kategorie', u.sel('tag', item.tag, tags)),
+            done: f => { const t = u.val(f, 'text'); if (!t) { alert('Bitte einen Text eingeben.'); return false; } save(t, u.val(f, 'tag')); }
         });
     }
     function deleteTodo(idx) {
@@ -719,6 +767,13 @@
                 x.now = x.rows.some(isToday);
             });
         }
+        /* Etappen mit Nächten: Route = Etappen (gleiche Nummern, Farben und Zeiträume wie im Bereich Etappen) */
+        const PLr = window.TBPlanner && TBPlanner.ready && TBPlanner.legs ? TBPlanner : null, LG = PLr ? PLr.legs(RAW.places || {}, m.start || null) : null;
+        if (LG && LG.on && LG.list.length) route = LG.list.map(g => ({
+            k: g.k, num: (P[g.k] || {}).label ?? g.p.num, name: g.p.name || g.k, color: placeColor(g.k),
+            when: [g.from ? (g.n ? `${fmt(g.from)} – ${fmt(g.to)}` : fmt(g.from)) : '', g.n ? `${g.n} ${g.n === 1 ? 'Nacht' : 'Nächte'}` : 'Zwischenstopp'].filter(Boolean).join(' · '),
+            now: !!(g.from && TODAY >= g.from && TODAY < (g.n ? g.to : g.from + 'z'))
+        }));
         /* ohne Tagesplan (Gäste) oder ohne Ortszuordnung in den Zeilen: die Orte nach Nummer */
         if (!route.length) route = placeStops;
         /* kurze Zusatzinfos unter den Kacheln */
@@ -799,6 +854,9 @@
         if (b) b.onclick = () => { BK_SUB = 'acc'; const x = document.querySelector('.pop-btn[data-t="bookings"]'); if (x) x.click(); document.body.classList.remove('m-home'); };
     }
     /* Nach jeder Änderung: Anzeige aus RAW neu ableiten und alles neu zeichnen, aktiver Bereich bleibt */
+    /* Ideen aus „Mögliche Aktivitäten“ erscheinen im Ablauf */
+    let actTimer = 0;
+    document.addEventListener('tb:activities', () => { clearTimeout(actTimer); actTimer = setTimeout(() => { if (DATA) (DATA.plans || []).forEach(p => { if ($(`tbody[data-plan="${p.id}"]`)) safe(() => renderPlan(p)); }); }, 50); });
     function rerender() {
         const keep = CURRENT, y = window.scrollY;
         derive();

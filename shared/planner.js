@@ -342,8 +342,9 @@
                     <button type="button" data-pl="n-dec" data-k="${esc(k)}" aria-label="Eine Nacht weniger"${n === 0 ? ' disabled' : ''}>${ic('minus')}</button>
                     <span><b>${n == null ? '–' : n}</b><small>${n == null ? 'Nächte' : nightsWord(n)}</small></span>
                     <button type="button" data-pl="n-inc" data-k="${esc(k)}" aria-label="Eine Nacht mehr">${ic('plus')}</button></div>` : n != null ? `<span class="pl-n-ro">${n} ${nightsWord(n)}</span>` : ''}</div>
-            <h3 class="pl-d-h">Notizen${edit ? `<button type="button" class="link-inline" data-pl="stop-edit" data-k="${esc(k)}">${ic('pencil')}Bearbeiten</button>` : ''}</h3>
-            <div class="pl-d-note">${p.desc ? rich(p.desc) : `<span class="note">${edit ? 'Noch keine Notizen – über „Bearbeiten“ ergänzen.' : 'Keine Notizen.'}</span>`}</div>
+            ${edit ? `<button type="button" class="pl-d-edit" data-pl="stop-edit" data-k="${esc(k)}">${ic('pencil')}<span><b>Etappe bearbeiten</b><small>Ort, Reisende, Notizen</small></span>${ic('chevronRight')}</button>` : ''}
+            ${persons().length ? `<div class="pl-d-who">${persons().filter(x => !Array.isArray(p.who) || p.who.includes(pkey(x))).map(x => `<span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span>`).join('') || '<span class="note">Niemand ausgewählt</span>'}</div>` : ''}
+            ${p.desc ? `<h3 class="pl-d-h">Notizen</h3><div class="pl-d-note">${rich(p.desc)}</div>` : ''}
             <h3 class="pl-d-h">Unterkünfte${edit && !p.noStay ? `<button type="button" class="link-inline" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(k)}">${ic('plus')}Unterkunft</button>` : ''}</h3>
             ${edit && p.num != null ? `<label class="pl-check pl-nostay"><input type="checkbox" data-pl-nostay="${esc(k)}"${p.noStay ? ' checked' : ''}><span>Keine Unterkunft nötig (z. B. Flug, Nachtzug)</span></label>` : ''}
             ${p.noStay ? `<p class="note">Für diese Etappe ist keine Unterkunft nötig – sie erscheint nicht bei den Unterkünften.</p>` : ''}
@@ -384,6 +385,8 @@
     /* ---------- Reisende: Name + Farbe; färben Punkte auf Karte, Etappen und Route (wie die Südamerika-Reise) ---------- */
     const PALETTE = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#64748b'];
     const persons = () => Array.isArray(raw().persons) ? raw().persons : [];
+    /* Schlüssel einer Person: key (Vorlage) bzw. Name (Thailand, ältere Einträge) */
+    const pkey = x => x.key || x.name;
     /* Reisezeitraum (nur Admins): Beginn (und optional ein festes Ende). Die Vorlage kann das Setzen übernehmen
        (Vielleicht-Reise mit gewähltem Startdatum → H.setStart), sonst steht es in meta.start / meta.end. */
     function editTripDates() {
@@ -413,7 +416,7 @@
     }
     async function editPeople() {
         if (!editable()) return;
-        let list = persons().map(x => ({ key: x.key, name: x.name, color: x.color }));
+        let list = persons().map(x => ({ key: pkey(x), name: x.name, color: x.color }));
         /* Vorschlag: man selbst + die Mitglieder der Reise */
         if (!list.length && H.suggestPeople) { try { list = (await H.suggestPeople()).map((n, i) => ({ key: '', name: n, color: PALETTE[i % PALETTE.length] })); } catch (e) {} }
         if (!list.length) list = [{ key: '', name: '', color: PALETTE[0] }];
@@ -439,7 +442,7 @@
                         let key = x.key || x.name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '').slice(0, 16) || 'p';
                         while (used.has(key)) key += '2';
                         used.add(key);
-                        const old = persons().find(o => o.key === key) || {};
+                        const old = persons().find(o => pkey(o) === key) || {};
                         return { ...old, key, name: x.name, color: x.color };
                     });
                 const keys = new Set(out.map(x => x.key));
@@ -452,9 +455,19 @@
         });
     }
     /* Stopps ändern: Tagespläne, die den Etappen folgen, gleich mit anordnen */
-    function commitPlaces(mutate) {
+    function commitPlaces(mutate, more = []) {
         const sync = legPlans();
-        return commit(['places', ...(sync.length ? [H.planKey] : [])], () => { mutate(); sync.forEach(p => syncPlan(p)); });
+        const keys = [...new Set(['places', ...(sync.length ? [H.planKey] : []), ...more])];
+        return commit(keys, () => { mutate(); sync.forEach(p => syncPlan(p)); });
+    }
+    /* Ort umbenannt: Unterkünfte (Thailand: focus über den Namen) und Thailand-Tage (locName) zeigen danach auf den Schlüssel bzw. neuen Namen,
+       damit die Zuordnung zur Etappe bleibt; mögliche Aktivitäten (über den Ortsnamen verknüpft) ziehen mit */
+    function renameRefs(key, oldName, name) {
+        allStations().forEach(st => {
+            if (st.focus === oldName) st.focus = key;
+            if (!st.place && !st.focus && S.name(st) === oldName) { if (TH()) st.focus = key; else st.place = key; }
+        });
+        if (TH()) plansOf().forEach(pl => pl.rows.forEach(r => { if (r.locName === oldName) r.locName = name; }));
     }
     function moveStop(k, j) {
         const l = stopList(), i = l.findIndex(x => x.k === k);
@@ -534,7 +547,7 @@
                 </div>
                 ${field('Zeitraum / Datum (Text)', inp('date', cur.date, 'maxlength="80" placeholder="z. B. 12.–15.04. oder Tag 3–5"'))}
                 ${field('Beschreibung', area('desc', cur.desc, 'maxlength="2000"'))}
-                ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(x.key)}"${!Array.isArray(cur.who) || cur.who.includes(x.key) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
+                ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(cur.who) || cur.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
                 <div class="pl-row">
                     <label class="pl-check"><input type="checkbox" name="numbered"${cur.num != null ? ' checked' : ''}><span>Nummerierter Stopp der Route</span></label>
                 </div>
@@ -573,9 +586,12 @@
                 const name = val(f, 'name'), lat = parseFloat(val(f, 'lat').replace(',', '.')), lng = parseFloat(val(f, 'lng').replace(',', '.'));
                 if (!name) { alert('Bitte einen Ortsnamen eingeben.'); return false; }
                 if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) { alert('Bitte gültige Koordinaten eintragen (oder über „Suchen“ übernehmen).'); return false; }
+                const oldName = k && raw().places && raw().places[k] ? raw().places[k].name || '' : '';
+                const renamed = !!oldName && oldName !== name && !(raw().places[k].same);
                 commitPlaces(() => {
                     const P = raw().places = raw().places || {};
                     const key = k || uniqueKey(name, P);
+                    if (renamed) renameRefs(key, oldName, name);
                     const o = P[key] || {};
                     const numbered = f.elements.numbered.checked;
                     Object.assign(o, { name, lat: +lat.toFixed(5), lng: +lng.toFixed(5) });
@@ -592,7 +608,7 @@
                     /* erneute Besuche führen Name und Koordinaten des Orts mit */
                     Object.values(P).forEach(x => { if (x.same === key) Object.assign(x, { name: o.name, lat: o.lat, lng: o.lng }); });
                     renumber();
-                });
+                }, renamed ? ['stations', ...(TH() ? [H.planKey] : [])] : []).then(ok => { if (ok && renamed && window.TBActivities && TBActivities.renameLocation) TBActivities.renameLocation(oldName, name); });
             }
         });
     }
@@ -615,7 +631,7 @@
             title: `Erneuter Besuch: ${p.name || src.name || ''}`,
             body: `<p class="note">Name und Lage kommen vom ersten Besuch (Nr. ${esc(labels().get(p.same) ?? '')}). Hier gelten eigene Nächte, Unterkunft und Notizen.</p>
                 ${field('Notizen', area('desc', p.desc, 'maxlength="2000"'))}
-                ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(x.key)}"${!Array.isArray(p.who) || p.who.includes(x.key) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}`,
+                ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(p.who) || p.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}`,
             extra: `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: f => { f.querySelector('.pl-del').onclick = () => { if (confirm('Diesen erneuten Besuch löschen?')) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } }; },
             done: f => {
@@ -666,13 +682,13 @@
         if (!canEdit()) return '';
         const p = planById(planId), m = H.meta() || {};
         const L = legs(), byLegs = !TH() && L.on && L.start;
-        const gen = p && !p.rows.length && m.start && m.end && !byLegs;
+        const gen = p && !p.rows.length && m.start && m.end && !(L.on && L.start);
         return `<div class="pl-toolbar">
             <button type="button" class="btn-action" data-pl="row-add" data-plan="${esc(planId)}">${ic('plus')}Tag hinzufügen</button>
             ${byLegs && p && !p.legs ? `<button type="button" class="btn-action ok" data-pl="days-legs" data-plan="${esc(planId)}">${ic('wand')}Tage aus den Etappen anlegen (${L.total + 1} Tage)</button>` : ''}
             ${byLegs && p && p.legs ? `<span class="note pl-legs-on">${ic('route')}Folgt den Etappen – Nächte bei den Stopps ändern</span>` : ''}
             ${gen ? `<button type="button" class="btn-action ok" data-pl="days-gen" data-plan="${esc(planId)}">${ic('wand')}${dn(m.end) - dn(m.start) + 1} leere Tage anlegen (${fmt(m.start)}–${fmt(m.end)})</button>` : ''}
-            ${p && !p.rows.length && !gen ? `<span class="note">Noch keine Tage. Tipp: Mit Start- und Enddatum der Reise lassen sich alle Tage auf einmal anlegen.</span>` : ''}
+            ${p && !p.rows.length && !gen && !(L.on && L.start) ? `<span class="note">Noch keine Tage. Tipp: Mit Start- und Enddatum der Reise lassen sich alle Tage auf einmal anlegen.</span>` : ''}
         </div>`;
     }
     /* Bearbeiten-Knopf für eine Zeile (Tabelle und Karte) */
@@ -723,20 +739,20 @@
             }
         });
     }
-    function editRow(planId, idx) {
+    function editRow(planId, idx, preset) {
         if (!editable()) return;
         let p = planById(planId);
         if (!p && H.newPlan) p = H.newPlan();
         if (!p) return;
         const isNew = idx == null || idx < 0 || idx >= p.rows.length;
-        const r = isNew ? {} : p.rows[idx];
+        const r = isNew ? (preset ? presetRow(preset) : {}) : p.rows[idx];
         const pl = stopList();
         const foc = new Set(R.focus(r));
         const n = p.rows.length;
         sheet({
             title: isNew ? 'Neuer Tag' : `${r.day || 'Tag'} bearbeiten`,
             body: `<div class="pl-row">
-                    ${field('Tag', inp('day', isNew ? `Tag ${n + 1}` : r.day, 'maxlength="40"'))}
+                    ${field('Tag', inp('day', isNew ? r.day || `Tag ${n + 1}` : r.day, 'maxlength="40"'))}
                     ${field('Datum', `<input type="date" name="from" value="${esc(R.from(r))}">`)}
                     ${TH() ? '' : field('bis (optional)', `<input type="date" name="to" value="${esc(r.to || '')}">`)}
                 </div>
@@ -762,8 +778,10 @@
                 const from = val(f, 'from'), to = f.elements.to ? val(f, 'to') : '';
                 if (to && from && to < from) { alert('„bis“ liegt vor dem Datum.'); return false; }
                 const focus = [...f.querySelectorAll('[name=focus]:checked')].map(x => x.value);
+                /* Thailand: neuer Tag landet im Teil (Thailand / Sri Lanka), zu dem das Datum gehört */
+                if (isNew && from && H.planFor) { const q = planById(H.planFor(from)); if (q) p = q; }
                 commit([H.planKey], () => {
-                    const o = isNew ? { _id: uid() } : r;
+                    const o = isNew ? { _id: uid(), ...(preset ? r : {}) } : r;
                     o.day = val(f, 'day');
                     if (o.title !== val(f, 'title')) delete o.auto;
                     o.title = val(f, 'title');
@@ -779,38 +797,127 @@
                         if (!from && oldAuto) delete o.date;
                         if (focus.length) o.focus = focus; else delete o.focus;
                     }
-                    if (isNew) p.rows.push(o);
+                    if (isNew) { const d0 = R.from(o), at = ISO.test(d0) ? p.rows.findIndex(x => ISO.test(R.from(x)) && R.from(x) > d0) : -1; p.rows.splice(at < 0 ? p.rows.length : at, 0, o); }
                 });
             }
         });
     }
-    /* Für „In Ablauf übernehmen“ (shared/activities.js): alle Tage als Auswahl */
+    /* ---------- Ablauf aus den Etappen: jeder Reisetag mit seinen Orten (Ankunft, Aufenthalt, Abreise) ---------- */
+    function legDays() {
+        const L = legs();
+        if (!L.on || !L.start) return [];
+        const out = [];
+        for (let d = 0; d <= L.total; d++) {
+            const here = L.list.filter(g => g.d0 <= d && d <= g.d1 && (g.n || g.d0 === d));
+            out.push({ iso: isoOf(dn(L.start) + d), day: d + 1, keys: [...new Set(here.map(g => g.k))] });
+        }
+        return out;
+    }
+    const placeNames = keys => keys.map(k => (places()[k] || {}).name || k).filter((x, i, a) => a.indexOf(x) === i).join(' → ');
+    /* neuer Tag aus einem Etappen-Tag (Datum, Orte, Titel) */
+    function presetRow(v) {
+        const keys = v.keys || [], name = placeNames(keys);
+        return TH() ? { day: `Tag ${v.day}`, rawDate: v.iso, date: label(v.iso), title: name, locName: keys.length ? (places()[keys[keys.length - 1]] || {}).name : '' }
+            : { day: `Tag ${v.day}`, from: v.iso, title: name, focus: keys };
+    }
+    /* Ablauf als eine Liste: gespeicherte Tage aller Abläufe nach Datum, dazwischen Etappen-Tage ohne Eintrag (virtual).
+       planFor(iso) wählt den Ablauf für neue Tage (Thailand: Thailand / Sri Lanka) */
+    function ablauf(planIds) {
+        const ps = plansOf().filter(p => !planIds || planIds.includes(p.id));
+        const items = [];
+        ps.forEach(p => p.rows.forEach((r, i) => items.push({ r, plan: p.id, i, iso: R.from(r) })));
+        const seen = new Set();
+        items.forEach(x => { if (!ISO.test(x.iso || '')) return; seen.add(x.iso); const to = x.r.to; if (ISO.test(to || '') && to > x.iso) for (let d = dn(x.iso); d <= dn(to) && d - dn(x.iso) < 400; d++) seen.add(isoOf(d)); });
+        legDays().forEach(v => { if (!seen.has(v.iso)) items.push({ virtual: true, iso: v.iso, v, plan: planFor(v.iso, ps), name: placeNames(v.keys) }); });
+        /* nach Datum; Tage ohne Datum behalten ihre Stelle hinter dem Vorgänger */
+        let last = '';
+        items.forEach((x, n) => { x._k = (x.iso || last) + '|' + String(n).padStart(5, '0'); if (x.iso) last = x.iso; });
+        return items.sort((a, b) => a._k < b._k ? -1 : a._k > b._k ? 1 : 0);
+    }
+    function planFor(iso, ps) {
+        ps = ps || plansOf();
+        if (H.planFor) { const id = H.planFor(iso); if (id) return id; }
+        /* der Ablauf, dessen Zeitraum das Datum enthält, sonst der letzte, der davor beginnt, sonst der erste */
+        const rng = ps.map(p => { const ds = p.rows.map(R.from).filter(x => ISO.test(x)).sort(); return { id: p.id, a: ds[0], b: ds[ds.length - 1] }; });
+        const hit = rng.find(x => x.a && x.a <= iso && iso <= x.b) || rng.filter(x => x.a && x.a <= iso).pop() || rng[0];
+        return hit ? hit.id : (ps[0] || {}).id || '';
+    }
+    /* Reisezeitraum je Person aus den Etappen: erster bis letzter Stopp, bei dem sie dabei ist */
+    function personRanges() {
+        const out = new Map(), L = legs(), ps = persons();
+        if (!L.on || !L.start) return out;
+        ps.forEach(x => {
+            const key = pkey(x);
+            const on = L.list.filter(g => (H.placeWho ? H.placeWho(g.k) : Array.isArray(g.p.who) ? g.p.who : ps.map(pkey)).includes(key));
+            if (on.length) { const a = on[0], b = on[on.length - 1]; out.set(key, { start: a.from, end: b.n ? b.to : b.from }); }
+        });
+        return out;
+    }
+    /* Für „In Ablauf übernehmen“ (shared/activities.js): alle Tage als Auswahl, auch Etappen-Tage ohne Eintrag */
     function dayOptions() {
         const out = [];
-        plansOf().forEach(p => {
+        const multi = plansOf().length > 1;
+        ablauf().forEach(x => {
+            if (x.virtual) { out.push({ ref: `${x.plan}:@${x.iso}`, iso: x.iso, label: [`Tag ${x.v.day}`, fmt(x.iso), x.name].filter(Boolean).join(' · ') }); return; }
+            const p = planById(x.plan), r = x.r;
             ensureIds(p.rows);
-            p.rows.forEach(r => out.push({ ref: `${p.id}:${r._id}`, label: [p.title && plansOf().length > 1 ? p.title.replace(/^(Möglicher Ablauf|Tagesplan) /, '') : '', r.day, fmt(R.from(r)) || r.date, R.title(r)].filter(Boolean).join(' · ') }));
+            out.push({ ref: `${p.id}:${r._id}`, iso: x.iso, label: [p.title && multi ? p.title.replace(/^(Möglicher Ablauf|Tagesplan) /, '') : '', r.day, fmt(R.from(r)) || r.date, R.title(r)].filter(Boolean).join(' · ') });
         });
         return out;
     }
     function dayLabel(ref) {
         const [pid, rid] = String(ref || '').split(':');
+        if (/^@\d{4}-\d\d-\d\d$/.test(rid || '')) { const p = planById(pid), r = p && p.rows.find(x => R.from(x) === rid.slice(1)); return r ? [r.day, fmt(R.from(r))].filter(Boolean).join(' · ') : fmt(rid.slice(1)); }
         const p = planById(pid), r = p && p.rows.find(x => x._id === rid);
         return r ? [r.day, fmt(R.from(r)) || r.date].filter(Boolean).join(' · ') : '';
     }
+    /* Gibt die Referenz des Tags zurück (bei einem Etappen-Tag ohne Eintrag wird er dabei angelegt) – oder false */
     async function addToDay(ref, text) {
         const [pid, rid] = String(ref || '').split(':');
-        const p = planById(pid), r = p && p.rows.find(x => x._id === rid);
-        if (!r || !editable()) return false;
-        return commit([H.planKey], () => {
+        let p = planById(pid);
+        if (!p && H.newPlan && editable()) p = H.newPlan();
+        if (!p || !editable()) return false;
+        let r = p.rows.find(x => x._id === rid), fresh = null;
+        if (!r && /^@\d{4}-\d\d-\d\d$/.test(rid || '')) {
+            const iso = rid.slice(1);
+            r = p.rows.find(x => R.from(x) === iso);
+            if (!r) { const v = legDays().find(x => x.iso === iso) || { iso, day: '', keys: [] }; fresh = { _id: uid(), ...presetRow(v) }; if (TH()) ['details', 'transport', 'hotel'].forEach(k => { if (fresh[k] == null) fresh[k] = ''; }); r = fresh; }
+        }
+        if (!r) return false;
+        ensureIds(p.rows);
+        const ok = await commit([H.planKey], () => {
+            if (fresh) { const at = p.rows.findIndex(x => ISO.test(R.from(x)) && R.from(x) > R.from(fresh)); p.rows.splice(at < 0 ? p.rows.length : at, 0, fresh); }
             if (TH()) r.details = (r.details ? r.details + '\n' : '') + '• ' + text;
             else { r.extra = (r.extra || []).filter(x => x !== text); r.extra.push(text); }
         });
+        return ok ? `${p.id}:${r._id}` : false;
     }
 
     /* ---------- Unterkünfte ---------- */
     /* Unterkunft ↔ Etappe: über place (Vorlage), focus (Thailand) oder gleichen Ortsnamen */
-    const stayKey = s => s.place || (s.focus && placeKeyByName(s.focus)) || placeKeyByName(s.name ?? s.title ?? '');
+    /* robust: Schlüssel (place/focus) zuerst; sonst Name – bei mehreren Besuchen der, dessen Etappe das Check-in-Datum enthält;
+       sonst der längste Stopp-Name, mit dem der Text beginnt (z. B. „Bangkok Stadtzentrum“ → „Bangkok“ nach Umbenennen) */
+    function stayKey(s) {
+        const P = places(), ref = s.place || s.focus;
+        if (ref && P[ref]) return ref;
+        const d = s.checkin || s.from;
+        const inLeg = k => { const g = ISO.test(d || '') && legs(P).list.find(x => x.k === k && x.from); return !!g && g.from <= d && d < (g.n ? g.to : isoOf(dn(g.from) + 1)); };
+        const pick = (name, strict) => {
+            name = String(name || '').replace(/^\d+\.\s*/, '').trim();
+            if (!name) return null;
+            let ks = Object.keys(P).filter(k => P[k] && P[k].name === name);
+            if (!ks.length) {
+                const low = name.toLowerCase();
+                const hits = Object.keys(P).filter(k => { const n = String((P[k] || {}).name || '').toLowerCase(); return P[k].num != null && n && low.startsWith(n) && !/[\p{L}\d]/u.test(low.charAt(n.length)); });
+                const best = hits.reduce((m, k) => Math.max(m, P[k].name.length), 0);
+                ks = hits.filter(k => P[k].name.length === best);
+                /* nur ungefähr passender Stationsname: lediglich, wenn das Datum in der Etappe liegt */
+                if (strict) ks = ks.filter(inLeg);
+            }
+            return ks.length > 1 ? ks.find(inLeg) || ks[0] : ks[0] || null;
+        };
+        return pick(ref) || pick(s.name ?? s.title, true);
+    }
     function legFor(s) {
         const k = stayKey(s);
         if (!k) return null;
@@ -925,6 +1032,10 @@
                     ${edit ? `<button type="button" class="btn-action" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</div>` : ''}
             </section>`;
         }).join('');
+        /* Etappen ohne Übernachtung bzw. „Keine Unterkunft nötig“: zugeordnete, nicht gebuchte Einträge ausblenden */
+        const skip = new Set(L.list.filter(x => !needsStay(x)).map(x => x.k));
+        if (skip.size) all.forEach(s => { if (!used.has(s) && S.status(s) !== 'booked' && skip.has(stayKey(s))) used.add(s); });
+        const openN = all.filter(s => S.status(s) === 'open' && !skip.has(stayKey(s))).length;
         /* übrige Unterkünfte (ohne Etappe), nach Gruppen */
         const rest = gs.map(g => {
             const items = g.list.map((s, i) => ({ s, i })).filter(o => !used.has(o.s) && match(o.s));
@@ -946,7 +1057,7 @@
         const totalN = legN || all.reduce((n, s) => n + S.nights(s), 0);
         pane.innerHTML = `<div class="box bk-box">
             <div class="mh"><h2>${ic('bed')}Unterkünfte</h2>
-                <span class="pl-sum"><span class="pl-st ok">${booked} gebucht</span>${open ? `<span class="pl-st warn">${open} offen</span>` : ''}</span></div>
+                <span class="pl-sum"><span class="pl-st ok">${booked} gebucht</span>${openN ? `<span class="pl-st warn">${openN} offen</span>` : ''}</span></div>
             ${totalN ? `<div class="bk-prog big${bookedN >= totalN ? ' done' : ''}"><span><b>${bookedN} / ${totalN}</b> Nächte gebucht</span><i style="--pct:${Math.round(bookedN / totalN * 100)}"></i></div>` : ''}
             ${warn.length ? `<div class="tb-banner pl-warn">${ic('alert')}<span><b>Storno-Fristen-Wächter:</b> ${warn.map(w => `${esc(w.name)} – ${esc(w.text)}`).join(' · ')}</span></div>` : ''}
             ${gp.length && !legSecs ? `<div class="tb-banner pl-gap">${ic('bed')}<span><b>Nächte ohne Unterkunft:</b> ${gp.map(x => `${fmt(x.from)}–${fmt(x.to)} (${nightsTxt(x.nights)})`).join(' · ')}</span></div>` : ''}
@@ -970,12 +1081,14 @@
         const t = S.transfer(s);
         const lg = legFor(s);
         const pl = stopList();
+        const curStop = isNew ? (legKey && places()[legKey] ? legKey : '') : stayKey(s) || '';
         const last = g.list[g.list.length - 1];
         const defIn = isNew ? (last && S.cout(last)) || (H.meta() || {}).start || '' : S.cin(s);
         sheet({
             title: isNew ? 'Neue Unterkunft' : 'Unterkunft bearbeiten',
             body: `${field('Station / Ort', inp('name', S.name(s), 'required maxlength="120" list="plPlaces" placeholder="z. B. Kyoto"'))}
                 <datalist id="plPlaces">${pl.map(({ p }) => `<option value="${esc(p.name)}">`).join('')}</datalist>
+                ${pl.some(x => x.p.num != null) ? field('Etappe', `<select name="stop"><option value="">– keine Etappe –</option>${pl.filter(x => x.p.num != null).map(({ k, p }) => { const g = legs().list.find(x => x.k === k); return `<option value="${esc(k)}"${k === curStop ? ' selected' : ''}>${esc(labels().get(k) ?? p.num)} · ${esc(p.name || k)}${g && g.from ? ` · ${esc(legShort(g))}` : ''}</option>`; }).join('')}</select>`) : ''}
                 <div class="pl-row">
                     ${field('Check-in', `<input type="date" name="cin" value="${esc(lg ? lg.from : defIn)}"${lg ? ' readonly' : ''}>`)}
                     ${field('Check-out', `<input type="date" name="cout" value="${esc(S.cout(s))}"${lg ? ' readonly' : ''}>`)}
@@ -1029,9 +1142,12 @@
                     setOpt(o, 'address', val(f, 'address')); setOpt(o, 'maps', val(f, 'maps')); setOpt(o, 'note', val(f, 'note'));
                     const tt = val(f, 'ttime'), tx = val(f, 'ttext');
                     if (tt || tx || typeof o.transfer === 'object') o.transfer = { time: tt, text: tx }; else delete o.transfer;
-                    const pk = (s.place && S.name(s) === name && s.place) || placeKeyByName(name);
-                    if (pk && !TH()) o.place = pk; else if (!TH()) delete o.place;
-                    if (TH() && isNew) { o.focus = pk ? places()[pk].name : name; if (!o.transfer) o.transfer = { time: '', text: '' }; if (!o.hotel) o.hotel = ''; }
+                    /* Etappe als Schlüssel speichern (bleibt beim Umbenennen des Orts erhalten) */
+                    const sk = f.elements.stop ? val(f, 'stop') : (placeKeyByName(name) || '');
+                    if (!TH()) { if (sk) o.place = sk; else delete o.place; }
+                    else if (sk) o.focus = sk;
+                    else if (isNew || !o.focus || places()[o.focus]) o.focus = name;
+                    if (TH() && isNew) { if (!o.transfer) o.transfer = { time: '', text: '' }; if (!o.hotel) o.hotel = ''; }
                     if (isNew) {
                         /* nach Datum einsortieren */
                         const at = cin ? g.list.findIndex(x => ISO.test(S.cin(x)) && S.cin(x) > cin) : -1;
@@ -1188,7 +1304,7 @@
             case 'trip-dates': return editTripDates();
             case 'stop-edit': return editStop(b.dataset.k);
             case 'stop-focus': { if (dlg && dlg.open) dlg.close(); const p = places()[b.dataset.k]; return H.focusPlace && H.focusPlace(p && p.same && places()[p.same] ? p.same : b.dataset.k); }
-            case 'row-add': return editRow(b.dataset.plan, null);
+            case 'row-add': return editRow(b.dataset.plan, null, b.dataset.iso ? (legDays().find(x => x.iso === b.dataset.iso) || { iso: b.dataset.iso, day: '', keys: [] }) : null);
             case 'row-edit': return editRow(b.dataset.plan, i);
             case 'days-gen': return generateDays(b.dataset.plan);
             case 'days-legs': return planFromLegs(b.dataset.plan);
@@ -1284,7 +1400,9 @@
         stopList, routeStops, totalKm, kmText, renderStops, mountStops,
         planToolbar, rowEditBtn, editRow, dayOptions, dayLabel, addToDay,
         renderAcc, warnings, gaps, cancelInfo,
-        legs, legText, labels,
+        legs, legText, labels, legDays, ablauf, personRanges, stayKey: s => stayKey(s),
+        saveKeys: (keys, mutate) => commit(keys, mutate),
+        sheet: o => sheet(o), ui: { field, inp, area, sel: (n, v, o) => sel(n, v, o), val: (f, n) => val(f, n) },
         renderTransports,
         stationStats: () => { const a = allStations(); return { total: a.length, booked: a.filter(s => S.status(s) === 'booked').length, open: a.filter(s => S.status(s) === 'open').length }; }
     };
