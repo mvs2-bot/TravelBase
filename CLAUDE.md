@@ -102,7 +102,8 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   „Aus den Etappen“ (Knopf `go-stops`); „Transport hinzufügen“ dort nur ohne `#stops`. `places[k].kind` (Anreise/Abreise) ist abgelöst,
   die Auswahl erscheint nur noch bei Etappen, die sie schon haben.
 - **Kartenlinien:** sobald die Etappen Nächte haben, zeichnet `TBPlanner.drawRoute(map, places)` (`routeSegments()`) Linien zwischen aufeinanderfolgenden
-  Stopps (ohne `noRoute`, gleiche Koordinaten übersprungen). Stil nach eingetragenem Transport dazwischen (`transportBetween`), sonst ab 800 km Flug,
+  Stopps (ohne `noRoute`, gleiche Koordinaten übersprungen; keine geschätzte Strecke, wenn eingetragene Transporte etwas anderes sagen: Transport von a woandershin,
+  Ankunft in b von woanders, a Abreise/b Anreise, oder ab 800 km zu einem reinen Abflugort bzw. von einem reinen Ankunftsort). Stil nach eingetragenem Transport dazwischen (`transportBetween`), sonst ab 800 km Flug,
   darunter Straße (`SEG_STYLE`). Zusätzlich eine Linie je eingetragenem Transport zwischen den passenden Orten (`transportSegments`, Code/Name), doppelte Strecken einmal. Ohne Etappen-Nächte wie bisher gespeicherte `routes` (`{via:[Schlüssel], style}`) bzw. automatische Linie.
 - **Ablauf-Tag bearbeiten** (`editRow`): Auswahl „Etappe / Ort auf der Karte“ (Dropdown; setzt `focus`/`locName`, verschiebt das Datum in den
   Zeitraum der Etappe und die Tag-Nummer), Datum, „Mögliche Aktivität übernehmen“ (`TBActivities.forLocation`, füllt Titel bzw. hängt an Details an).

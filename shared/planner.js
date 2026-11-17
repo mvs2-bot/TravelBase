@@ -176,9 +176,24 @@
     function routeSegments(P) {
         P = P || places();
         const l = routeStops(P).filter(x => !x.p.noRoute), out = [];
+        /* eingetragene Transporte haben Vorrang: keine geschätzte Strecke, wenn von a ein Transport woandershin geht,
+           in b einer von woanders ankommt, a eine Abreise oder b eine Anreise ist (z. B. eine Person fliegt heim, eine andere reist nach) */
+        const lg = new Map(legs(P).list.map(g => [g.k, g])), FL = (raw().flights || []).filter(f => f && f.from && f.to);
+        const base = x => x.p.same && P[x.p.same] ? Object.assign({}, P[x.p.same], { name: x.p.name || P[x.p.same].name }) : x.p;
+        const near = (d, g) => !g || !g.from || !ISO.test(d || '') || (dn(d) >= dn(g.from) - 1 && dn(d) <= dn(g.to) + 1);
+        /* ein Transport-Ende gehört nur zu den am besten passenden Orten (Flughafen-Code schlägt Stadtname) */
+        const top = end => Math.max(0, ...l.map(x => endScore(end, base(x))));
+        const at = (end, x) => { const sc = endScore(end, base(x)); return sc > 0 && sc >= top(end); };
+        const leaves = (a, b) => FL.some(f => at(f.from, a) && near(f.from.date, lg.get(a.k)) && !at(f.to, b));
+        const arrives = (a, b) => FL.some(f => at(f.to, b) && near(f.to.date || f.from.date, lg.get(b.k)) && !at(f.from, a));
+        const dep = x => FL.some(f => at(f.from, x) && near(f.from.date, lg.get(x.k))), arr = x => FL.some(f => at(f.to, x) && near(f.to.date || f.from.date, lg.get(x.k)));
+        const onlyDep = x => dep(x) && !arr(x), onlyArr = x => arr(x) && !dep(x);
         for (let i = 1; i < l.length; i++) {
             const a = l[i - 1], b = l[i];
             if (+a.p.lat === +b.p.lat && +a.p.lng === +b.p.lng) continue;
+            if (a.p.kind === 'depart' || b.p.kind === 'arrive' || leaves(a, b) || arrives(a, b)) continue;
+            /* weite Strecke zu einem Ort, an dem nur abgeflogen wird (Startpunkt), oder von einem, an dem nur angekommen wird (Endpunkt) */
+            if (km(a.p, b.p) >= 800 && (onlyArr(a) || onlyDep(b))) continue;
             const tr = transportBetween(a.p, b.p);
             out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: tr ? tr.mode : km(a.p, b.p) >= 800 ? 'flight' : 'road' });
         }
