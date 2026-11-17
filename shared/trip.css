@@ -184,15 +184,15 @@ tr.today-row td:first-child { box-shadow: inset 3px 0 0 var(--p1); }
 .group-badge, .rg, .todo-tag { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 7px; border-radius: 6px; white-space: nowrap; background: color-mix(in srgb, var(--c, #8e8e93) 15%, var(--card)); color: color-mix(in srgb, var(--c, #8e8e93) 82%, var(--ink)); }
 .group-badge { margin-top: 4px; }
 .rg { margin-bottom: 2px; }
-.group-ines-stefan, .tag-norden, .tag-sl-hochland, .todo-tag.tag-th { --c: #248a3d; }
-.group-ines-alleine, .tag-bangkok, .tag-sl-colombo { --c: #8944ab; }
-.group-ines-anna, .tag-inseln, .tag-sl-suedkueste { --c: #0a7f86; }
+.group-0, .tag-norden, .tag-sl-hochland, .todo-tag.tag-th { --c: #248a3d; }
+.group-1, .tag-bangkok, .tag-sl-colombo { --c: #8944ab; }
+.group-2, .tag-inseln, .tag-sl-suedkueste { --c: #0a7f86; }
 .tag-sl-westkueste { --c: #1f8a63; }
 .tag-sl-kulturdreieck, .todo-tag.tag-sl { --c: #b25000; }
 .tag-default { --c: #8e8e93; }
-:root[data-theme="dark"] .group-ines-stefan, :root[data-theme="dark"] .tag-norden, :root[data-theme="dark"] .tag-sl-hochland, :root[data-theme="dark"] .todo-tag.tag-th { --c: #30d158; }
-:root[data-theme="dark"] .group-ines-alleine, :root[data-theme="dark"] .tag-bangkok, :root[data-theme="dark"] .tag-sl-colombo { --c: #bf5af2; }
-:root[data-theme="dark"] .group-ines-anna, :root[data-theme="dark"] .tag-inseln, :root[data-theme="dark"] .tag-sl-suedkueste { --c: #40c8e0; }
+:root[data-theme="dark"] .group-0, :root[data-theme="dark"] .tag-norden, :root[data-theme="dark"] .tag-sl-hochland, :root[data-theme="dark"] .todo-tag.tag-th { --c: #30d158; }
+:root[data-theme="dark"] .group-1, :root[data-theme="dark"] .tag-bangkok, :root[data-theme="dark"] .tag-sl-colombo { --c: #bf5af2; }
+:root[data-theme="dark"] .group-2, :root[data-theme="dark"] .tag-inseln, :root[data-theme="dark"] .tag-sl-suedkueste { --c: #40c8e0; }
 :root[data-theme="dark"] .tag-sl-westkueste { --c: #63e6be; }
 :root[data-theme="dark"] .tag-sl-kulturdreieck, :root[data-theme="dark"] .todo-tag.tag-sl { --c: #ffb340; }
 .who { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; font-weight: 500; background: var(--well); border-radius: 6px; padding: 2px 7px; margin-top: 4px; white-space: nowrap; color: var(--text); }
@@ -332,6 +332,8 @@ ul.fl-list li.flc::before { content: none; }
 .flc-cost { font-size: 12px; font-weight: 600; background: var(--ok-soft); color: var(--ok); padding: 2px 8px; border-radius: 6px; }
 .flc-status { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--p1); background: var(--p1-soft); padding: 5px 10px; border-radius: 999px; text-decoration: none; }
 .flc-status .ic { width: 13px; height: 13px; }
+.flc-foot .pl-tr-acts { margin: 0 0 0 auto; padding: 0; border: 0; }
+.flc-status + .pl-tr-acts { margin-left: 0; }
 .flc-status:hover { background: var(--p1-line); }
 
 /* Klima */
@@ -540,6 +542,8 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
     .m-bx { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; }
     .m-bx .ic, .m-bx svg { width: 18px; height: 18px; color: #fff; stroke: currentColor; }
     .m-lt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .m-base { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--p1); overflow: hidden; text-overflow: ellipsis; }
+    .m-base .ic { width: 11px; height: 11px; flex: none; }
     .m-li small { font-size: 15px; color: var(--mute); white-space: nowrap; }
     .m-li > .ic:last-child { width: 16px; height: 16px; color: var(--mute); opacity: .7; flex: 0 0 auto; }
 
@@ -1054,7 +1058,7 @@ button.pl-stop-main:hover b { color: var(--p1); }
 .pl-pick-pin { color: var(--p1); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .35)); }
 .pl-pick-pin .ic { width: 30px; height: 30px; fill: var(--card); stroke-width: 2; }
 
-/* ---------- Kompakt (Stefan, 17.11.2026): Etappen-Zeitstrahl und Route dichter, eine Zeile je Station ---------- */
+/* ---------- Kompakt (17.11.2026): Etappen-Zeitstrahl und Route dichter, eine Zeile je Station ---------- */
 .pl-tl { margin: 2px 0 6px; }
 .pl-tl::before { left: 14px; top: 16px; bottom: 16px; }
 .pl-tl-row { gap: 10px; padding: 2px 0; }
@@ -1099,7 +1103,7 @@ button.pl-stop-main:hover b { color: var(--p1); }
     .m-route h2 { margin-bottom: 4px; }
 }
 
-/* ---------- Kompakt II (Stefan, 17.11.2026): Unterkünfte, Aktivitäten, Packliste ---------- */
+/* ---------- Kompakt II (17.11.2026): Unterkünfte, Aktivitäten, Packliste ---------- */
 /* Etappen: Transport-Status dezent neben der Verkehrsmittel-Pille */
 .pl-tl-gap { flex-wrap: wrap; }
 .pl-tr-st { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 999px; white-space: nowrap; }
@@ -1214,7 +1218,7 @@ button.pl-stop-main:hover b { color: var(--p1); }
     .chart-container { height: 200px; }
 }
 
-/* ---------- Konsistenz (Stefan, 17.11.2026): Wischen, Ablauf aus Etappen, offene Unterkünfte, Stopp-Sheet ---------- */
+/* ---------- Konsistenz (17.11.2026): Wischen, Ablauf aus Etappen, offene Unterkünfte, Stopp-Sheet ---------- */
 /* Zeilen-Aktionen: Desktop in der Zeile, Handy per Wischen nach links (shared/trip-mobile.js) */
 .sw-acts { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .todo-item .sw-acts button { border: 0; background: none; color: var(--mute); padding: 5px; border-radius: 6px; display: inline-grid; place-items: center; cursor: pointer; }
@@ -1303,3 +1307,91 @@ tr.ab-virt { background: color-mix(in srgb, var(--well) 45%, transparent); }
 .ab-plan.ic-only { flex: 0 0 auto; width: 30px; height: 28px; padding: 0; margin: 0; justify-content: center; }
 .ab-plan.ic-only .ic { width: 15px; height: 15px; }
 .card.ab-virt .ab-ideas { margin: 4px 0 0 2px; }
+
+/* Etappen als Zeitstrahl: verbundene Punkte statt Karten, Nächte direkt neben dem Ortsnamen */
+.pl-tl::before { border-left: 2px solid var(--p1-line); }
+.pl-tl .pl-stop, .pl-tl .pl-stop + .pl-stop { border: 0; background: none; box-shadow: none; padding: 3px 0; border-radius: 0; }
+.pl-tl .pl-stop-main { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 170px); }
+.pl-tl .pl-stop > .pl-nights { flex: none; }
+.pl-tl .pl-stop > .pl-acts { margin-left: auto; }
+.pl-tl .pl-stop > .pl-n-ro { flex: none; font-size: 12px; font-weight: 600; color: var(--mute); background: var(--well); padding: 2px 8px; border-radius: 999px; }
+.pl-tl .pl-dot { box-shadow: 0 0 0 3px var(--card); }
+.pl-tl-gap { min-height: 26px; }
+.pl-tl .pl-ins { height: 22px; width: 22px; flex: 0 0 22px; margin: 0 4px; border-radius: 50%; color: var(--mute); }
+.pl-tl .pl-ins .ic { width: 12px; height: 12px; }
+.pl-tl .pl-ins-sp { flex: 0 0 30px; }
+/* Transport-Einträge im Zeitstrahl: kleiner, ohne Nummer, Symbol des Verkehrsmittels */
+.pl-tl .pl-stop.pl-tr .pl-dot { flex: 0 0 22px; width: 22px; height: 22px; margin: 0 4px; background: var(--card); color: var(--p1); border: 2px solid var(--p1-line); text-shadow: none; }
+.pl-tl .pl-stop.pl-tr .pl-dot .ic { width: 12px; height: 12px; }
+.pl-tl .pl-stop.pl-tr .pl-stop-main b { font-size: 13px; font-weight: 600; color: var(--text); }
+/* „+“ im Zeitstrahl: Auswahl Aufenthalt / Transport */
+.pl-choice { display: grid; gap: 8px; }
+.pl-choice-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--card); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.pl-choice-btn:hover { border-color: var(--p1-line); background: var(--p1-soft); }
+.pl-choice-btn > .ic { width: 22px; height: 22px; color: var(--p1); flex: none; }
+.pl-choice-btn b { display: block; font-size: 15px; }
+.pl-choice-btn small { display: block; font-size: 12px; color: var(--mute); }
+/* Hinweis „Aus den Etappen“ (Flüge, Route) */
+.pl-srcnote, .m-src { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: 12px; color: var(--mute); margin: 0 0 10px; }
+.pl-srcnote .ic, .m-src .ic { width: 13px; height: 13px; color: var(--p1); flex: none; }
+/* Unterkünfte: „Details“ rechts unter dem Stift, Inhalt aufklappbar über die ganze Breite */
+.pl-st.bad { background: var(--danger-soft); color: var(--danger); }
+.bk-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.bk-det { display: inline-flex; align-items: center; gap: 2px; border: 0; background: none; padding: 2px 0; font: inherit; font-size: 12px; font-weight: 600; color: var(--p1); cursor: pointer; }
+.bk-det .ic { width: 13px; height: 13px; transition: transform .15s; }
+.bk-card.det-open .bk-det .ic { transform: rotate(180deg); }
+.bk-card .bk-more { display: none; }
+.bk-card.det-open .bk-more { display: block; }
+/* Mögliche Aktivitäten: Kategorien als kleine farbige Chips (Farbe je Kategorie) */
+[data-tag="outdoor"] { --tc: var(--ok); } [data-tag="rain"] { --tc: var(--p1); } [data-tag="food"] { --tc: var(--warn); }
+[data-tag="culture"] { --tc: var(--danger); } [data-tag="half"], [data-tag="full"] { --tc: var(--mute); }
+.act-fchip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--text); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.act-fchip .ic { width: 13px; height: 13px; color: var(--tc, var(--p1)); }
+.act-fchip:hover { border-color: var(--tc, var(--p1)); }
+.act-fchip.on { background: var(--tc, var(--p1)); border-color: var(--tc, var(--p1)); color: var(--on-p1); }
+.act-fchip.on .ic { color: inherit; }
+.act-tag { color: var(--tc, var(--p1)); background: color-mix(in srgb, var(--tc, var(--p1)) 12%, transparent); font-size: 11px; padding: 1px 7px; }
+.act-tag .ic { width: 11px; height: 11px; }
+.act-tchip span .ic { width: 13px; height: 13px; color: var(--tc, var(--p1)); margin-right: 3px; vertical-align: -2px; }
+/* „+“ rechts neben der Suchleiste bzw. in der Überschrift (To-Dos, Packliste, Infos, Ablauf): Akzentfarbe */
+.add-plus { flex: 0 0 auto; width: 38px; height: 38px; border: 0; border-radius: 50%; background: var(--p1); color: var(--on-p1); display: inline-grid; place-items: center; padding: 0; cursor: pointer; box-shadow: 0 2px 6px color-mix(in srgb, var(--p1) 35%, transparent); }
+.add-plus:hover { filter: brightness(1.08); }
+.add-plus .ic { width: 20px; height: 20px; stroke-width: 2.4; }
+h2 .add-plus { width: 32px; height: 32px; margin-left: auto; }
+h2 .add-plus .ic { width: 17px; height: 17px; }
+.todo-search, .pack-search { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.todo-search .q-input, .pack-search .q-input { flex: 1 1 auto; min-width: 0; }
+.pl-add-sheet .pack-add-form { display: grid; gap: 8px; margin: 0; }
+.pl-add-sheet .pack-add-form > * { width: 100%; }
+/* To-Dos: Hinweistext oben entfällt, Suchleiste steht oben */
+#todos .box > p.note:not(#todoEmpty):not(.todo-empty) { display: none; }
+/* Ablauf: Text über der Suchleiste entfällt */
+#planNote { display: none; }
+/* Infos & Hinweise: Zeilen mit Wischen (Admins) */
+.tips .info-row { display: flex; align-items: flex-start; gap: 8px; }
+.tips .info-row .info-txt { flex: 1; min-width: 0; }
+.tips .info-row .sw-acts button { border: 0; background: none; color: var(--mute); padding: 4px; border-radius: 6px; display: inline-grid; place-items: center; cursor: pointer; }
+.tips .info-row .sw-acts .ic { width: 16px; height: 16px; }
+@media (max-width: 767.98px) {
+    /* Packliste: Umschalter der Personen unten über der Menüleiste */
+    #pack .sub-tabs { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 40; margin: 0; background: var(--card); box-shadow: var(--shadow); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+    #pack .sub-tabs .tab { border-radius: 999px; }
+    #pack .sub-tabs .tab.on { background: var(--p1); color: var(--on-p1); }
+    #pack { padding-bottom: 60px; }
+}
+@media (max-width: 767.98px) {
+    #pack .sub-tabs { grid-auto-columns: auto; width: max-content; max-width: calc(100vw - 32px); }
+    #pack .sub-tabs .tab { white-space: nowrap; padding: 6px 14px; min-height: 34px; }
+    #pack .sub-tabs .tab > span:first-child { display: none; }
+}
+
+/* Ablauf: „+“ in Akzentfarbe; Karten am Handy per Wischen bearbeiten / löschen */
+.controls .pl-slot .btn-action[data-pl="row-add"] { background: var(--p1); color: var(--on-p1); border-color: var(--p1); }
+.controls .pl-slot .btn-action[data-pl="row-add"]:hover { background: var(--p1); filter: brightness(1.08); }
+.card.ab-sw > .sw-acts { display: none; }
+@media (max-width: 767px) {
+    .controls .pl-slot .btn-action[data-pl="row-add"] { border-radius: 50%; }
+    .card.ab-sw > .sw-acts { display: flex; }
+    .card.ab-sw .row-edit { display: none; }
+}
+.pl-sheet .pl-short { max-width: 110px; }

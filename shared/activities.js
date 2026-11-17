@@ -16,6 +16,8 @@
     /* Kategorien des Ideen-Boards (Schlüssel werden gespeichert, Texte nur angezeigt) */
     const TAGS = [['outdoor', 'Outdoor/Sport'], ['rain', 'Schlechtwetter'], ['food', 'Kulinarik'], ['culture', 'Kultur'], ['half', 'Halbtags'], ['full', 'Ganztags']];
     const tagLabel = k => (TAGS.find(t => t[0] === k) || [k, k])[1];
+    const TAG_IC = { outdoor: 'compass', rain: 'cloudSun', food: 'star', culture: 'building', half: 'hourglass', full: 'sun' };
+    const tagIc = k => ic(TAG_IC[k] || 'tag');
     let tripId = null, cacheKey = '', places = [], list = [], online = false, editing = null, modal = null, ext = true;
     let filter = { tag: '', hideDone: false };
     const planner = () => window.TBPlanner && TBPlanner.ready ? TBPlanner : null;
@@ -58,7 +60,7 @@
                 <input type="text" name="duration" placeholder="Dauer (optional)" maxlength="80" value="${esc(a && a.duration)}">
                 <input type="text" name="cost_info" placeholder="Kosten (optional)" maxlength="80" value="${esc(a && a.cost_info)}">
                 <textarea name="description" rows="2" placeholder="Notiz (optional)" maxlength="2000">${esc(a && a.description)}</textarea>
-                ${ext ? `<fieldset class="act-tags"><legend>Kategorien</legend>${TAGS.map(([k, l]) => `<label class="pl-chip"><input type="checkbox" name="tags" value="${k}"${a && (a.tags || []).includes(k) ? ' checked' : ''}><span>${esc(l)}</span></label>`).join('')}</fieldset>` : ''}
+                ${ext ? `<fieldset class="act-tags"><legend>Kategorien</legend>${TAGS.map(([k, l]) => `<label class="pl-chip act-tchip" data-tag="${k}"><input type="checkbox" name="tags" value="${k}"${a && (a.tags || []).includes(k) ? ' checked' : ''}><span>${tagIc(k)}${esc(l)}</span></label>`).join('')}</fieldset>` : ''}
                 <button class="f on" type="submit">${ic('check')}Speichern</button>
                 <button class="f" type="button" data-act="cancel">Abbrechen</button>
             </form>`;
@@ -69,7 +71,7 @@
                 ${ext ? `<label class="act-done" title="Erledigt"><input type="checkbox" data-act="done" data-id="${esc(a.id)}"${a.done ? ' checked' : ''} aria-label="Erledigt: ${esc(a.title)}"><span></span></label>` : ''}
                 <div class="act-main">
                     <b>${esc(a.title)}</b>
-                    ${a.duration || a.cost_info || (a.tags || []).length || day(a) ? `<div class="act-meta">${(a.tags || []).map(t => `<span class="pill act-tag" data-tag="${esc(t)}">${ic('tag')}${esc(tagLabel(t))}</span>`).join('')}${a.duration ? `<span class="pill">${ic('clock')}${esc(a.duration)}</span>` : ''}${a.cost_info ? `<span class="pill">${esc(a.cost_info)}</span>` : ''}${day(a) ? `<span class="pill act-day">${ic('calendar')}Im Ablauf: ${esc(day(a))}</span>` : ''}</div>` : ''}
+                    ${a.duration || a.cost_info || (a.tags || []).length || day(a) ? `<div class="act-meta">${(a.tags || []).map(t => `<span class="pill act-tag" data-tag="${esc(t)}">${tagIc(t)}${esc(tagLabel(t))}</span>`).join('')}${a.duration ? `<span class="pill">${ic('clock')}${esc(a.duration)}</span>` : ''}${a.cost_info ? `<span class="pill">${esc(a.cost_info)}</span>` : ''}${day(a) ? `<span class="pill act-day">${ic('calendar')}Im Ablauf: ${esc(day(a))}</span>` : ''}</div>` : ''}
                     ${a.description ? `<p>${esc(a.description)}</p>` : ''}
                     ${editing && editing.pick === a.id ? `<form class="act-pick" data-id="${esc(a.id)}"><select name="day" required><option value="">Tag wählen …</option>${pl.dayOptions().map(o => `<option value="${esc(o.ref)}"${o.ref === a.planned_day ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select><button class="f on" type="submit">${ic('check')}Übernehmen</button><button class="f" type="button" data-act="cancel">Abbrechen</button></form>` : ''}
                 </div>
@@ -90,7 +92,7 @@
                 <h2>${ic('sparkles')}Mögliche Aktivitäten</h2>
                 <p class="note">Ideen pro Ort für alle Mitreisenden. Orte, die mehrfach in der Route vorkommen, teilen sich ihre Aktivitäten.${ext ? ' Mit dem Kalender-Knopf landet eine Idee direkt in einem Tag des Ablaufs.' : ''}</p>
                 ${online ? '' : `<div class="tb-banner">${ic('wifiOff')}<span>Offline – du siehst den letzten Stand. Bearbeiten ist erst wieder mit Internet möglich.</span></div>`}
-                ${ext && list.length ? `<div class="controls act-filter">${[['', 'Alle'], ...TAGS].map(([k, l]) => `<button type="button" class="f${filter.tag === k ? ' on' : ''}" data-act-filter="${k}">${esc(l)}</button>`).join('')}
+                ${ext && list.length ? `<div class="controls act-filter">${[['', 'Alle'], ...TAGS].map(([k, l]) => `<button type="button" class="act-fchip${filter.tag === k ? ' on' : ''}" data-act-filter="${k}" data-tag="${k}">${k ? tagIc(k) : ''}${esc(l)}</button>`).join('')}
                     <label class="act-hide"><input type="checkbox" data-act-hide${filter.hideDone ? ' checked' : ''}> Erledigte ausblenden</label>
                     <span class="act-count">${list.filter(a => a.done).length}/${list.length} erledigt</span></div>` : ''}
             </div>` + places.map(p => `<div class="box act-card">
