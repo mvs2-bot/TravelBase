@@ -31,7 +31,7 @@ Neue Reise: in der Übersicht (`index.html`, nur TravelBase-App-Admins) über **
 (RPCs `travelbase_create_trip` / `travelbase_duplicate_trip`, Mitreisende per `travelbase_invite_member`). Danach Ordner `<slug>/` mit einer
 **unveränderten Kopie** von `shared/trip-template.html` als `index.html` anlegen (der Dialog zeigt den Befehl zum Kopieren).
 Reise löschen (z. B. Testreisen): „Mehr“ auf der Kachel → **„Reise löschen“** (nur TravelBase-App-Admins, Kennung zur Bestätigung eintippen,
-RPC `travelbase_delete_trip`; Mitglieder, Abschnitte, To-Dos, Packliste, Aktivitäten löscht die DB mit, Varianten behalten nur ihren Verweis nicht).
+RPC `travelbase_delete_trip`; Mitglieder, Abschnitte, To-Dos, Packliste, Aktivitäten löscht die DB mit, Varianten bleiben erhalten, nur ohne Verweis).
 Danach den Ordner `<slug>/` aus dem Repo entfernen (der Dialog zeigt den Befehl).
 Änderungen an der Vorlage in **alle** Vorlagen-Ordner kopieren (alle Ordner außer `thailand-2027/` sind identische Kopien).
 Import-Skripte mit Reisedaten gehören **nicht** ins Repo.
