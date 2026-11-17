@@ -95,14 +95,15 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   (`shared/trip-mobile.js`); Bearbeiten über `TBPlanner.sheet` / `TBPlanner.ui`.
   Ablauf-Karten bekommen das automatisch (`swipeCards()` in `planner.js` per MutationObserver: jede `.card` mit `.row-edit` erhält `.sw-acts` mit `row-edit`/`row-del`).
 - **Transporte in den Etappen:** Etappen sind Aufenthalte (`places`) oder Transporte (`flights`-Einträge mit ISO-`from.date`). Im Zeitstrahl
-  steht ein Transport nach dem letzten Aufenthalt, der vor seinem Datum beginnt (`.pl-stop.pl-tr`); das „+“ zwischen zwei Stopps fragt
+  steht ein Transport nach dem Stopp, an dem er startet (`trPos`: Flughafen-Code wie „(VIE)“ bzw. Ortsname über `endScore`, Datum in der Etappe),
+  sonst vor dem Stopp, an dem er ankommt, sonst nach dem letzten Aufenthalt vor seinem Datum (`.pl-stop.pl-tr`); das „+“ zwischen zwei Stopps fragt
   „Aufenthalt“ oder „Transport“ (`addAt`, Transport mit Von/Nach/Datum vorbelegt). Transporte dürfen Aufenthalte überlappen und zählen in
   `presence()` als Reisetag (`'fl'`) der Personen aus `who` (leer = alle). „Flüge & Transporte“ und die Route am Handy sind nur Anzeige mit Hinweis
   „Aus den Etappen“ (Knopf `go-stops`); „Transport hinzufügen“ dort nur ohne `#stops`. `places[k].kind` (Anreise/Abreise) ist abgelöst,
   die Auswahl erscheint nur noch bei Etappen, die sie schon haben.
 - **Kartenlinien:** sobald die Etappen Nächte haben, zeichnet `TBPlanner.drawRoute(map, places)` (`routeSegments()`) Linien zwischen aufeinanderfolgenden
   Stopps (ohne `noRoute`, gleiche Koordinaten übersprungen). Stil nach eingetragenem Transport dazwischen (`transportBetween`), sonst ab 800 km Flug,
-  darunter Straße (`SEG_STYLE`). Ohne Etappen-Nächte wie bisher gespeicherte `routes` (`{via:[Schlüssel], style}`) bzw. automatische Linie.
+  darunter Straße (`SEG_STYLE`). Zusätzlich eine Linie je eingetragenem Transport zwischen den passenden Orten (`transportSegments`, Code/Name), doppelte Strecken einmal. Ohne Etappen-Nächte wie bisher gespeicherte `routes` (`{via:[Schlüssel], style}`) bzw. automatische Linie.
 - **Ablauf-Tag bearbeiten** (`editRow`): Auswahl „Etappe / Ort auf der Karte“ (Dropdown; setzt `focus`/`locName`, verschiebt das Datum in den
   Zeitraum der Etappe und die Tag-Nummer), Datum, „Mögliche Aktivität übernehmen“ (`TBActivities.forLocation`, füllt Titel bzw. hängt an Details an).
   Thailand: Klick auf eine Zeile springt über `data-focus` + `focusMap(name, iso)` (Schlüssel → Name → Präfix → Etappe am Datum) zur Karte.
@@ -117,6 +118,8 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   Thailand: `thPlaceColor()` – `who` am Ort gilt fest; sonst färben die alten `persons.start/end` nach Zeitraum der Etappe (Vorgabe).
   Überall (Karte, Etappen, Route, Aktivitäten) dieselbe Funktion. Reisezeiträume der Personen kommen aus den Etappen (`TBPlanner.personRanges()`).
   Thailand-Arbeitstage: bis zum eigenen Reisebeginn, minus Feiertage und `workdays.vacation` (`{ bayern, wien }`, Admins tragen ein).
+- **Reihenfolge der Stopps** (`stopList`): Daten-Reihenfolge von `places`; nummerierte Stopps untereinander nach `num`, nicht nummerierte behalten ihren Platz
+  dazwischen (Ziehen schreibt die Reihenfolge neu). Route am Handy: Zeitstrahl mit Nächten als Chip am Namen (`.m-n`), Zeitraum darunter.
 - **Etappen** (zentrale Planung, wie Stippl): `places[k].nights` je nummeriertem Stopp (− / + in der Stoppliste). Ankunft = Reisebeginn + Nächte davor.
   Unterkünfte mit `place` (Vorlage) bzw. `focus` (Thailand) übernehmen die Daten der Etappe, fehlende erscheinen als „Unterkunft fehlt“;
   ein Ablauf mit `legs: true` (nach „Tage aus den Etappen anlegen“) wird bei jeder Änderung neu angeordnet (Zeilen mit `auto: true` tragen

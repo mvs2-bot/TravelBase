@@ -1093,13 +1093,16 @@ button.pl-stop-main:hover b { color: var(--p1); }
     .pl-tl .pl-nights button { width: 26px; height: 26px; }
     .pl-tl .pl-nights > span { min-width: 36px; }
     .pl-tl .pl-acts button { width: 24px; height: 32px; }
-    /* Route: Name links, Zeitraum rechts in einer Zeile */
-    .m-stop { padding: 3px 0; align-items: center; }
-    .m-stop > div { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
-    .m-stop b { flex: 1 1 auto; min-width: 0; font-size: 14px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .m-stop small { flex: 0 0 auto; font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    /* Route: Zeitstrahl mit verbundenen Punkten; Nächte als Chip direkt am Namen, Zeitraum darunter */
+    .m-tl::before { left: 12px; top: 14px; bottom: 14px; width: 2px; background: var(--p1-line); border-radius: 2px; }
+    .m-stop { padding: 5px 0; gap: 12px; align-items: flex-start; }
+    .m-stop > i, .m-stop > .m-num { flex: 0 0 26px; width: 26px; height: 26px; font-size: 12px; }
+    .m-stop > div { flex: 1; min-width: 0; padding-top: 2px; }
+    .m-stop b { display: flex; align-items: center; gap: 6px; font-size: 14.5px; line-height: 1.3; min-width: 0; }
+    .m-stop .m-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .m-stop .m-n { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: var(--p1); background: var(--p1-soft); border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+    .m-stop small { font-size: 12px; margin-top: 1px; font-variant-numeric: tabular-nums; }
     .m-stop.now > div { padding: 3px 8px; margin: -3px 0 -3px -6px; }
-    .m-tl::before { top: 8px; bottom: 8px; }
     .m-route h2 { margin-bottom: 4px; }
 }
 

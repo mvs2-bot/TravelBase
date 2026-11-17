@@ -138,6 +138,10 @@
             ${list('trip', 'Reise')}${list('org', 'Organisation')}${list('info', 'Infos')}`;
         home.querySelectorAll('[data-open]').forEach(b => b.onclick = () => open(b.dataset.open));
         const stops = data.route || [];
+        /* „05.01.–08.01. · 3 Nächte“: Nächte als Chip direkt am Namen, Zeitraum darunter */
+        const NRX = /^(\d+ N(ächte|acht)|Zwischenstopp)$/;
+        const nightsOf = w => (String(w || '').split(' · ').find(x => NRX.test(x.trim())) || '').trim().replace(/ Nächte| Nacht/, ' N.');
+        const datesOf = w => String(w || '').split(' · ').filter(x => !NRX.test(x.trim())).join(' · ');
         /* Nummern öffnen die möglichen Aktivitäten des Orts (shared/activities.js), sobald geladen */
         const act = window.TBActivities && TBActivities.ready;
         if (routeView) routeView.innerHTML = stops.length ? `<div class="box m-route">
@@ -146,8 +150,8 @@
                 <div class="m-tl">${stops.map(s => `<div class="m-stop${s.now ? ' now' : ''}" style="--c:${esc(s.color || 'var(--p1)')}">${act
                     ? `<button type="button" class="m-num" data-loc="${esc(s.name)}" data-num="${esc(s.num ?? '')}" aria-label="Mögliche Aktivitäten: ${esc(s.name)}" title="Mögliche Aktivitäten">${esc(s.num ?? '')}</button>`
                     : `<i>${esc(s.num ?? '')}</i>`}
-                    <div><b>${esc(s.name)}${s.now ? ` <span class="m-now">${s.label || 'Jetzt'}</span>` : ''}</b>
-                    ${s.when ? `<small>${esc(s.when)}</small>` : ''}</div></div>`).join('')}</div>
+                    <div><b><span class="m-nm">${esc(s.name)}</span>${nightsOf(s.when) ? `<span class="m-n">${esc(nightsOf(s.when))}</span>` : ''}${s.now ? ` <span class="m-now">${s.label || 'Jetzt'}</span>` : ''}</b>
+                    ${datesOf(s.when) ? `<small>${esc(datesOf(s.when))}</small>` : ''}</div></div>`).join('')}</div>
             </div>` : `<div class="box m-route"><h2>${ic('pin')}Route</h2><p class="note">Für diese Reise sind noch keine Stationen hinterlegt.</p></div>`;
         if (routeView) routeView.querySelectorAll('.m-num').forEach(b => b.onclick = () => TBActivities.open(b.dataset.loc, b.dataset.num, b));
     }

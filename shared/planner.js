@@ -138,11 +138,15 @@
 
     /* ---------- Stopps ---------- */
     const places = () => raw().places || {};
-    /* Reihenfolge: nummerierte Orte nach Nummer, danach die übrigen in Daten-Reihenfolge */
+    /* Reihenfolge = Reihenfolge in den Daten (moveStop schreibt sie so); nummerierte Orte stehen untereinander nach Nummer,
+       nicht nummerierte Orte behalten ihren Platz dazwischen */
     function stopList(P) {
         P = P || places();
         const all = Object.entries(P).map(([k, p], i) => ({ k, p, i }));
-        return all.sort((a, b) => (a.p.num == null) - (b.p.num == null) || (a.p.num ?? 0) - (b.p.num ?? 0) || a.i - b.i);
+        const slots = all.filter(x => x.p && x.p.num != null);
+        const sorted = slots.slice().sort((a, b) => (+a.p.num || 0) - (+b.p.num || 0) || a.i - b.i);
+        let j = 0;
+        return all.map(x => x.p && x.p.num != null ? sorted[j++] : x);
     }
     /* Erneuter Besuch eines Orts: eigener Eintrag mit "same": "<Schlüssel des Orts>" (Name/Koordinaten werden mitgeführt),
        eigene Position, Nächte, Reisende und Unterkunft; er trägt die Nummer des ersten Besuchs */
@@ -180,12 +184,21 @@
         }
         return out;
     }
+    /* Linien aus eingetragenen Transporten: Start und Ziel über Flughafen-Code („Flughafen Wien (VIE)“) bzw. Ortsnamen */
+    function transportSegments(P) {
+        P = P || places();
+        const cand = Object.entries(P).filter(([, p]) => valid(p) && !p.same);
+        const best = end => { let b = null, bs = 0; cand.forEach(([k, p]) => { const sc = endScore(end, p); if (sc > bs) { bs = sc; b = p; } }); return b; };
+        return (raw().flights || []).filter(f => f && f.from && f.to).map(f => { const a = best(f.from), b = best(f.to); return a && b && a !== b ? { from: [+a.lat, +a.lng], to: [+b.lat, +b.lng], mode: f.mode || 'flight' } : null; }).filter(Boolean);
+    }
     const SEG_STYLE = { flight: { color: '#059669', weight: 2.5, opacity: .85, dashArray: '6, 6' }, ferry: { color: '#0d9488', weight: 3, opacity: .9, dashArray: '2, 7' },
         train: { color: '#dc2626', weight: 3, opacity: .9, dashArray: '4, 4' }, road: { color: '#0d9488', weight: 3.5, opacity: .9 }, bus: { color: '#0d9488', weight: 3.5, opacity: .9 }, car: { color: '#0d9488', weight: 3.5, opacity: .9 } };
     /* zeichnet die Strecken der Etappen in eine Leaflet-Karte; true, wenn die Etappen die Linien bestimmen */
     function drawRoute(map, P) {
         if (!window.L || !map || !legs(P || places()).on) return false;
-        routeSegments(P).forEach(s => L.polyline([s.from, s.to], SEG_STYLE[s.mode] || SEG_STYLE.road).addTo(map));
+        /* zuerst die eingetragenen Transporte, dann die Strecken zwischen den Etappen (ohne doppelte Linien) */
+        const seen = new Set(), key = s => [s.from.join(','), s.to.join(',')].sort().join('|');
+        [...transportSegments(P), ...routeSegments(P)].forEach(s => { const q = key(s); if (seen.has(q)) return; seen.add(q); L.polyline([s.from, s.to], SEG_STYLE[s.mode] || SEG_STYLE.road).addTo(map); });
         return true;
     }
     function totalKm(P) {
@@ -292,7 +305,7 @@
         const trAfter = new Map();
         if (L.on && L.start) flights().map((f, i) => ({ f, i })).filter(({ f }) => f && f.from && f.to && ISO.test(f.from.date || ''))
             .sort((a, b) => (a.f.from.date + (a.f.from.time || '')).localeCompare(b.f.from.date + (b.f.from.time || '')))
-            .forEach(t => { let pos = -1; l.forEach(({ k }, j) => { const g = lg.get(k); if (g && g.from && g.from < t.f.from.date) pos = j; }); if (!trAfter.has(pos)) trAfter.set(pos, []); trAfter.get(pos).push(t); });
+            .forEach(t => { const pos = trPos(t.f, l, lg); if (!trAfter.has(pos)) trAfter.set(pos, []); trAfter.get(pos).push(t); });
         const trLi = ({ f, i }) => {
             const [, lab, icon] = MODES.find(x => x[0] === (f.mode || 'flight')) || MODES[0];
             const route = [f.from.code || f.from.city, f.to.code || f.to.city].filter(Boolean).join(' → ');
@@ -347,6 +360,36 @@
     const MODE_IC = { flight: 'plane', train: 'train', ferry: 'ship', bus: 'bus', car: 'car' };
     const placeWords = p => String(p && p.name || '').toLowerCase().split(/[\s,/·()&-]+/).filter(w => w.length > 2);
     const endHits = (end, p) => { const t = [end && end.city, end && end.name, end && end.code].filter(Boolean).join(' ').toLowerCase(); return !!t && placeWords(p).some(w => t.includes(w)); };
+    /* Übereinstimmung Transport-Ende ↔ Ort: 3 = Flughafen-Code im Namen, 1 = Ortsname, 0 = keine */
+    function endScore(end, p) {
+        if (!end || !p) return 0;
+        const code = String(end.code || '').trim().toLowerCase(), nm = String(p.name || '').toLowerCase();
+        if (code.length >= 3 && (nm.includes('(' + code + ')') || placeWords(p).includes(code))) return 3;
+        return endHits(end, p) ? 1 : 0;
+    }
+    /* Platz eines Transports im Zeitstrahl: nach dem Stopp, an dem er startet (Code/Name und Datum passen),
+       sonst vor dem Stopp, an dem er ankommt, sonst nach dem letzten Aufenthalt, der vor seinem Datum beginnt */
+    function trPos(f, l, lg) {
+        const d = f.from.date, inR = g => !!(g && g.from && g.from <= d && d <= g.to);
+        const pick = (end, cmpDay) => {
+            let best = null;
+            l.forEach(({ k, p }, j) => {
+                const sc = endScore(end, p.same && places()[p.same] ? Object.assign({}, places()[p.same], { name: p.name || places()[p.same].name }) : p);
+                if (!sc) return;
+                const g = lg.get(k), dist = g && g.from ? (inR(g) ? 0 : Math.min(Math.abs(dn(g.from) - dn(cmpDay)), Math.abs(dn(g.to) - dn(cmpDay)))) : 50;
+                const score = sc * 100 - dist * 10 + (inR(g) ? 50 : 0);
+                if (dist <= 2 && (!best || score >= best.score)) best = { j, score };
+            });
+            return best;
+        };
+        const a = pick(f.from, d);
+        if (a) return a.j;
+        const b = ISO.test((f.to && f.to.date) || '') ? pick(f.to, f.to.date) : pick(f.to, d);
+        if (b) return b.j - 1;
+        let pos = -1;
+        l.forEach(({ k }, j) => { const g = lg.get(k); if (g && g.from && g.from < d) pos = j; });
+        return pos;
+    }
     function transportBetween(a, b) {
         const f = (raw().flights || []).find(f => f && f.from && f.to && endHits(f.from, a) && endHits(f.to, b));
         if (!f) return null;
