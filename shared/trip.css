@@ -665,17 +665,6 @@ body:has(.pl-dragging) { user-select: none; -webkit-user-select: none; }
 .pl-noroute b { display: block; margin-top: 10px; font-size: 16px; color: var(--ink); }
 .pl-noroute p { margin: 4px auto 14px; max-width: 34ch; font-size: 13px; color: var(--mute); }
 .pl-noroute .btn-action { min-height: 40px; }
-/* Buchungen: Unterbereiche als Segmente */
-.bk-sub { display: none; }
-.bk-sub.on { display: block; }
-.bk-bar { display: flex; gap: 4px; margin: 0 0 14px; padding: 3px; background: var(--well); border-radius: 12px; }
-.bk-bar[hidden] { display: none; }
-.bk-bar button { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; border: 0; border-radius: 9px; background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; }
-.bk-bar button .ic { width: 16px; height: 16px; }
-.bk-bar button small { font-size: 11px; font-weight: 600; color: var(--mute); background: var(--card); border-radius: 999px; padding: 1px 7px; }
-.bk-bar button[aria-selected="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
-.bk-bar button[aria-selected="true"] .ic { color: var(--p1); }
-.bk-bar button[aria-selected="true"] small { background: var(--p1-soft); color: var(--p1); }
 .pl-acts { display: flex; gap: 2px; flex: 0 0 auto; }
 /* Etappen: Nächte je Stopp (− / +), Summe als Ring */
 /* schmal (Handy): Stepper in eine zweite Zeile unter den Ortsnamen */
