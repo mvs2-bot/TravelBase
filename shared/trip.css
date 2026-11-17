@@ -1169,6 +1169,13 @@ button.pl-stop-main:hover b { color: var(--p1); }
 #pack .box { padding: 12px 14px; margin-bottom: 10px; }
 #pack .sub-tabs { margin-bottom: 8px; }
 #pack .sub-tabs .tab { min-height: 28px; padding: 4px 12px; font-size: 12.5px; }
+/* Packliste in der Farbe der Person (Reisende in den Etappen, --pc setzt die Seite) */
+#pack .sub-tabs .tab.pk-c > span:first-child { color: var(--pc); }
+#pack .sub-tabs .tab.pk-c.on { background: var(--pc); color: var(--on-p1); }
+#pack .sub-tabs .tab.pk-c.on > span:first-child { color: inherit; }
+#pack.pk-c .pk-box { background: color-mix(in srgb, var(--pc) 7%, var(--card)); border: 1px solid color-mix(in srgb, var(--pc) 35%, transparent); }
+#pack.pk-c #packlistTitle .ic, #pack.pk-c .pack-stat-val { color: var(--pc); }
+#pack.pk-c .pack-table-cat { background: color-mix(in srgb, var(--pc) 14%, var(--card)); color: var(--ink); }
 #pack .mh { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 #pack .mh > div { gap: 4px !important; }
 #pack .mh .btn-action { min-height: 28px; padding: 3px 9px; font-size: 12px; gap: 4px; }
@@ -1360,6 +1367,9 @@ h2 .add-plus .ic { width: 17px; height: 17px; }
     #pack .sub-tabs { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 40; margin: 0; background: var(--card); box-shadow: var(--shadow); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
     #pack .sub-tabs .tab { border-radius: 999px; }
     #pack .sub-tabs .tab.on { background: var(--p1); color: var(--on-p1); }
+    #pack .sub-tabs .tab.pk-c.on { background: var(--pc); color: var(--on-p1); }
+    #pack.pk-c tr:has(.pack-table-cat) { color: var(--pc); }
+    #pack.pk-c tr:has(.pack-table-cat) td { background: none; color: inherit; }
     #pack { padding-bottom: 60px; }
 }
 @media (max-width: 767.98px) {
