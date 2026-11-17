@@ -171,8 +171,8 @@
         const num = l.filter(x => x.p.num != null);
         return (num.length >= 2 ? num : l);
     }
-    /* Linien auf der Karte aus den Etappen: je zwei aufeinanderfolgende Stopps eine Strecke; Verkehrsmittel aus einem eingetragenen
-       Transport zwischen beiden Orten, sonst geschätzt (ab 800 km Flug, sonst Straße) */
+    /* Linien auf der Karte aus den Etappen: je zwei aufeinanderfolgende Stopps eine geschätzte Strecke (ab 800 km Flug,
+       sonst Straße); ist zwischen beiden ein Transport eingetragen, zeichnet ihn transportSegments */
     function routeSegments(P) {
         P = P || places();
         const l = routeStops(P).filter(x => !x.p.noRoute), out = [];
@@ -201,8 +201,10 @@
             }
             /* weite Strecke zu einem Ort, an dem nur abgeflogen wird (Startpunkt), oder von einem, an dem nur angekommen wird (Endpunkt) */
             if (km(a.p, b.p) >= 800 && (onlyArr(a) || onlyDep(b))) continue;
-            const tr = transportBetween(a.p, b.p);
-            out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: tr ? tr.mode : km(a.p, b.p) >= 800 ? 'flight' : 'road' });
+            /* ein eingetragener Transport zwischen a und b hat seine eigene Linie (transportSegments, ggf. zwischen den Flughäfen):
+               keine zweite Linie zwischen den Orten selbst (z. B. Bangkok → Colombo neben BKK → CMB, wenn die Flughäfen nicht auf der Route sind) */
+            if (transportBetween(a.p, b.p)) continue;
+            out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: km(a.p, b.p) >= 800 ? 'flight' : 'road' });
         }
         return out;
     }
