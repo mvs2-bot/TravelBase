@@ -555,9 +555,9 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
     .m-now { font-size: 12px; font-weight: 600; color: var(--p1); margin-left: 4px; }
     .m-reload { margin-top: 10px; }
 
-    /* Schwebende Leiste in der Reise: Start · Karte · Route · Infos (wie auf „Alle Reisen“) */
+    /* Schwebende Leiste in der Reise: Start · Karte · (Etappen) · Route · Infos (wie auf „Alle Reisen“) */
     body:not(.tb-loading) .m-tabbar { position: fixed; z-index: 1001; left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
-        bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr);
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(var(--n, 4), 1fr);
         height: 62px; padding: 0 6px; border-radius: 22px; background: var(--card);
         box-shadow: 0 8px 28px rgba(0, 0, 0, .16), 0 0 0 .5px rgba(0, 0, 0, .06); }
     :root[data-theme="dark"] .m-tabbar { background: #2c2c2e; box-shadow: 0 8px 28px rgba(0, 0, 0, .6), 0 0 0 .5px rgba(255, 255, 255, .1); }
@@ -626,20 +626,62 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
 .pl-stops { list-style: none; position: relative; }
 .pl-stop { display: flex; align-items: center; gap: 10px; padding: 7px 0; position: relative; }
 .pl-stop + .pl-stop { border-top: 1px solid var(--sep); }
-.pl-dot { flex: 0 0 26px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--c, var(--p1)); color: var(--on-p1); font: inherit; font-size: 12px; font-weight: 700; display: grid; place-items: center; padding: 0; transition: transform .15s; }
+.pl-dot { flex: 0 0 26px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--c, var(--p1)); color: #fff; text-shadow: 0 0 2px rgba(0, 0, 0, .35); font: inherit; font-size: 12px; font-weight: 700; display: grid; place-items: center; padding: 0; transition: transform .15s; }
 .pl-dot .ic { width: 14px; height: 14px; }
 .pl-dot:hover { transform: scale(1.1); }
 .pl-stop-main { flex: 1; min-width: 0; }
 .pl-stop-main b { display: block; font-size: 14px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
 .pl-stop-main small { display: block; font-size: 12px; color: var(--mute); }
-.pl-leg { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--p1); }
-.pl-leg .ic { width: 12px; height: 12px; }
+.pl-leg { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--mute); }
+.pl-leg .ic { width: 12px; height: 12px; color: var(--p1); }
+.pl-leg i { font-style: normal; opacity: .6; }
+/* Weg zum nächsten Stopp als Pille auf der Trennlinie (wie bei Stippl) */
+.pl-stops .pl-leg { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 50%); z-index: 1; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.pl-stops .pl-stop:has(.pl-leg) { padding-bottom: 16px; }
+.pl-stops .pl-stop:has(.pl-leg) + .pl-stop { padding-top: 16px; }
+/* eigener Bereich „Etappen“ */
+#stops .stop-panel { max-width: 760px; margin: 0 auto 16px; padding: 18px 20px; }
+.pl-handle { cursor: grab; touch-action: none; }
+.pl-handle:active { cursor: grabbing; }
+.pl-dragging { position: relative; z-index: 5; background: var(--card); box-shadow: var(--shadow), 0 10px 24px rgba(0, 0, 0, .14); border-radius: var(--radius-s); }
+tr.pl-dragging td { background: var(--card); }
+.pl-shift { transition: transform .18s ease; }
+body:has(.pl-dragging) { user-select: none; -webkit-user-select: none; }
+.pl-next { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 4px; padding: 8px 0; border: 0; border-top: 1px solid var(--sep); background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--p1); cursor: pointer; text-align: left; }
+.pl-next > span { flex: 0 0 26px; height: 26px; border-radius: 50%; border: 1.5px dashed var(--p1-line); display: grid; place-items: center; }
+.pl-next .ic { width: 14px; height: 14px; }
+.pl-next:hover > span { background: var(--p1-soft); }
+.pl-finish { display: flex; align-items: center; gap: 10px; padding: 8px 0 2px; color: var(--mute); }
+.pl-finish > span { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--well); display: grid; place-items: center; }
+.pl-finish .ic { width: 14px; height: 14px; }
+.pl-finish b { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+.pl-finish small { display: block; font-size: 12px; }
+.pl-noroute { text-align: center; padding: 18px 8px 8px; }
+.pl-noroute > .ic { width: 40px; height: 40px; color: var(--p1); padding: 9px; box-sizing: content-box; background: var(--p1-soft); border-radius: 50%; }
+.pl-noroute b { display: block; margin-top: 10px; font-size: 16px; color: var(--ink); }
+.pl-noroute p { margin: 4px auto 14px; max-width: 34ch; font-size: 13px; color: var(--mute); }
+.pl-noroute .btn-action { min-height: 40px; }
+/* Buchungen: Unterbereiche als Segmente */
+.bk-sub { display: none; }
+.bk-sub.on { display: block; }
+.bk-bar { display: flex; gap: 4px; margin: 0 0 14px; padding: 3px; background: var(--well); border-radius: 12px; }
+.bk-bar[hidden] { display: none; }
+.bk-bar button { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; border: 0; border-radius: 9px; background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; }
+.bk-bar button .ic { width: 16px; height: 16px; }
+.bk-bar button small { font-size: 11px; font-weight: 600; color: var(--mute); background: var(--card); border-radius: 999px; padding: 1px 7px; }
+.bk-bar button[aria-selected="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+.bk-bar button[aria-selected="true"] .ic { color: var(--p1); }
+.bk-bar button[aria-selected="true"] small { background: var(--p1-soft); color: var(--p1); }
 .pl-acts { display: flex; gap: 2px; flex: 0 0 auto; }
 /* Etappen: Nächte je Stopp (− / +), Summe als Ring */
-.pl-stop:has(.pl-nights) { flex-wrap: wrap; row-gap: 4px; }
-.pl-stop:has(.pl-nights) .pl-stop-main { flex: 1 1 calc(100% - 36px); }
-.pl-stop:has(.pl-nights) .pl-acts { margin-left: auto; }
-.pl-nights { display: inline-flex; align-items: center; gap: 2px; margin-left: 36px; background: var(--well); border-radius: 999px; padding: 2px; }
+/* schmal (Handy): Stepper in eine zweite Zeile unter den Ortsnamen */
+@media (max-width: 599.98px) {
+    .pl-stop:has(.pl-nights) { flex-wrap: wrap; row-gap: 4px; }
+    .pl-stop:has(.pl-nights) .pl-stop-main { flex: 1 1 calc(100% - 36px); }
+    .pl-stop:has(.pl-nights) .pl-acts { margin-left: auto; }
+    .pl-nights { margin-left: 36px; }
+}
+.pl-nights { display: inline-flex; align-items: center; gap: 2px; background: var(--well); border-radius: 999px; padding: 2px; }
 .pl-nights button { border: 0; background: var(--card); color: var(--ink); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; padding: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); cursor: pointer; }
 .pl-nights button:hover:not(:disabled) { color: var(--p1); }
 .pl-nights button:disabled { opacity: .35; cursor: default; box-shadow: none; }
@@ -824,3 +866,20 @@ ul.fl-list li.pl-empty::before { content: none; }
 }
 @keyframes pl-up { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .pl-sheet[open] { animation: none; } .pl-toast { transition: none; } }
+
+/* Reisende & Farben (Etappen-Kopf, Stopp-Maske) */
+.pl-head-acts { display: inline-flex; gap: 6px; flex: 0 0 auto; }
+.pl-people { display: inline-flex; }
+.pl-people i, .pl-who i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--card); }
+.pl-people i + i { margin-left: -4px; }
+.pl-who { border: 0; padding: 0; margin: 4px 0 8px; display: flex; flex-wrap: wrap; column-gap: 12px; }
+.pl-who legend { font-size: 12px; font-weight: 600; color: var(--mute); margin-bottom: 2px; }
+.pl-who .pl-check { flex: 0 0 auto; min-height: 40px; }
+.pl-who .pl-check span { display: inline-flex; align-items: center; gap: 6px; }
+.pl-who i { border: 0; }
+.pl-people-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.pl-person { display: flex; align-items: center; gap: 8px; }
+.pl-person input[name=pc] { flex: 0 0 44px; width: 44px; height: 40px; padding: 2px; border: 0; border-radius: 10px; background: var(--well); }
+.pl-person input[name=pn] { flex: 1 1 auto; min-width: 0; min-height: 40px; font-size: 16px; padding: 6px 12px; border: 0; border-radius: 10px; background: var(--well); color: var(--ink); }
+.pl-person-x { flex: 0 0 40px; height: 40px; border: 0; border-radius: 10px; background: none; color: var(--mute); display: grid; place-items: center; }
+.pl-person-x:hover { color: var(--danger); background: var(--danger-soft); }

@@ -160,17 +160,22 @@
     function sections() {
         const s = [];
         if (DATA.places) s.push({ id: 'mapview', icon: ic('map'), label: 'Karte', tab: true });
+        /* Etappen: Stopps mit Nächten als eigener Bereich (Inhalt aus shared/planner.js) */
+        if (DATA.places && window.TBPlanner && TBPlanner.mountStops && (Object.keys(DATA.places).length || canEdit())) s.push({ id: 'stops', icon: ic('route'), label: 'Etappen', tab: true });
         (DATA.plans || []).forEach(p => s.push({ id: p.id, icon: p.icon ? esc(p.icon) : ic('calendar'), label: p.tabLabel || 'Tagesplan', tab: true }));
         /* Unterkünfte: wenn Daten da sind oder man sie anlegen darf (Gäste bekommen keine) */
-        if ((Array.isArray(DATA.stations) && (DATA.stations.length || canEdit())) || (!DATA.stations && canEdit() && DATA.plans)) s.push({ id: 'acc', icon: ic('bed'), label: 'Unterkünfte', tab: true });
+        if ((Array.isArray(DATA.stations) && (DATA.stations.length || canEdit())) || (!DATA.stations && canEdit() && DATA.plans)) s.push({ id: 'acc', icon: ic('bed'), label: 'Unterkünfte', sub: 'bookings' });
         // Mögliche Aktivitäten: eingeschaltet über "activities": true in den Reisedaten (shared/activities.js)
         if (DATA.activities) s.push({ id: 'activities', icon: ic('sparkles'), label: 'Mögliche Aktivitäten' });
         if (DATA.calendar && (DATA.persons || []).length) s.push({ id: 'cal', icon: ic('users'), label: 'Anwesenheit', tab: true });
         // To-Dos als eigener Bereich; eine ältere Seite aus dem Cache ohne #todos zeigt sie weiter unter „Infos & mehr“
         const todoPane = DATA.todos && !!$('#todos');
         if (todoPane) s.push({ id: 'todos', icon: ic('checkCircle'), label: 'To-Dos' });
-        if (DATA.persons || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
-        if ((DATA.flights || []).length || (canEdit() && DATA.plans)) s.push({ id: 'flights', icon: ic('plane'), label: (DATA.flights || []).some(f => f.mode && f.mode !== 'flight') || canEdit() ? 'Flüge & Transporte' : 'Flüge' });
+        if ((DATA.persons || []).some(p => p.start) || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
+        if ((DATA.flights || []).length || (canEdit() && DATA.plans)) s.push({ id: 'flights', icon: ic('plane'), label: (DATA.flights || []).some(f => f.mode && f.mode !== 'flight') || canEdit() ? 'Flüge & Transporte' : 'Flüge', sub: 'bookings' });
+        /* Buchungen: Unterkünfte und Transporte als Unterbereiche eines Bereichs (direkt hinter den Tagesplänen) */
+        const subs = s.filter(x => x.sub === 'bookings');
+        if (subs.length) s.splice(s.findIndex(x => x.sub) , 0, { id: 'bookings', icon: ic('ticket'), label: 'Buchungen', tab: true });
         if (DATA.climate) s.push({ id: 'climate', icon: ic('cloudSun'), label: 'Klima & Wetter' });
         return s;
     }
@@ -179,25 +184,54 @@
         SECTIONS = sections();
         if (DATA.activities && !$('#activities')) $('#planPanes').insertAdjacentHTML('afterend', '<div id="activities" class="pane"></div>');
         if (SECTIONS.some(x => x.id === 'acc') && !$('#acc')) $('#planPanes').insertAdjacentHTML('afterend', '<div id="acc" class="pane"></div>');
+        if (SECTIONS.some(x => x.id === 'stops') && !$('#stops')) $('#mapview').insertAdjacentHTML('afterend', '<div id="stops" class="pane"></div>');
+        renderBookingsBar();
         const tabs = SECTIONS.filter(s => s.tab);
         $('#tabs').style.setProperty('--tab-count', tabs.length + 1);
         /* Schnellauswahl einzeilig: „Tagesplan Peru“ / „Möglicher Ablauf Peru“ → „Peru“ (voller Name als Tooltip) */
         $('#tabs').innerHTML = tabs.map(s => `<button class="tab" data-t="${esc(s.id)}" title="${esc(s.label)}"><span>${s.icon}</span>${esc(s.label.replace(/^(Tagesplan|Möglicher Ablauf) (?=\S)/, ''))}</button>`).join('')
             + '<button class="tab tab-menu" id="menuTab" type="button" aria-label="Menü öffnen"><span>' + ic('list') + '</span>Menü</button>';
-        $('#popLinks').innerHTML = SECTIONS.map(s => `<button data-t="${esc(s.id)}" class="pop-btn"><span>${s.icon}</span>${esc(s.label)}</button>`).join('');
+        $('#popLinks').innerHTML = SECTIONS.filter(s => !s.sub).map(s => `<button data-t="${esc(s.id)}" class="pop-btn"><span>${s.icon}</span>${esc(s.label)}</button>`).join('');
         document.querySelectorAll('.tabs .tab[data-t]').forEach(b => b.onclick = () => switchTab(b.dataset.t));
         $('#menuTab').onclick = () => $('#navPopover').classList.add('open');
         document.querySelectorAll('.pop-btn').forEach(b => b.onclick = () => { switchTab(b.dataset.t); $('#navPopover').classList.remove('open'); });
     }
+    /* Buchungen: Bereich mit umschaltbaren Unterbereichen (#acc, #flights wandern in #bookings) */
+    let BK_SUB = null;
+    function renderBookingsBar() {
+        const subs = SECTIONS.filter(x => x.sub === 'bookings');
+        if (!subs.length) return;
+        let bk = $('#bookings');
+        if (!bk) { $('#planPanes').insertAdjacentHTML('afterend', '<div id="bookings" class="pane"><div class="bk-bar" role="tablist" aria-label="Buchungen"></div></div>'); bk = $('#bookings'); }
+        subs.forEach(x => { const el = $('#' + x.id); if (el && el.parentElement !== bk) { el.classList.remove('pane', 'on'); el.classList.add('bk-sub'); bk.appendChild(el); } });
+        if (!subs.some(x => x.id === BK_SUB)) BK_SUB = subs[0].id;
+        const st = window.TBPlanner && TBPlanner.ready ? TBPlanner.stationStats() : null, fl = (DATA.flights || []).length;
+        const count = { acc: st && st.total ? `${st.booked}/${st.total}` : '', flights: fl ? String(fl) : '' };
+        const short = { acc: 'Unterkünfte', flights: subs.find(x => x.id === 'flights') && /Transporte/.test(subs.find(x => x.id === 'flights').label) ? 'Transporte' : 'Flüge' };
+        const bar = bk.querySelector('.bk-bar');
+        bar.hidden = subs.length < 2;
+        bar.innerHTML = subs.map(x => `<button type="button" role="tab" data-sub="${esc(x.id)}" aria-selected="${x.id === BK_SUB}">${x.icon}<span>${esc(short[x.id] || x.label)}</span>${count[x.id] ? `<small>${esc(count[x.id])}</small>` : ''}</button>`).join('');
+        bar.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => switchTab(b.dataset.sub));
+        showSub();
+    }
+    function showSub() {
+        document.querySelectorAll('#bookings .bk-sub').forEach(x => x.classList.toggle('on', x.id === BK_SUB));
+        document.querySelectorAll('#bookings .bk-bar [data-sub]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.sub === BK_SUB)));
+    }
     let CURRENT = null;
     function switchTab(id) {
-        if (!SECTIONS.some(s => s.id === id)) id = SECTIONS[0].id;
+        /* alte Links (#acc, #flights) öffnen den Unterbereich der Buchungen */
+        const sub = SECTIONS.find(s => s.id === id && s.sub);
+        if (sub) { BK_SUB = id; id = sub.sub; showSub(); }
+        if (!SECTIONS.some(s => s.id === id && !s.sub)) id = SECTIONS[0].id;
         CURRENT = id;
         document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.t === id));
         document.querySelectorAll('.pane').forEach(x => x.classList.toggle('on', x.id === id));
         document.querySelectorAll('.pop-btn').forEach(x => x.classList.toggle('on', x.dataset.t === id));
-        if (location.hash !== '#' + id) history.replaceState(null, '', location.pathname + location.search + '#' + id);
+        const hash = id === 'bookings' && BK_SUB ? BK_SUB : id;
+        if (location.hash !== '#' + hash) history.replaceState(null, '', location.pathname + location.search + '#' + hash);
         window.scrollTo(0, 0);
+        if (window.TBTripMobile && TBTripMobile.mark) TBTripMobile.mark(id);
         if (id === 'mapview' && map) setTimeout(() => { map.invalidateSize(); fitStartView(); }, 50);
     }
     function tabFromHash() { switchTab(location.hash.replace('#', '') || SECTIONS[0].id); }
@@ -210,16 +244,22 @@
     };
     /* Kartenfarben nach anwesenden Personen ("mapColors": "persons"): Orte und Strecken in den Farben der Personen,
        die laut Ablauf dort sind (mehrere = Tortenstück-Punkt bzw. gestreifte Linie). Ohne Personen (Gäste) bleiben die Ortsfarben. */
-    const byPersons = () => DATA.mapColors === 'persons' && (DATA.persons || []).length;
+    /* Neue Reisen (ohne "mapColors"): Reisende aus der Live-Planung färben immer; Stopps ohne "who" = alle */
+    const autoPersons = () => !DATA.mapColors && (DATA.persons || []).length > 0;
+    const byPersons = () => (DATA.mapColors === 'persons' || autoPersons()) && (DATA.persons || []).length;
     const whoColors = who => byPersons() ? (DATA.persons || []).filter(p => (who || []).includes(p.key)).map(p => col(p.color)) : [];
     function placeWho(k) {
+        const p = (DATA.places || {})[k] || {};
+        if (Array.isArray(p.who)) return p.who;
         const who = new Set();
         (DATA.plans || []).forEach(p => (p.rows || []).forEach(r => { if ((r.focus || []).includes(k)) (r.who || []).forEach(x => who.add(x)); }));
+        if (!who.size && autoPersons() && p.num != null) return DATA.persons.map(x => x.key);
         return [...who];
     }
     function placeColor(k) {
         const cs = whoColors(placeWho(k));
-        if (!cs.length) return col((DATA.places[k] || {}).color);
+        /* neue Reisen: Farbe kommt nur von den Reisenden; noch keine eingetragen = Farbe der ersten Person (Blau) */
+        if (!cs.length) return DATA.mapColors ? col((DATA.places[k] || {}).color) : (DATA.persons || []).length ? col(DATA.persons[0].color) : '#2563eb';
         return cs.length === 1 ? cs[0] : `conic-gradient(${cs.map((c, i) => `${c} ${i / cs.length * 360}deg ${(i + 1) / cs.length * 360}deg`).join(', ')})`;
     }
     const legend = () => [...(byPersons() ? DATA.persons.map(p => [p.color, '●', p.name]) : []), ...(DATA.legend || [])].map(([c, sym, t]) => [col(c, 'var(--mute)'), esc(sym), t]);
@@ -255,7 +295,7 @@
         const all = [];
         Object.entries(P).forEach(([key, p]) => {
             if (!isFinite(+p.lat) || !isFinite(+p.lng)) return;
-            const color = placeColor(key), solid = whoColors(placeWho(key))[0] || col(p.color);
+            const color = placeColor(key), solid = whoColors(placeWho(key))[0] || (DATA.mapColors ? col(p.color) : placeColor(key));
             const popup = `<b style="color:${solid}">${ic('pin')} ${esc(p.name)}</b>${p.date ? `<br><small>${ic('calendar')} ${esc(p.date)}</small>` : ''}${p.desc ? `<br>${rich(p.desc)}` : ''}`;
             const m = p.num != null
                 ? L.marker([p.lat, p.lng], { icon: L.divIcon({ className: 'nm', html: `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${color}">${esc(p.num)}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
@@ -466,9 +506,10 @@
 
     /* ---------- Infos & mehr ---------- */
     function renderMisc() {
-        const ps = DATA.persons || [];
+        /* Reisezeiträume nur für Personen mit eigenem Zeitraum (Reisende aus der Live-Planung haben keinen) */
+        const ps = (DATA.persons || []).filter(p => p.start && homeOf(p));
+        $('#statsBox').hidden = !ps.length;
         if (ps.length) {
-            $('#statsBox').hidden = false;
             $('#stats').innerHTML = ps.map(p => `<div class="stat"><span style="color:${p.color}">●</span> ${esc(p.name)}<b>${dayNum(homeOf(p)) - dayNum(p.start) + 1} Tage</b>${fmtDM(p.start)} – ${fmtDM(homeOf(p))}</div>`).join('');
         }
         const w = DATA.workdays;
@@ -645,7 +686,7 @@
         /* Route: Tagesplan-Zeilen nach Ort zusammenfassen; ohne Tagesplan (Gäste) die Orte nach Nummer */
         let route = [];
         const fmt = iso => iso ? fmtDM(iso) : '';
-        const placeStops = Object.values(P).filter(p => p && p.num != null).sort((a, b) => a.num - b.num).map(p => ({ num: p.num, name: p.name, color: col(p.color) }));
+        const placeStops = Object.entries(P).filter(([, p]) => p && p.num != null).sort((a, b) => a[1].num - b[1].num).map(([k, p]) => ({ num: p.num, name: p.name, color: placeColor(k), when: p.date || '' }));
         if (rows.length) {
             rows.forEach(r => (r.focus || []).forEach((k, i, all) => {
                 const last = route[route.length - 1], p = P[k] || {};
@@ -671,6 +712,11 @@
         if (window.TBPlanner && TBPlanner.ready && SECTIONS.some(x => x.id === 'acc')) {
             const st = TBPlanner.stationStats(), w = TBPlanner.warnings().length;
             tiles.acc = { text: w ? `${w}× Storno-Frist!` : st.total ? `${st.booked}/${st.total} gebucht` : 'Noch leer' };
+        }
+        if (SECTIONS.some(x => x.id === 'bookings')) tiles.bookings = { text: [tiles.acc && tiles.acc.text !== 'Noch leer' && tiles.acc.text, tiles.flights && tiles.flights.text].filter(Boolean).join(' · ') || 'Noch leer' };
+        if (window.TBPlanner && TBPlanner.ready && TBPlanner.legs) {
+            const g = TBPlanner.legs(RAW.places || {}), n = Object.values(P).filter(p => p && p.num != null).length;
+            tiles.stops = { text: g.on ? `${n} Stopps · ${g.total} ${g.total === 1 ? 'Nacht' : 'Nächte'}` : n ? `${n} Stopps` : 'Noch leer' };
         }
         if (DATA.climate) tiles.climate = { text: `${(DATA.climate.rows || []).length} Orte` };
         if ((DATA.infos || []).length) tiles.misc = { text: `${DATA.infos.length} Hinweise` };
@@ -702,6 +748,11 @@
             ensureStations: () => { RAW.stations = []; return { id: 'all', label: '', list: RAW.stations }; },
             newPlan,
             legEnd: () => LEG_END,
+            placeColor: k => placeColor(k),
+            suggestPeople: async () => {
+                const me = RES.user && RES.user.name, ms = await TB.tripMembers();
+                return [me, ...ms.filter(x => x.trip_id === TRIP_ID && x.role !== 'guest').map(x => x.name)].filter(Boolean);
+            },
             refresh: rerender,
             focusPlace: k => focusPlaces([k])
         });
@@ -720,7 +771,7 @@
         el.hidden = !w.length;
         el.innerHTML = w.length ? `${ic('alert')}<span><b>Storno-Frist${w.length > 1 ? 'en' : ''}:</b> ${w.map(x => `${esc(x.name)} – ${esc(x.text)}`).join(' · ')} <button type="button" class="link-inline" data-goto="acc">Zu den Unterkünften</button></span>` : '';
         const b = el.querySelector('[data-goto]');
-        if (b) b.onclick = () => { const x = document.querySelector('.pop-btn[data-t="acc"]'); if (x) x.click(); document.body.classList.remove('m-home'); };
+        if (b) b.onclick = () => { BK_SUB = 'acc'; const x = document.querySelector('.pop-btn[data-t="bookings"]'); if (x) x.click(); document.body.classList.remove('m-home'); };
     }
     /* Nach jeder Änderung: Anzeige aus RAW neu ableiten und alles neu zeichnen, aktiver Bereich bleibt */
     function rerender() {

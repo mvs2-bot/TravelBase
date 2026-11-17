@@ -55,8 +55,9 @@
             </header>
             
             <!-- Haupt-Tabs für Desktop/Tablet -->
-            <div class="tabs" role="tablist">
+            <div class="tabs" role="tablist" style="--tab-count:6">
                 <button class="tab on" data-t="mapview"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
+                <button class="tab" data-t="stops"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
                 <button class="tab" data-t="thailand" title="Möglicher Ablauf Thailand"><span>🇹🇭</span>Thailand</button>
                 <button class="tab" data-t="srilanka" title="Möglicher Ablauf Sri Lanka"><span>🇱🇰</span>Sri Lanka</button>
                 <button class="tab" data-t="acc"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
@@ -76,6 +77,7 @@
                 </div>
                 <div class="popover-links">
                     <button data-t="mapview" class="pop-btn on"><span><svg class="ic"><use href="#i-map"></use></svg></span>Karte</button>
+                    <button data-t="stops" class="pop-btn"><span><svg class="ic"><use href="#i-route"></use></svg></span>Etappen</button>
                     <button data-t="thailand" class="pop-btn"><span>🇹🇭</span>Möglicher Ablauf Thailand</button>
                     <button data-t="srilanka" class="pop-btn"><span>🇱🇰</span>Möglicher Ablauf Sri Lanka</button>
                     <button data-t="acc" class="pop-btn"><span><svg class="ic"><use href="#i-building"></use></svg></span>Unterkünfte</button>
@@ -111,6 +113,9 @@
                 <div id="map"></div>
             </div>
         </div>
+
+        <!-- Etappen: Stopps mit Nächten (Inhalt aus shared/planner.js) -->
+        <div id="stops" class="pane"></div>
 
         <!-- Sektion 2: Möglicher Ablauf Thailand -->
         <div id="thailand" class="pane">

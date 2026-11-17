@@ -164,6 +164,13 @@
         return Math.round(s);
     }
     const kmText = n => n.toLocaleString('de-DE') + ' km';
+    /* Fahrzeit grob geschätzt: Straße ≈ Luftlinie × 1,3 bei im Schnitt 60 km/h; ab 800 km eher Flug */
+    function driveText(k) {
+        if (k >= 800) return 'eher Flug';
+        const h = k * 1.3 / 60;
+        if (h < 1) return `ca. ${Math.max(10, Math.round(h * 6) * 10)} min`;
+        return `ca. ${(h < 10 ? Math.round(h * 2) / 2 : Math.round(h)).toLocaleString('de-DE')} h`;
+    }
 
     /* ---------- Etappen: Nächte je Stopp ---------- */
     const pendingN = {};
@@ -237,32 +244,44 @@
         for (let i = 1; i < rs.length; i++) next.set(rs[i - 1].k, Math.round(km(rs[i - 1].p, rs[i].p)));
         el.hidden = !l.length && !edit;
         const total = totalKm(P);
-        el.innerHTML = `<div class="mh"><h2>${ic('route')}Stopps<small class="pl-count">${l.length || ''}</small></h2>
-                ${edit ? `<button type="button" data-pl="stop-add">${ic('plus')}Stopp</button>` : ''}</div>
+        /* Reiseende: fester Zeitraum, sonst die Summe der Nächte */
+        const end = m.end && !(H.legEnd && H.legEnd()) ? m.end : L.end;
+        const drag = edit && l.length > 1;
+        el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
+                <span class="pl-head-acts">${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}
+                ${edit && l.length ? `<button type="button" data-pl="stop-add">${ic('plus')}Stopp</button>` : ''}</span></div>
             ${ring}
-            ${rs.length > 1 ? `<p class="note pl-total">${ic('route')}${kmText(total)} Luftlinie entlang der Route</p>` : ''}
-            ${l.length ? `<ol class="pl-stops">${l.map(({ k, p }, i) => `
-                <li class="pl-stop" data-k="${esc(k)}">
-                    <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(p.num) : ic('pin')}</button>
+            ${rs.length > 1 ? `<p class="note pl-total">${ic('route')}${kmText(total)} Luftlinie entlang der Route${drag ? ' · Reihenfolge per Ziehen am Griff ändern' : ''}</p>` : ''}
+            ${l.length ? `<ol class="pl-stops">${l.map(({ k, p }) => `
+                <li class="pl-stop" data-k="${esc(k)}" data-sort="stops">
+                    <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(p.num) : ic('pin')}</button>
                     <div class="pl-stop-main">
                         <b>${esc(p.name || k)}</b>
                         ${lg.has(k) ? `<small>${esc(legText(lg.get(k)))}</small>` : p.date ? `<small>${esc(p.date)}</small>` : ''}
-                        ${next.has(k) ? `<span class="pl-leg">${ic('arrowDown')}${kmText(next.get(k))}</span>` : ''}
                     </div>
                     ${p.num != null ? stepper(k, p) : ''}
                     ${edit ? `<div class="pl-acts">
-                        <button type="button" data-pl="stop-up" data-k="${esc(k)}" aria-label="Nach oben"${i === 0 ? ' disabled' : ''}>${ic('arrowUp')}</button>
-                        <button type="button" data-pl="stop-down" data-k="${esc(k)}" aria-label="Nach unten"${i === l.length - 1 ? ' disabled' : ''}>${ic('arrowDown')}</button>
                         <button type="button" data-pl="stop-edit" data-k="${esc(k)}" aria-label="Bearbeiten">${ic('pencil')}</button>
+                        ${drag ? `<button type="button" class="pl-handle" data-drag="stops" data-k="${esc(k)}" aria-label="Verschieben: ${esc(p.name || k)} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button>` : ''}
                     </div>` : ''}
-                </li>`).join('')}</ol>` : `<p class="note">Noch keine Stopps. Lege den ersten Ort an – die Koordinaten findet die Ortssuche.</p>`}`;
+                    ${next.has(k) ? `<span class="pl-leg" title="Luftlinie · Fahrzeit grob geschätzt">${ic('route')}${kmText(next.get(k))}<i>·</i>${esc(driveText(next.get(k)))}</span>` : ''}
+                </li>`).join('')}</ol>
+            ${edit ? `<button type="button" class="pl-next" data-pl="stop-add"><span>${ic('plus')}</span>Nächsten Stopp hinzufügen</button>` : ''}
+            ${end && L.on ? `<div class="pl-finish"><span>${ic('flag')}</span><div><b>Reiseende</b><small>${esc(fmtY(end))}</small></div></div>` : ''}`
+            : `<div class="pl-noroute">${ic('route')}<b>Plane deine Route</b><p>Lege die Orte der Reise in ihrer Reihenfolge an und gib an, wie viele Nächte ihr jeweils bleibt.</p>
+                ${edit ? `<button type="button" class="btn-action" data-pl="stop-add">${ic('plus')}Ersten Stopp hinzufügen</button>` : ''}</div>`}`;
     }
-    /* Stopp-Liste neben die Karte hängen (Split-View) und die Distanz in den Karten-Kopf schreiben */
+    /* Stopp-Liste in den eigenen Bereich „Etappen“ (#stops) hängen – gibt es den nicht, neben die Karte (Split-View) –
+       und die Distanz in den Karten-Kopf schreiben */
     function mountStops(P) {
         const box = document.getElementById('mapBox');
         if (!box) return;
         let panel = document.getElementById('stopPanel');
-        if (!panel) {
+        const pane = document.getElementById('stops');
+        if (pane) {
+            if (!panel) { pane.insertAdjacentHTML('beforeend', '<aside id="stopPanel" class="box stop-panel" hidden></aside>'); panel = document.getElementById('stopPanel'); }
+            if (panel.parentElement !== pane) { const old = panel.parentElement; pane.appendChild(panel); old.classList.remove('has-panel'); }
+        } else if (!panel) {
             const wrap = document.createElement('div');
             wrap.className = 'map-split';
             box.before(wrap); wrap.appendChild(box);
@@ -270,18 +289,66 @@
             panel = document.getElementById('stopPanel');
         }
         renderStops(panel, P);
-        if (panel.parentElement) panel.parentElement.classList.toggle('has-panel', !panel.hidden);
+        if (!pane && panel.parentElement) panel.parentElement.classList.toggle('has-panel', !panel.hidden);
         const n = routeStops(P).length;
         let el = document.getElementById('mapKm');
         const fs = document.getElementById('fs');
         if (!el && fs) { el = document.createElement('span'); el.id = 'mapKm'; el.className = 'map-km'; fs.before(el); }
         if (el) { el.innerHTML = n > 1 ? `${ic('route')}${kmText(totalKm(P))} · ${n} Stopps` : ''; el.hidden = n < 2; }
     }
-    function moveStop(k, dir) {
-        const l = stopList(), i = l.findIndex(x => x.k === k), j = i + dir;
-        if (i < 0 || j < 0 || j >= l.length || !editable()) return;
-        commit(['places'], () => {
-            [l[i], l[j]] = [l[j], l[i]];
+    /* ---------- Reisende: Name + Farbe; färben Punkte auf Karte, Etappen und Route (wie die Südamerika-Reise) ---------- */
+    const PALETTE = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#64748b'];
+    const persons = () => Array.isArray(raw().persons) ? raw().persons : [];
+    async function editPeople() {
+        if (!editable()) return;
+        let list = persons().map(x => ({ key: x.key, name: x.name, color: x.color }));
+        /* Vorschlag: man selbst + die Mitglieder der Reise */
+        if (!list.length && H.suggestPeople) { try { list = (await H.suggestPeople()).map((n, i) => ({ key: '', name: n, color: PALETTE[i % PALETTE.length] })); } catch (e) {} }
+        if (!list.length) list = [{ key: '', name: '', color: PALETTE[0] }];
+        const rowHtml = (x, i) => `<div class="pl-person" data-key="${esc(x.key || '')}">
+                <input type="color" name="pc" value="${esc(/^#[0-9a-f]{6}$/i.test(x.color || '') ? x.color : PALETTE[i % PALETTE.length])}" aria-label="Farbe">
+                <input name="pn" value="${esc(x.name || '')}" maxlength="40" placeholder="Name" aria-label="Name">
+                <button type="button" class="pl-person-x" aria-label="Entfernen">${ic('trash')}</button></div>`;
+        sheet({
+            title: 'Reisende & Farben',
+            body: `<p class="note">Die Punkte auf Karte, Etappen und Route tragen immer die Farben der Reisenden, die dort sind (mehrere = geteilter Punkt). Wer wo ist, stellst du beim Stopp ein – ohne Angabe sind alle dabei.</p>
+                <div class="pl-people-list">${list.map(rowHtml).join('')}</div>
+                <button type="button" class="btn-action pl-person-add">${ic('plus')}Person</button>`,
+            onOpen: f => {
+                const box = f.querySelector('.pl-people-list');
+                const wire = () => box.querySelectorAll('.pl-person-x').forEach(b => b.onclick = () => b.closest('.pl-person').remove());
+                wire();
+                f.querySelector('.pl-person-add').onclick = () => { box.insertAdjacentHTML('beforeend', rowHtml({}, box.children.length)); wire(); box.lastElementChild.querySelector('[name=pn]').focus(); };
+            },
+            done: f => {
+                const used = new Set();
+                const out = [...f.querySelectorAll('.pl-person')].map(r => ({ key: r.dataset.key, name: r.querySelector('[name=pn]').value.trim(), color: r.querySelector('[name=pc]').value }))
+                    .filter(x => x.name).map(x => {
+                        let key = x.key || x.name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '').slice(0, 16) || 'p';
+                        while (used.has(key)) key += '2';
+                        used.add(key);
+                        const old = persons().find(o => o.key === key) || {};
+                        return { ...old, key, name: x.name, color: x.color };
+                    });
+                const keys = new Set(out.map(x => x.key));
+                commit(['persons', 'places'], () => {
+                    if (out.length) raw().persons = out; else delete raw().persons;
+                    /* entfernte Personen auch aus den Stopps nehmen */
+                    Object.values(raw().places || {}).forEach(p => { if (Array.isArray(p.who)) { p.who = p.who.filter(k => keys.has(k)); if (!p.who.length || p.who.length === keys.size) delete p.who; } });
+                });
+            }
+        });
+    }
+    /* Stopps ändern: Tagespläne, die den Etappen folgen, gleich mit anordnen */
+    function commitPlaces(mutate) {
+        const sync = legPlans();
+        return commit(['places', ...(sync.length ? [H.planKey] : [])], () => { mutate(); sync.forEach(p => syncPlan(p)); });
+    }
+    function moveStop(k, j) {
+        const l = stopList(), i = l.findIndex(x => x.k === k);
+        if (i < 0 || j < 0 || j >= l.length || i === j || !editable()) return;
+        commitPlaces(() => {
+            const [x] = l.splice(i, 1); l.splice(j, 0, x);
             const out = {};
             let n = 0;
             l.forEach(x => { if (x.p.num != null) x.p.num = ++n; out[x.k] = x.p; });
@@ -292,7 +359,7 @@
         if (!editable()) return;
         const p = k ? places()[k] : null;
         if (k && !p) return;
-        const cur = p || { name: '', lat: '', lng: '', num: 1, color: '#1f6fb2' };
+        const cur = p || { name: '', lat: '', lng: '', num: 1 };
         sheet({
             title: p ? 'Stopp bearbeiten' : 'Neuer Stopp',
             body: `<div class="pl-search">
@@ -306,8 +373,8 @@
                 </div>
                 ${field('Zeitraum / Datum (Text)', inp('date', cur.date, 'maxlength="80" placeholder="z. B. 12.–15.04. oder Tag 3–5"'))}
                 ${field('Beschreibung', area('desc', cur.desc, 'maxlength="2000"'))}
+                ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(x.key)}"${!Array.isArray(cur.who) || cur.who.includes(x.key) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
                 <div class="pl-row">
-                    ${field('Farbe', `<input type="color" name="color" value="${esc(/^#[0-9a-f]{6}$/i.test(cur.color || '') ? cur.color : '#1f6fb2')}">`)}
                     <label class="pl-check"><input type="checkbox" name="numbered"${cur.num != null ? ' checked' : ''}><span>Nummerierter Stopp der Route</span></label>
                 </div>
                 <p class="note pl-src">Ortssuche: © OpenStreetMap-Mitwirkende (Nominatim)</p>`,
@@ -335,18 +402,21 @@
                 find.onclick = run;
                 f.elements.name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
                 const del = f.querySelector('.pl-del');
-                if (del) del.onclick = () => { if (confirm(`„${p.name}“ löschen?`)) { dlg.close(); commit(['places'], () => { delete raw().places[k]; renumber(); }); } };
+                if (del) del.onclick = () => { if (confirm(`„${p.name}“ löschen?`)) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } };
             },
             done: f => {
                 const name = val(f, 'name'), lat = parseFloat(val(f, 'lat').replace(',', '.')), lng = parseFloat(val(f, 'lng').replace(',', '.'));
                 if (!name) { alert('Bitte einen Ortsnamen eingeben.'); return false; }
                 if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) { alert('Bitte gültige Koordinaten eintragen (oder über „Suchen“ übernehmen).'); return false; }
-                commit(['places'], () => {
+                commitPlaces(() => {
                     const P = raw().places = raw().places || {};
                     const key = k || uniqueKey(name, P);
                     const o = P[key] || {};
                     const numbered = f.elements.numbered.checked;
-                    Object.assign(o, { name, lat: +lat.toFixed(5), lng: +lng.toFixed(5), color: f.elements.color.value });
+                    Object.assign(o, { name, lat: +lat.toFixed(5), lng: +lng.toFixed(5) });
+                    /* Reisende: alle angehakt = kein eigener Eintrag (folgt der Reise) */
+                    const who = [...f.querySelectorAll('input[name="who"]')];
+                    if (who.length) { const on = who.filter(x => x.checked).map(x => x.value); if (on.length === who.length) delete o.who; else o.who = on; }
                     setOpt(o, 'date', val(f, 'date')); setOpt(o, 'desc', val(f, 'desc'));
                     if (!numbered) delete o.num;
                     else if (o.num == null) o.num = Object.values(P).reduce((m, x) => x.num != null && x !== o ? Math.max(m, +x.num || 0) : m, 0) + 1;
@@ -598,6 +668,8 @@
         const match = s => (accFilter.st === 'all' || S.status(s) === accFilter.st)
             && (!q || [S.name(s), s.hotel, s.address, s.code, s.note, S.transfer(s).text].join(' ').toLowerCase().includes(q));
         const today = H.today;
+        /* Ziehen zum Sortieren nur ohne Filter (sonst stimmt die Reihenfolge nicht mit der Liste überein) */
+        const sortable = accFilter.st === 'all' && !q;
         const row = (s, g, i) => {
             const st = S.status(s), c = cancelInfo(s), t = S.transfer(s), n = S.nights(s), cin = S.cin(s), cout = S.cout(s);
             const now = ISO.test(cin) && ISO.test(cout) && today >= cin && today < cout;
@@ -607,15 +679,14 @@
             const maps = mapsHref(s);
             const legacy = (s.bookings || []).map(b => `<div class="pl-legacy">${b.name ? `<b>${rich(b.name)}</b> ` : ''}${[b.room, b.by, b.cancel].filter(Boolean).map(rich).join(' · ')}</div>`).join('');
             const acts = edit ? `<div class="pl-acts">
-                    <button type="button" data-pl="acc-up" data-g="${esc(g.id)}" data-i="${i}" aria-label="Nach oben"${i === 0 ? ' disabled' : ''}>${ic('arrowUp')}</button>
-                    <button type="button" data-pl="acc-down" data-g="${esc(g.id)}" data-i="${i}" aria-label="Nach unten"${i === g.list.length - 1 ? ' disabled' : ''}>${ic('arrowDown')}</button>
-                    <button type="button" data-pl="acc-edit" data-g="${esc(g.id)}" data-i="${i}" aria-label="Bearbeiten">${ic('pencil')}</button></div>` : '';
+                    <button type="button" data-pl="acc-edit" data-g="${esc(g.id)}" data-i="${i}" aria-label="Bearbeiten">${ic('pencil')}</button>
+                    ${sortable && g.list.length > 1 ? `<button type="button" class="pl-handle" data-drag="acc" data-g="${esc(g.id)}" data-i="${i}" aria-label="Verschieben: ${esc(S.name(s))} (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button>` : ''}</div>` : '';
             const details = `${s.address ? `<div class="pl-addr"><span>${ic('pin')}<span lang="">${esc(s.address)}</span></span>${copyBtn(s.address, 'Adresse kopieren')}</div>` : ''}
                 ${maps ? `<a class="pl-link" href="${esc(maps)}" target="_blank" rel="noopener">${ic('map')}Google Maps ↗</a>` : ''}
                 ${t.time || t.text ? `<div class="pl-transfer">${t.time ? `<span class="travel-time-pill">${esc(t.time)}</span>` : ''}${rich(t.text)}</div>` : ''}
                 ${s.note ? `<div class="pl-note">${rich(s.note)}</div>` : ''}${legacy}`;
             return {
-                tr: `<tr class="${now ? 'acc-now' : ''}${st === 'open' ? ' is-open' : ''}" data-g="${esc(g.id)}" data-i="${i}">
+                tr: `<tr class="${now ? 'acc-now' : ''}${st === 'open' ? ' is-open' : ''}" data-g="${esc(g.id)}" data-i="${i}" data-sort="acc:${esc(g.id)}">
                     <td><strong>${esc(S.name(s))}</strong>${now ? `<span class="now-badge">${ic('pin')}Heute hier</span>` : ''}</td>
                     <td class="pl-nowrap">${period}${n ? `<div><span class="stay-badge">${n} ${n === 1 ? 'Nacht' : 'Nächte'}</span></div>` : ''}</td>
                     <td><div class="pl-hotel">${rich(s.hotel || '')}</div>${statusTag}${cancel ? `<div>${cancel}</div>` : ''}</td>
@@ -623,7 +694,7 @@
                     <td class="pl-more">${details}</td>
                     ${edit ? `<td>${acts}</td>` : ''}
                 </tr>`,
-                card: `<article class="pl-card${now ? ' acc-now' : ''}${st === 'open' ? ' is-open' : ''}" data-g="${esc(g.id)}" data-i="${i}">
+                card: `<article class="pl-card${now ? ' acc-now' : ''}${st === 'open' ? ' is-open' : ''}" data-g="${esc(g.id)}" data-i="${i}" data-sort="acc:${esc(g.id)}">
                     <div class="pl-card-top">
                         <div><b>${esc(S.name(s))}</b><small>${period}${n ? ` · ${n} ${n === 1 ? 'Nacht' : 'Nächte'}` : ''}</small></div>
                         ${statusTag}
@@ -764,10 +835,15 @@
             }
         });
     }
-    function moveStation(gid, i, d) {
+    function moveStation(gid, i, j) {
         const g = groups().find(x => x.id === gid);
-        if (!g || i + d < 0 || i + d >= g.list.length || !editable()) return;
-        commit(['stations'], () => { const [x] = g.list.splice(i, 1); g.list.splice(i + d, 0, x); });
+        if (!g || i === j || j < 0 || j >= g.list.length || !editable()) return;
+        commit(['stations'], () => { const [x] = g.list.splice(i, 1); g.list.splice(j, 0, x); });
+    }
+    function moveTransport(i, j) {
+        const F = flights();
+        if (i === j || j < 0 || j >= F.length || !editable()) return;
+        commit(['flights'], () => { const [x] = F.splice(i, 1); F.splice(j, 0, x); });
     }
 
     /* ---------- Flüge & Transporte ---------- */
@@ -791,10 +867,10 @@
             + (edit ? `<div class="pl-toolbar"><button type="button" class="btn-action" data-pl="tr-add">${ic('plus')}Transport hinzufügen</button>${all.length > 1 ? `<button type="button" class="btn-action" data-pl="tr-sort">${ic('calendar')}Nach Datum sortieren</button>` : ''}</div>` : '');
         const qi = bar.querySelector('[data-pl-tq]');
         if (qi) qi.oninput = () => { trFilter.q = qi.value; const pos = qi.selectionStart; renderTransports(listEl); const n = listEl.previousElementSibling.querySelector('[data-pl-tq]'); n.focus(); n.setSelectionRange(pos, pos); };
+        const sortable = trFilter.mode === 'all' && !q && all.length > 1;
         const acts = i => edit ? `<div class="pl-acts pl-tr-acts">
-                <button type="button" data-pl="tr-up" data-i="${i}" aria-label="Nach oben"${i === 0 ? ' disabled' : ''}>${ic('arrowUp')}</button>
-                <button type="button" data-pl="tr-down" data-i="${i}" aria-label="Nach unten"${i === all.length - 1 ? ' disabled' : ''}>${ic('arrowDown')}</button>
-                <button type="button" data-pl="tr-edit" data-i="${i}" aria-label="Bearbeiten">${ic('pencil')}</button></div>` : '';
+                <button type="button" data-pl="tr-edit" data-i="${i}" aria-label="Bearbeiten">${ic('pencil')}</button>
+                ${sortable ? `<button type="button" class="pl-handle" data-drag="tr" data-i="${i}" aria-label="Verschieben (Pfeiltasten oder ziehen)" title="Ziehen zum Verschieben">${ic('grip')}</button>` : ''}</div>` : '';
         listEl.innerHTML = shown.map(({ f, i }) => {
             const li = fc && fc.isCard(f) ? fc.card(f) : `<li>
                     <div class="fl-date">${esc(f.date)}</div>
@@ -803,7 +879,7 @@
                     ${f.details ? `<div class="fl-details">${rich(f.details)}${url(f.status) ? ` (<a href="${esc(url(f.status))}" target="_blank" rel="noopener" class="fl-link">Status prüfen ↗</a>)` : ''}</div>` : ''}
                     ${f.price ? `<div class="fl-price">${rich(f.price)}</div>` : ''}
                 </li>`;
-            return edit ? li.replace(/<\/li>\s*$/, acts(i) + '</li>') : li;
+            return edit ? li.replace(/^\s*<li/, `<li data-sort="tr" data-i="${i}"`).replace(/<\/li>\s*$/, acts(i) + '</li>') : li;
         }).join('') || `<li class="pl-empty"><p class="note">${all.length ? 'Keine Treffer.' : 'Noch keine Flüge oder Transporte eingetragen.'}</p></li>`;
     }
     function editTransport(idx) {
@@ -888,9 +964,8 @@
         if (a !== 'stop-focus' && a !== 'acc-filter' && a !== 'tr-filter') { e.preventDefault(); e.stopPropagation(); }
         switch (a) {
             case 'stop-add': return editStop(null);
+            case 'people': return editPeople();
             case 'stop-edit': return editStop(b.dataset.k);
-            case 'stop-up': return moveStop(b.dataset.k, -1);
-            case 'stop-down': return moveStop(b.dataset.k, 1);
             case 'stop-focus': return H.focusPlace && H.focusPlace(b.dataset.k);
             case 'row-add': return editRow(b.dataset.plan, null);
             case 'row-edit': return editRow(b.dataset.plan, i);
@@ -901,20 +976,82 @@
             case 'acc-leg': return editStation(b.dataset.g, null, b.dataset.k);
             case 'acc-add': return editStation(b.dataset.g, null);
             case 'acc-edit': return editStation(b.dataset.g, i);
-            case 'acc-up': return moveStation(b.dataset.g, i, -1);
-            case 'acc-down': return moveStation(b.dataset.g, i, 1);
             case 'acc-filter': accFilter.st = b.dataset.st; return renderAcc(b.closest('.pane'));
             case 'tr-add': return editTransport(null);
             case 'tr-edit': return editTransport(i);
             case 'tr-sort': return sortTransports();
-            case 'tr-up': case 'tr-down': {
-                const d = a === 'tr-up' ? -1 : 1, F = flights();
-                if (i + d < 0 || i + d >= F.length || !editable()) return;
-                return commit(['flights'], () => { const [x] = F.splice(i, 1); F.splice(i + d, 0, x); });
-            }
             case 'tr-filter': { trFilter.mode = b.dataset.mode; const l = b.closest('.pl-trbar').nextElementSibling; return renderTransports(l); }
         }
     }, true);
+
+    /* ---------- Verschieben per Ziehen am Griff (Maus, Finger) oder Pfeiltasten ---------- */
+    function dropTo(g, from, to) {
+        if (from === to) return;
+        if (g.dataset.drag === 'stops') {
+            /* Index in der Stoppliste = Position unter den sortierbaren Zeilen */
+            moveStop(g.dataset.k, to);
+        } else if (g.dataset.drag === 'acc') moveStation(g.dataset.g, +g.dataset.i, +g.dataset.i + (to - from));
+        else if (g.dataset.drag === 'tr') moveTransport(+g.dataset.i, +g.dataset.i + (to - from));
+    }
+    const sortItems = item => [...item.parentElement.children].filter(x => x.dataset.sort === item.dataset.sort && x.offsetParent);
+    document.addEventListener('keydown', e => {
+        const g = e.target.closest && e.target.closest('.pl-handle');
+        if (!g || !H || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+        e.preventDefault();
+        const item = g.closest('[data-sort]'), items = sortItems(item), from = items.indexOf(item);
+        const to = Math.max(0, Math.min(items.length - 1, from + (e.key === 'ArrowUp' ? -1 : 1)));
+        dropTo(g, from, to);
+    });
+    document.addEventListener('pointerdown', e => {
+        const g = e.target.closest('.pl-handle');
+        if (!g || !H || e.button > 0 || !editable()) return;
+        const item = g.closest('[data-sort]');
+        if (!item) return;
+        e.preventDefault();
+        const items = sortItems(item), from = items.indexOf(item);
+        if (from < 0 || items.length < 2) return;
+        const page = y => y + window.scrollY;
+        const rects = items.map(x => { const r = x.getBoundingClientRect(); return { top: page(r.top), h: r.height, mid: page(r.top) + r.height / 2 }; });
+        /* Abstand zum Nachbarn = Höhe der Lücke, um die die anderen Zeilen ausweichen */
+        const step = from < items.length - 1 ? rects[from + 1].top - rects[from].top : rects[from].top - rects[from - 1].top + rects[from].h - rects[from - 1].h;
+        const y0 = page(e.clientY);
+        let to = from, lastY = e.clientY, raf = 0;
+        item.classList.add('pl-dragging');
+        items.forEach(x => { if (x !== item) x.classList.add('pl-shift'); });
+        try { g.setPointerCapture(e.pointerId); } catch (err) {}
+        const update = () => {
+            const dy = page(lastY) - y0, mid = rects[from].mid + dy;
+            to = from;
+            for (let i = from + 1; i < items.length; i++) if (mid > rects[i].mid) to = i;
+            for (let i = from - 1; i >= 0; i--) if (mid < rects[i].mid) to = i;
+            item.style.transform = `translateY(${dy}px)`;
+            items.forEach((x, i) => {
+                if (x === item) return;
+                const off = from < to && i > from && i <= to ? -step : from > to && i < from && i >= to ? step : 0;
+                x.style.transform = off ? `translateY(${off}px)` : '';
+            });
+        };
+        /* am Bildschirmrand weiterscrollen */
+        const edge = () => {
+            const m = 70, v = lastY < m ? -(m - lastY) / 4 : lastY > innerHeight - m ? (lastY - innerHeight + m) / 4 : 0;
+            if (v) { window.scrollBy(0, v); update(); }
+            raf = requestAnimationFrame(edge);
+        };
+        raf = requestAnimationFrame(edge);
+        const move = ev => { lastY = ev.clientY; update(); };
+        const end = ev => {
+            cancelAnimationFrame(raf);
+            g.removeEventListener('pointermove', move);
+            g.removeEventListener('pointerup', end);
+            g.removeEventListener('pointercancel', end);
+            item.classList.remove('pl-dragging');
+            items.forEach(x => { x.style.transform = ''; x.classList.remove('pl-shift'); });
+            if (ev.type === 'pointerup') dropTo(g, from, to);
+        };
+        g.addEventListener('pointermove', move);
+        g.addEventListener('pointerup', end);
+        g.addEventListener('pointercancel', end);
+    });
 
     function init(host) { H = host; window.TBPlanner.ready = true; }
 

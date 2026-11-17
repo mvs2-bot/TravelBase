@@ -4,7 +4,7 @@
    - jede Zeile öffnet den Bereich wie bisher; „Route“ öffnet den Zeitstrahl der Stationen,
      dort öffnet die Nummer eines Orts seine möglichen Aktivitäten (shared/activities.js)
    - oben links führt „‹“ einen Schritt zurück (Bereich → Übersicht der Reise → Alle Reisen), ebenso Wischgeste/App-Leiste
-   - unten eine schwebende Leiste: Start (diese Übersicht) · Karte · Route · Infos; aktive Seite als Pille.
+   - unten eine schwebende Leiste: Start (diese Übersicht) · Karte · Etappen (falls vorhanden) · Route · Infos; aktive Seite als Pille.
      Bereiche, die man von Start aus öffnet, zählen zu „Start“
    Am Desktop ändert sich nichts (alles hängt an der Media Query in trip.css).
    Funktioniert mit jeder Reise-Seite, die .pop-btn[data-t] und .pane hat (Vorlage und Thailand).
@@ -16,11 +16,14 @@
     const ic = n => window.tbIcon ? tbIcon(n) : '';
     const KEY = 'travelbase-trip-view:' + location.pathname;
     let data = {}, home = null, routeView = null, bar = null;
-    const TABS = [['home', 'Start', 'home'], ['mapview', 'Karte', 'map'], ['route', 'Route', 'pin'], ['misc', 'Infos', 'info']];
+    const ALL_TABS = [['home', 'Start', 'home'], ['mapview', 'Karte', 'map'], ['stops', 'Etappen', 'route'], ['route', 'Route', 'pin'], ['misc', 'Infos', 'info']];
+    /* Etappen nur, wenn die Seite den Bereich hat */
+    const hasStops = () => !!document.querySelector('.pop-btn[data-t="stops"]');
+    let TABS = ALL_TABS.filter(t => t[0] !== 'stops');
 
     /* Gruppen und Farben der Zeilen; unbekannte Bereiche (z. B. Tagespläne) landen bei „Reise“ */
-    const GROUP = { mapview: 'trip', acc: 'trip', activities: 'trip', route: 'trip', flights: 'org', cal: 'org', todos: 'org', pack: 'org', climate: 'info', misc: 'info' };
-    const COLOR = { mapview: '#15803d', route: '#0e7490', acc: '#b45309', activities: '#ff9500', flights: '#e11d48', cal: '#d97706', todos: '#248a3d', pack: '#5856d6', climate: '#0284c7', misc: '#8a5a00' };
+    const GROUP = { mapview: 'trip', stops: 'trip', bookings: 'trip', acc: 'trip', activities: 'trip', route: 'trip', flights: 'org', cal: 'org', todos: 'org', pack: 'org', climate: 'info', misc: 'info' };
+    const COLOR = { mapview: '#15803d', stops: '#1f6fb2', bookings: '#b45309', route: '#0e7490', acc: '#b45309', activities: '#ff9500', flights: '#e11d48', cal: '#d97706', todos: '#248a3d', pack: '#5856d6', climate: '#0284c7', misc: '#8a5a00' };
     const PLAN_COLORS = ['#1f6fb2', '#7c3aed', '#0d9488', '#be185d'];
 
     /* Offene Ansicht pro Reise merken: Neuladen bleibt dort, ein neuer Aufruf startet auf der Übersicht */
@@ -91,14 +94,25 @@
             const known = id in GROUP;
             const svg = span && span.querySelector('svg') ? span.innerHTML : ic('calendar');
             items.push({ id, label, group: known ? GROUP[id] : 'trip', color: COLOR[id] || PLAN_COLORS[plan++ % PLAN_COLORS.length], icon: svg, value: ((data.tiles || {})[id] || {}).text });
-            /* Route direkt nach der Karte */
-            if (id === 'mapview' && (data.route || []).length) items.push({ id: 'route', label: 'Route', group: 'trip', color: COLOR.route, icon: ic('pin'), value: `${data.route.length} Stationen` });
+            /* Route direkt nach der Karte bzw. nach den Etappen */
+            if (id === (btns.some(x => x.dataset.t === 'stops') ? 'stops' : 'mapview') && (data.route || []).length) items.push({ id: 'route', label: 'Route', group: 'trip', color: COLOR.route, icon: ic('pin'), value: `${data.route.length} Stationen` });
         });
         if ((data.route || []).length && !items.some(i => i.id === 'route')) items.push({ id: 'route', label: 'Route', group: 'trip', color: COLOR.route, icon: ic('pin'), value: `${data.route.length} Stationen` });
         return items;
     }
 
+    function buildBar() {
+        const want = ALL_TABS.filter(t => t[0] !== 'stops' || hasStops());
+        if (bar.dataset.n === String(want.length)) return;
+        TABS = want;
+        bar.dataset.n = String(want.length);
+        bar.style.setProperty('--n', want.length);
+        bar.innerHTML = TABS.map(([id, label, icon]) => `<button type="button" data-tab="${id}">${ic(icon)}${label}</button>`).join('');
+        bar.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => tab(b.dataset.tab));
+        mark();
+    }
     function render() {
+        if (bar) buildBar();
         if (!home) return;
         const title = (document.getElementById('tripTitle') || {}).textContent || '';
         const cd = document.getElementById('countdown');
@@ -158,8 +172,7 @@
         /* Schwebende Leiste unten (nur Handy, siehe trip.css) */
         bar = document.createElement('nav');
         bar.className = 'm-tabbar'; bar.setAttribute('aria-label', 'Reise');
-        bar.innerHTML = TABS.map(([id, label, icon]) => `<button type="button" data-tab="${id}">${ic(icon)}${label}</button>`).join('');
-        bar.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => tab(b.dataset.tab));
+        buildBar();
         document.body.appendChild(bar);
         /* Start: Übersicht, außer beim Neuladen eines offenen Bereichs */
         const s = stored();
@@ -184,7 +197,9 @@
 
     window.TBTripMobile = {
         setData(d) { const tiles = Object.assign({}, data.tiles, d && d.tiles); data = Object.assign(data, d || {}, { tiles }); render(); },
-        setTile(id, t) { data.tiles = Object.assign({}, data.tiles, { [id]: t }); render(); }
+        setTile(id, t) { data.tiles = Object.assign({}, data.tiles, { [id]: t }); render(); },
+        /* die Seite hat selbst den Bereich gewechselt (z. B. Stopp → Karte) */
+        mark(id) { if (document.body.classList.contains('m-home') || document.body.classList.contains('m-route')) return; mark(id); }
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
