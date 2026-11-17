@@ -207,9 +207,9 @@
             
             <div class="box">
                 <h2><svg class="ic"><use href="#i-briefcase"></use></svg>Verbleibende Arbeitstage bis zur Reise</h2>
-                <p class="note">Werktage (Mo–Fr) ab heute bis zum Reisebeginn laut Etappen. Gesetzliche Feiertage und die eingetragenen Urlaubstage sind abgezogen.</p>
+                <p class="note">Werktage (Mo–Fr) ab heute bis zum Tag vor dem eigenen Reisebeginn laut Etappen. Der heutige Tag zählt mit. Gesetzliche Feiertage (automatisch berechnet) und die eingetragenen Urlaubstage sind abgezogen.</p>
                 <div class="stats" id="workStats"></div>
-                <small id="workHolidays">* Berücksichtigte Feiertage in diesem Zeitraum: Tag der Dt. Einheit, Nationalfeiertag (AT), Allerheiligen, Maria Empfängnis (AT), 1. &amp; 2. Weihnachtsfeiertag, Neujahr.</small>
+                <small id="workHolidays"></small>
             </div>
             
             <div class="box">
@@ -860,22 +860,49 @@
         /* Region (Feiertage) ↔ Person: workdays.people = { <region>: <Personen-Schlüssel> } aus der Datenbank, sonst die bisherige Zuordnung */
         const WD_DEFAULT = [['bayern', 'stefan'], ['wien', 'ines']];
         const wdRows = wd => wd.people && typeof wd.people === 'object' ? Object.entries(wd.people).map(([r, k]) => [r, String(k).toLowerCase()]) : WD_DEFAULT;
+        /* Gesetzliche Feiertage je Region, aus dem Jahr berechnet (Ostern nach Gauß); andere Regionen nutzen workdays.holidays */
+        const HOLIDAYS = {
+            bayern: [['01-01', 'Neujahr'], ['01-06', 'Hl. Drei Könige'], [-2, 'Karfreitag'], [1, 'Ostermontag'], ['05-01', 'Tag der Arbeit'], [39, 'Christi Himmelfahrt'], [50, 'Pfingstmontag'], [60, 'Fronleichnam'],
+                ['08-15', 'Mariä Himmelfahrt'], ['10-03', 'Tag der Dt. Einheit'], ['11-01', 'Allerheiligen'], ['12-25', '1. Weihnachtsfeiertag'], ['12-26', '2. Weihnachtsfeiertag']],
+            wien: [['01-01', 'Neujahr'], ['01-06', 'Hl. Drei Könige'], [1, 'Ostermontag'], ['05-01', 'Staatsfeiertag'], [39, 'Christi Himmelfahrt'], [50, 'Pfingstmontag'], [60, 'Fronleichnam'],
+                ['08-15', 'Mariä Himmelfahrt'], ['10-26', 'Nationalfeiertag'], ['11-01', 'Allerheiligen'], ['12-08', 'Mariä Empfängnis'], ['12-25', 'Christtag'], ['12-26', 'Stefanitag']]
+        };
+        function easter(y) {
+            const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+            const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+            const mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1;
+            return new Date(Date.UTC(y, mo - 1, da));
+        }
+        /* Map ISO-Datum → Name für die Jahre von–bis */
+        function holidayMap(reg, y0, y1, wd) {
+            const out = new Map(), def = HOLIDAYS[reg];
+            if (!def) { ((wd.holidays || {})[reg] || []).forEach(d => out.set(d, 'Feiertag')); return out; }
+            for (let y = y0; y <= y1; y++) {
+                const e = easter(y);
+                def.forEach(([when, name]) => {
+                    const iso = typeof when === 'number' ? new Date(e.getTime() + when * 864e5).toISOString().slice(0, 10) : `${y}-${when}`;
+                    out.set(iso, name);
+                });
+            }
+            return out;
+        }
         function calculateWorkDays() {
             const wd = DATA.workdays, el = $('#workStats');
             if (!wd || !el) return;
             const ok = d => /^\d{4}-\d\d-\d\d$/.test(d || '');
             const ps = DATA.persons || [], vac = wd.vacation || {};
             const admin = ROLE === 'admin' && window.TBPlanner && TBPlanner.ready && TBPlanner.saveKeys;
+            const usedHol = new Map();
             el.innerHTML = wdRows(wd).map(([reg, key]) => {
                 const p = ps.find(x => String(personKey(x)).toLowerCase() === key || String(x.name || '').toLowerCase() === key) || { name: key.charAt(0).toUpperCase() + key.slice(1), color: '' };
                 const start = personRange(p).start || (window.TBPlanner && TBPlanner.ready ? (TBPlanner.legs().start || '') : '') || firstDate() || wd.until || '';
                 let n = 0;
                 if (ok(start)) {
                     const cur = new Date(TODAY + 'T12:00:00'), end = new Date(start + 'T12:00:00');
-                    const hol = (wd.holidays || {})[reg] || [];
+                    const hol = holidayMap(reg, +TODAY.slice(0, 4), +start.slice(0, 4), wd);
                     while (cur < end) {
-                        const dow = cur.getDay();
-                        if (dow !== 0 && dow !== 6 && !hol.includes(localISO(cur))) n++;
+                        const dow = cur.getDay(), iso = localISO(cur);
+                        if (dow !== 0 && dow !== 6) { if (hol.has(iso)) { const u = usedHol.get(iso) || { names: new Set(), who: [] }; u.names.add(hol.get(iso)); u.who.push(p.name || key); usedHol.set(iso, u); } else n++; }
                         cur.setDate(cur.getDate() + 1);
                     }
                 }
@@ -887,6 +914,10 @@
                             : v ? `<small>abzgl. ${v} Urlaubstag${v === 1 ? '' : 'e'}</small>` : ''}
                     </div>`;
             }).join('');
+            const hn = $('#workHolidays');
+            const rows = wdRows(wd).length;
+            if (hn) hn.textContent = usedHol.size ? '* Abgezogene Feiertage (Mo–Fr): ' + [...usedHol].sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([d, u]) => `${[...u.names].join(' / ')} ${d.slice(8)}.${d.slice(5, 7)}.${u.who.length < rows ? ` (nur ${u.who.join(', ')})` : ''}`).join(', ') : '';
             el.querySelectorAll('[data-wd-vac]').forEach(i => i.onchange = () => {
                 const reg = i.dataset.wdVac, v = Math.max(0, Math.min(99, parseInt(i.value, 10) || 0));
                 if (v === (parseInt(((DATA.workdays || {}).vacation || {})[reg], 10) || 0)) return;

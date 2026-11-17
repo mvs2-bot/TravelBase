@@ -117,7 +117,8 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   Thailand: Reisebeginn ohne `meta.start` = frühestes Datum aus `persons`, Unterkünften oder Ablauf-Tagen (`firstDate()`).
   Thailand: `thPlaceColor()` – `who` am Ort gilt fest; sonst färben die alten `persons.start/end` nach Zeitraum der Etappe (Vorgabe).
   Überall (Karte, Etappen, Route, Aktivitäten) dieselbe Funktion. Reisezeiträume der Personen kommen aus den Etappen (`TBPlanner.personRanges()`).
-  Thailand-Arbeitstage: bis zum eigenen Reisebeginn, minus Feiertage und `workdays.vacation` (`{ bayern, wien }`, Admins tragen ein).
+  Thailand-Arbeitstage: ab heute (zählt mit) bis zum Tag vor dem eigenen Reisebeginn, minus gesetzliche Feiertage und `workdays.vacation` (`{ bayern, wien }`, Admins tragen ein).
+  Feiertage für `bayern`/`wien` berechnet die Seite selbst (`HOLIDAYS` + Ostern, `holidayMap`); `workdays.holidays` gilt nur noch für andere Regionen.
 - **Reihenfolge der Stopps** (`stopList`): Daten-Reihenfolge von `places`; nummerierte Stopps untereinander nach `num`, nicht nummerierte behalten ihren Platz
   dazwischen (Ziehen schreibt die Reihenfolge neu). Route am Handy: Zeitstrahl mit Nächten als Chip am Namen (`.m-n`), Zeitraum darunter.
 - **Etappen** (zentrale Planung, wie Stippl): `places[k].nights` je nummeriertem Stopp (− / + in der Stoppliste). Ankunft = Reisebeginn + Nächte davor.
