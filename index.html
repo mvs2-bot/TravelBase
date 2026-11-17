@@ -146,6 +146,9 @@
     .tsheet-list a, .tsheet-list button { color: var(--p1) !important; font-weight: 500; }
     .tsheet-list a:hover, .tsheet-list button:hover { background: var(--hover); }
     .tsheet-list .ic { width: 18px; height: 18px; flex: 0 0 18px; }
+    .btn-danger { background: var(--danger); color: var(--on-p1); }
+    #xSave:disabled { cursor: not-allowed; }
+    .tsheet-list button.danger { color: var(--danger) !important; }
     .tsheet-list small { margin-left: auto; color: var(--mute); font-size: 13px; }
     .date-dlg { margin: auto; border: 0; border-radius: var(--radius); padding: 20px; width: min(340px, calc(100vw - 32px)); background: var(--card); color: var(--text); box-shadow: var(--shadow-lg); }
     .date-dlg::backdrop { background: var(--scrim); }
@@ -426,6 +429,32 @@
                     <button class="btn-ghost" type="button" data-close>Schließen</button>
                     <a class="btn" id="dOpen" href="#" hidden style="text-decoration:none;display:inline-flex;align-items:center">Reise öffnen</a>
                 </div>
+            </div>
+        </dialog>
+        <!-- Reise löschen (nur TravelBase-Admins) -->
+        <dialog id="delDlg" class="date-dlg wide">
+            <form id="delForm" novalidate>
+                <div>
+                    <h2 id="xTitle"></h2>
+                    <p class="note" style="margin:0">Löscht die Reise endgültig mit Etappen, Ablauf, Unterkünften, To-Dos, Packliste, Aktivitäten und Mitreisenden. Das lässt sich nicht rückgängig machen. Varianten dieser Reise bleiben erhalten.</p>
+                </div>
+                <label><span>Zur Bestätigung die Kennung <b id="xSlug"></b> eingeben</span><input type="text" id="xConfirm" maxlength="60" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+                <p class="err" id="xErr" hidden></p>
+                <div class="row">
+                    <button class="btn-ghost" type="button" data-close>Abbrechen</button>
+                    <button class="btn btn-danger" type="submit" id="xSave" disabled>Endgültig löschen</button>
+                </div>
+            </form>
+        </dialog>
+        <!-- Nach dem Löschen: Ordner aus dem Repo entfernen -->
+        <dialog id="delDoneDlg" class="date-dlg wide">
+            <div style="display:flex;flex-direction:column;gap:12px">
+                <div>
+                    <h2 id="yTitle"></h2>
+                    <p class="note" style="margin:0">Die Daten sind aus Supabase entfernt. Falls es im Repo <b>TravelBase</b> schon einen Ordner für die Reise gibt, ihn so löschen:</p>
+                </div>
+                <div class="cmd"><code id="yCmd"></code><button class="btn-ghost" type="button" id="yCopy"><svg class="ic"><use href="#i-copy"></use></svg>Kopieren</button></div>
+                <div class="row"><button class="btn" type="button" data-close>Fertig</button></div>
             </div>
         </dialog>
         <!-- „Mehr“ zu einer Reise: Rolle, Kennzahlen, Mitreisende, Aktionen -->
@@ -725,12 +754,13 @@
         const acts = [`<li><a href="${encodeURIComponent(t.slug)}/">${tbIcon('chevronRight')}Reise öffnen</a></li>`];
         if ((t.tentative || t.date_flexible) && t.role === 'admin' && !t.st.past) acts.push(`<li><button type="button" data-a="date">${tbIcon('calendar')}${t.start_date ? 'Startdatum ändern' : 'Startdatum wählen'}</button></li>`);
         if (APP_ADMIN && !t.st.past) acts.push(`<li><button type="button" data-a="clone">${tbIcon('copy')}Variante klonen</button></li>`);
+        if (APP_ADMIN && TB.deleteTrip) acts.push(`<li><button type="button" class="danger" data-a="delete">${tbIcon('trash')}Reise löschen</button></li>`);
         $('#tActs').innerHTML = acts.join('');
         $('#tActs').onclick = e => {
             const a = e.target.closest('[data-a]');
             if (!a) return;
             $('#tripDlg').close();
-            if (a.dataset.a === 'date') openDate(t); else openClone(t);
+            if (a.dataset.a === 'date') openDate(t); else if (a.dataset.a === 'delete') openDelete(t); else openClone(t);
         };
         $('#tripDlg').showModal();
     }
@@ -749,6 +779,32 @@
         } catch (err) { dlgErr('#cErr', TB.errorText(err)); }
         finally { $('#cSave').disabled = false; }
     };
+    /* Reise löschen: Kennung muss zur Bestätigung eingetippt werden (prüft auch die RPC) */
+    let delTrip = null;
+    function openDelete(t) {
+        delTrip = t;
+        $('#xTitle').textContent = `„${t.title}“ löschen?`;
+        $('#xSlug').textContent = t.slug;
+        $('#xConfirm').value = ''; $('#xSave').disabled = true; dlgErr('#xErr', '');
+        $('#delDlg').showModal();
+        $('#xConfirm').focus();
+    }
+    $('#xConfirm').oninput = () => { $('#xSave').disabled = $('#xConfirm').value.trim().toLowerCase() !== delTrip.slug; };
+    $('#delForm').onsubmit = async e => {
+        e.preventDefault();
+        if ($('#xConfirm').value.trim().toLowerCase() !== delTrip.slug) return;
+        if (!navigator.onLine) return dlgErr('#xErr', 'Offline – bitte mit Internet erneut versuchen.');
+        $('#xSave').disabled = true;
+        try {
+            const r = await TB.deleteTrip(delTrip.id, $('#xConfirm').value.trim());
+            $('#delDlg').close();
+            $('#yTitle').textContent = `„${r.title || delTrip.title}“ ist gelöscht`;
+            $('#yCmd').textContent = `git rm -r ${r.slug} && git commit -m "Reise ${r.slug} gelöscht" && git push`;
+            $('#delDoneDlg').showModal();
+            route();
+        } catch (err) { dlgErr('#xErr', TB.errorText(err)); $('#xSave').disabled = false; }
+    };
+    $('#yCopy').onclick = async () => { if (await TB.copyText($('#yCmd').textContent)) { $('#yCopy').innerHTML = tbIcon('check') + 'Kopiert'; setTimeout(() => { $('#yCopy').innerHTML = tbIcon('copy') + 'Kopieren'; }, 1600); } };
     /* Ergebnis: Befehl zum Anlegen des Ordners + Öffnen, sobald er erreichbar ist */
     let doneSlug = '';
     function showDone(slug, title, results) {

@@ -163,6 +163,14 @@
         clearCacheKey('trips_');
         return r;
     }
+    /* Reise löschen (nur TravelBase-Admins), Bestätigung über die Kennung; Mitglieder, Abschnitte usw. löscht die DB mit */
+    async function deleteTrip(tripId, confirmSlug) {
+        const r = await rpc('travelbase_delete_trip', { p_trip_id: tripId, p_confirm_slug: confirmSlug });
+        clearCacheKey('trips_');
+        clearCacheKey('trip_' + r.slug);
+        clearCacheKey('summaries_');
+        return r;
+    }
     const inviteMember = (tripId, email, role) => rpc('travelbase_invite_member', { p_trip: tripId, p_email: email, p_role: role });
     /* Kennzahlen je Reise (Stopps, Unterkünfte, Storno-Fristen); ohne die RPC (SQL noch nicht eingespielt) → leer */
     async function tripSummaries() {
@@ -289,6 +297,6 @@
     }
 
     window.TB = { sb, configured, withTimeout, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, tripMembers, setTripStart, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
-        appRole, saveSection, updateTripCache, createTrip, duplicateTrip, inviteMember, tripSummaries, safeHtml, safeColor, safeUrl, copyText,
+        appRole, saveSection, updateTripCache, createTrip, duplicateTrip, deleteTrip, inviteMember, tripSummaries, safeHtml, safeColor, safeUrl, copyText,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();
