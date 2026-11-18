@@ -248,6 +248,9 @@
                keine zweite Linie zwischen den Orten selbst (z. B. Bangkok → Colombo neben BKK → CMB, wenn die Flughäfen nicht auf der Route sind) */
             const tb = transportBetween(a.p, b.p);
             if (tb && !tb.f.noMap) continue;
+            /* selbst gewähltes Verkehrsmittel (places[k].next) bestimmt den Linienstil */
+            const nx = P[a.k] && P[a.k].next;
+            if (nx && SEG_STYLE[nx]) { out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: nx }); continue; }
             const lm = legacyMode(a.k, b.k, P);
             out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: lm === 'walk' || lm === 'ferry' || lm === 'flight' ? lm : km(a.p, b.p) >= 800 ? 'flight' : 'road' });
         }
@@ -484,10 +487,14 @@
         const gap = (at, k, nk) => {
             const x = k && next.get(k), tr = x && !trAfter.has(l.findIndex(y => y.k === k)) && transportBetween(P[k], x.to);
             /* ohne eingetragenen Transport: Verkehrsmittel aus den gespeicherten Strecken (alte Reisen, z. B. Wanderetappen) */
-            const lm = x && !tr ? legacyMode(k, x.k, P) : null;
-            /* antippen: eingetragenen Transport bearbeiten, sonst einen zwischen den beiden Orten eintragen */
+            /* selbst gewähltes Verkehrsmittel (places[k].next, „none“ = Platzhalter), sonst aus gespeicherten Strecken (alte Reisen) */
+            const cm = x && !tr ? P[k].next : null, ph = cm === 'none';
+            const lm = x && !tr && !ph ? (MODE_IC[cm] ? cm : legacyMode(k, x.k, P)) : null;
+            /* antippen: eingetragenen Transport bearbeiten, sonst Verkehrsmittel wählen */
             const legTag = edit ? `button type="button" data-pl="leg-edit" data-k="${esc(k || '')}" data-n="${esc(x ? x.k : '')}"${tr ? ` data-i="${flights().indexOf(tr.f)}"` : ''}` : 'span';
-            const chip = x ? `<${legTag} class="pl-leg" title="${tr ? esc(tr.label) : lm ? `${MODE_TXT[lm]} · Luftlinie, Zeit grob geschätzt` : 'Luftlinie · Zeit grob geschätzt'}${edit ? ' – antippen zum Bearbeiten' : ''}">${ic(tr ? tr.icon : lm ? MODE_IC[lm] : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr ? tr.mode : lm))}</${edit ? 'button' : 'span'}>` : '';
+            const legTitle = tr ? esc(tr.label) : ph ? 'Weg noch offen' : lm ? `${MODE_TXT[lm]} · Luftlinie, Zeit grob geschätzt` : 'Luftlinie · Zeit grob geschätzt';
+            const chip = x ? `<${legTag} class="pl-leg${ph ? ' pl-leg-ph' : ''}" title="${legTitle}${edit ? ' – antippen zum Ändern' : ''}">${ph ? `${ic('more')}Weg offen`
+                : `${ic(tr ? tr.icon : lm ? MODE_IC[lm] : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr ? tr.mode : lm))}`}</${edit ? 'button' : 'span'}>` : '';
             return `<li class="pl-tl-gap">${ins(at, k, nk)}${trAfter.has(l.findIndex(y => y.k === k)) && k ? '' : chip}</li>`;
         };
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
@@ -1813,6 +1820,25 @@
             done: () => true
         });
     }
+    /* Weg zwischen zwei Etappen ohne eingetragenen Transport: Verkehrsmittel wählen (places[k].next) oder nur Platzhalter („none“).
+       Bestimmt Symbol, grobe Zeit und Linienstil auf der Karte; gebuchte Transporte trägt man weiter über das „+“ → „Transport“ ein. */
+    const LEG_PICK = [['', 'Automatisch', 'route', 'nach Entfernung'], ['car', 'Auto', 'car'], ['train', 'Zug', 'train'], ['bus', 'Bus', 'bus'],
+        ['ferry', 'Fähre', 'ship'], ['flight', 'Flug', 'plane'], ['walk', 'Zu Fuß', 'walk'], ['none', 'Platzhalter', 'more', 'ohne km und Zeit']];
+    function pickLeg(k, nk) {
+        const P = places(), a = P[k], z = nk && P[nk];
+        if (!a || !editable()) return;
+        const cur = a.next || '', d = z ? Math.round(km(a, z)) : 0;
+        sheet({
+            title: z ? `Weg nach ${z.name || nk}` : 'Weg',
+            body: `<div class="pl-legpick">${LEG_PICK.map(([v, l, icon, sub]) => `<button type="button" class="pl-legpick-btn${v === cur ? ' on' : ''}" data-v="${v}" aria-pressed="${v === cur}">${ic(icon)}<span><b>${l}</b><small>${esc(sub || (d ? `${kmText(d)} · ${travelText(d, v)}` : ''))}</small></span>${v === cur ? ic('check') : ''}</button>`).join('')}</div>
+                <p class="note pl-legpick-note">Gebuchte Transporte trägst du über das „+“ zwischen den Etappen ein.</p>`,
+            onOpen: f => {
+                f.querySelector('.pl-save').hidden = true;
+                f.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { dlg.close(); const v = b.dataset.v; if (v !== cur) commitPlaces(() => { const o = raw().places[k]; if (o) setOpt(o, 'next', v); }); });
+            },
+            done: () => true
+        });
+    }
     /* neuer Transport zwischen zwei Etappen: Von/Nach/Datum vorbelegt */
     function trBetween(k, nk) {
         const P = places(), a = k && P[k], z = nk && P[nk], g = k && legs().list.find(x => x.k === k);
@@ -1864,7 +1890,7 @@
             case 'acc-det': { const o = b.closest('.bk-card').classList.toggle('det-open'); b.setAttribute('aria-expanded', o); return; }
             case 'tr-add': return editTransport(null);
             case 'tr-edit': return editTransport(i);
-            case 'leg-edit': return b.dataset.i != null && +b.dataset.i >= 0 ? editTransport(+b.dataset.i) : trBetween(b.dataset.k, b.dataset.n);
+            case 'leg-edit': return b.dataset.i != null && +b.dataset.i >= 0 ? editTransport(+b.dataset.i) : pickLeg(b.dataset.k, b.dataset.n);
             case 'tr-del': { const f = flights()[i]; if (f && editable() && confirm('Diesen Eintrag löschen?')) commit(['flights'], () => raw().flights.splice(i, 1)); return; }
             case 'tr-sort': return sortTransports();
             case 'tr-filter': { trFilter.mode = b.dataset.mode; const l = b.closest('.pl-trbar').nextElementSibling; return renderTransports(l); }

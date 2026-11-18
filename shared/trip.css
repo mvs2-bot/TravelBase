@@ -994,6 +994,17 @@ button.pl-stop-main:hover b { color: var(--p1); }
 button.pl-leg { font-family: inherit; cursor: pointer; }
 button.pl-leg:hover { border-color: var(--p1-line); color: var(--p1); }
 button.pl-leg:hover .ic { color: var(--p1); }
+.pl-tl-gap .pl-leg.pl-leg-ph { border-style: dashed; background: transparent; color: var(--mute); font-weight: 500; }
+.pl-legpick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pl-legpick-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--card); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.pl-legpick-btn > .ic { width: 18px; height: 18px; flex: 0 0 auto; color: var(--p1); }
+.pl-legpick-btn > span { flex: 1; min-width: 0; }
+.pl-legpick-btn b { display: block; font-size: 14px; font-weight: 600; }
+.pl-legpick-btn small { display: block; font-size: 11.5px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-legpick-btn:hover { border-color: var(--p1-line); background: var(--p1-soft); }
+.pl-legpick-btn.on { border-color: var(--p1); background: var(--p1-soft); }
+.pl-legpick-btn.on > .ic:last-child { color: var(--p1); width: 16px; height: 16px; }
+.pl-legpick-note { margin: 12px 0 0; font-size: 12px; }
 .pl-d-tr .pl-tr-st { margin-left: auto; align-self: center; }
 .pl-par-hint { margin: 2px 0 0 28px; font-size: 12px; }
 .pl-par-day { margin-top: 8px; }

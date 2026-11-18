@@ -140,7 +140,8 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   den Ortsnamen als Titel, eigene Inhalte bleiben). Ohne festes Reiseende ergibt die Summe der Nächte das Ende (nur Anzeige).
   `places[k].noStay: true` (Häkchen „Keine Unterkunft nötig“ im Stopp-Sheet, z. B. Flug/Nachtzug): Etappe erscheint nicht bei den Unterkünften
   und zählt nicht zu „x/y Nächte gebucht“. Eingetragene Transporte zeigen in ihrer Transport-Zeile im Zeitstrahl und im Detail-Sheet
-  farbig ihren Status (die Verkehrsmittel-Pille zwischen zwei Etappen zeigt keinen; antippen = passenden Transport bearbeiten bzw. neuen mit Von/Nach/Datum eintragen, `leg-edit`/`trBetween`) (`trSt`: „gebucht“ grün, „offen“ orange über `f.planned`); kein Status-Link mehr. „Parallel“ gibt es nur beim Bearbeiten einer Etappe.
+  farbig ihren Status (die Verkehrsmittel-Pille zwischen zwei Etappen zeigt keinen; antippen = passenden eingetragenen Transport bearbeiten, sonst Verkehrsmittel wählen (`pickLeg`: Automatisch · Auto · Zug · Bus · Fähre · Flug · Zu Fuß · Platzhalter,
+  gespeichert als `places[k].next` am Ausgangsort, `none` = gestrichelte Pille „Weg offen“; bestimmt Symbol, grobe Zeit und Linienstil auf der Karte). Gebuchte Transporte über „+“ → „Transport“) (`trSt`: „gebucht“ grün, „offen“ orange über `f.planned`); kein Status-Link mehr. „Parallel“ gibt es nur beim Bearbeiten einer Etappe.
 - **Ort erneut besuchen:** eigener `places`-Eintrag mit `same: "<Schlüssel des ersten Besuchs>"` (Name/`lat`/`lng` werden mitgeführt,
   eigene `num`-Position, `nights`, `who`, `desc`, Unterkunft). Angezeigt wird die Nummer des ersten Besuchs (`TBPlanner.labels()`,
   in `DATA.places[k].label`); auf der Karte kein eigener Punkt (der erste Besuch zeigt alle Zeiträume). Anlegen über „Neuer Stopp“ →
