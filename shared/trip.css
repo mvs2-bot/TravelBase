@@ -1508,3 +1508,20 @@ h2 .add-plus .ic { width: 17px; height: 17px; }
     body.d-sidebar.m-route .pane, body.d-sidebar.m-route #planPanes { display: none !important; }
     body.d-sidebar.m-route:not(.tb-loading) .m-route-view { display: block; max-width: 760px; }
 }
+
+/* ---------- Unterkünfte am Desktop (18.11.2026): eine Etappe pro Zeile ----------
+   Statt zwei Spalten nebeneinander: links Etappe mit Zeitraum und Fortschritt,
+   rechts die Unterkünfte. So bleibt die Reihenfolge der Reise von oben nach unten lesbar. */
+.bk-items > .bk-card:first-child, .bk-items > .bk-missing:first-child { margin-top: 10px; }
+@media (min-width: 900px) {
+    .bk-list { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .bk-sec { display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 20px; align-items: start; padding: 12px 14px; }
+    .bk-sec > .bk-head, .bk-sec > .bk-prog { grid-column: 1; }
+    .bk-sec > .bk-head { flex-wrap: wrap; }
+    .bk-sec > .bk-head > div { flex: 1 1 calc(100% - 40px); }
+    .bk-sec > .bk-head > .bk-add { margin: 2px 0 0 34px; }
+    .bk-sec > .bk-prog { margin: 8px 0 0 34px; }
+    .bk-sec > .bk-items { grid-column: 2; grid-row: 1 / span 3; min-width: 0; }
+    .bk-sec > .bk-items > .bk-card:first-child, .bk-sec > .bk-items > .bk-missing:first-child { margin-top: 0; }
+    .bk-sec > .note { grid-column: 1 / -1; }
+}

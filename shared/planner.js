@@ -1501,8 +1501,8 @@
             if (accFilter.st === 'missing') return allStays.length ? '' : `<section class="bk-sec">
                 <div class="bk-head"><span class="pl-dot" style="--c:${esc(H.placeColor ? H.placeColor(x.k) : color(x.p.color, 'var(--p1)'))}">${esc(labels().get(x.k) ?? x.p.num ?? '')}</span>
                     <div><h3>${esc(x.p.name || x.k)}</h3><small>${esc(legShort(x))} · ${nightsTxt(x.n)}</small></div></div>
-                <div class="bk-missing">${ic('bed')}<span><b>Unterkunft fehlt</b><small>${nightsTxt(x.n)} zu planen</small></span>
-                    ${edit ? `<button type="button" class="btn-action" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</div></section>`;
+                <div class="bk-items"><div class="bk-missing">${ic('bed')}<span><b>Unterkunft fehlt</b><small>${nightsTxt(x.n)} zu planen</small></span>
+                    ${edit ? `<button type="button" class="btn-action" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</div></div></section>`;
             if (filtering && !stays.length) return '';
             return `<section class="bk-sec">
                 <div class="bk-head">
@@ -1511,9 +1511,9 @@
                     ${edit ? `<button type="button" class="bk-add" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}" aria-label="Unterkunft in ${esc(x.p.name || x.k)} hinzufügen">${ic('plus')}<span>Unterkunft</span></button>` : ''}
                 </div>
                 <div class="bk-prog${bn >= x.n ? ' done' : ''}"><span>${bn} / ${x.n} Nächte gebucht</span><i style="--pct:${Math.round(bn / x.n * 100)}"></i></div>
-                ${stays.map(o => card(o.s, o.g, o.i, false, true)).join('')}
+                <div class="bk-items">${stays.map(o => card(o.s, o.g, o.i, false, true)).join('')}
                 ${!allStays.length ? `<div class="bk-missing">${ic('bed')}<span><b>Unterkunft fehlt</b><small>${nightsTxt(x.n)} zu planen</small></span>
-                    ${edit ? `<button type="button" class="btn-action" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</div>` : ''}
+                    ${edit ? `<button type="button" class="btn-action" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(x.k)}">${ic('plus')}Eintragen</button>` : ''}</div>` : ''}</div>
             </section>`;
         }).join('');
         /* Etappen ohne Übernachtung bzw. „Keine Unterkunft nötig“: zugeordnete, nicht gebuchte Einträge ausblenden */
@@ -1530,8 +1530,8 @@
             return `<section class="bk-sec">
                 ${title ? `<div class="bk-head"><span class="bk-ic">${ic('bed')}</span><div><h3>${esc(title)}</h3><small>${items.length} ${items.length === 1 ? 'Eintrag' : 'Einträge'}</small></div>
                     ${edit ? `<button type="button" class="bk-add" data-pl="acc-add" data-g="${esc(g.id)}">${ic('plus')}<span>Unterkunft</span></button>` : ''}</div>` : ''}
-                ${items.map(o => card(o.s, g, o.i, drag, false)).join('') || `<p class="note">${filtering ? 'Keine Treffer.' : 'Noch keine Unterkünfte eingetragen.'}</p>`}
-                ${!title && edit ? `<button type="button" class="btn-action pl-add" data-pl="acc-add" data-g="${esc(g.id)}">${ic('plus')}Unterkunft</button>` : ''}
+                <div class="bk-items">${items.map(o => card(o.s, g, o.i, drag, false)).join('') || `<p class="note">${filtering ? 'Keine Treffer.' : 'Noch keine Unterkünfte eingetragen.'}</p>`}
+                ${!title && edit ? `<button type="button" class="btn-action pl-add" data-pl="acc-add" data-g="${esc(g.id)}">${ic('plus')}Unterkunft</button>` : ''}</div>
             </section>`;
         }).join('');
         /* Kopf: gebuchte Nächte über alle Etappen (sonst über alle Unterkünfte) */
