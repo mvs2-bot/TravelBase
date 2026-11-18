@@ -345,6 +345,8 @@
     const nightsOf = (k, p) => k in pendingN ? pendingN[k]
         : p.nights === '' || p.nights == null || !isFinite(+p.nights) ? null : Math.max(0, Math.round(+p.nights));
     /* Etappen = nummerierte Stopps in Reihenfolge; aktiv, sobald einer davon Nächte hat */
+    /* eigener Beginn einer parallelen Etappe (Tage ab Reisebeginn) oder null */
+    const parDay = p => p && p.parallel && p.day0 !== '' && p.day0 != null && isFinite(+p.day0) ? Math.round(+p.day0) : null;
     function legs(P, start) {
         P = P || places();
         if (start === undefined) start = H ? (H.meta() || {}).start : null;
@@ -352,11 +354,13 @@
         if (!l.some(x => nightsOf(x.k, x.p) != null)) return { on: false, list: [], total: 0 };
         const s = ISO.test(start || '') ? start : null;
         let off = 0;
-        /* parallele An-/Abreise (places[k].parallel, z. B. eine Person reist eine Woche später nach): verbraucht keine Zeit der Reise.
-           Anreise endet am Beginn der nächsten Etappe, Abreise beginnt am Ende der vorigen. */
+        /* parallele Etappe (places[k].parallel, z. B. eine Person reist über zwei Tage an, während die anderen schon unterwegs sind):
+           verbraucht keine Zeit der Reise. Mit places[k].day0 (Tage ab Reisebeginn, im Stopp-Sheet als Datum „Beginnt am“)
+           beginnt sie dort; ältere Einträge ohne day0 (nur mit kind): Anreise endet am Beginn der nächsten Etappe, Abreise beginnt am Ende der vorigen. */
         const list = l.map(({ k, p }) => {
-            const n = nightsOf(k, p) ?? 0, par = !!(p.kind && p.parallel);
-            const o = par && p.kind === 'arrive' ? { k, p, n, d0: off - n, d1: off, parallel: true } : { k, p, n, d0: off, d1: off + n, parallel: par };
+            const n = nightsOf(k, p) ?? 0, own = parDay(p), par = own != null || !!(p.kind && p.parallel);
+            const o = own != null ? { k, p, n, d0: own, d1: own + n, parallel: true }
+                : par && p.kind === 'arrive' ? { k, p, n, d0: off - n, d1: off, parallel: true } : { k, p, n, d0: off, d1: off + n, parallel: par };
             if (!par) off += n;
             if (s) { o.from = isoOf(dn(s) + o.d0); o.to = isoOf(dn(s) + o.d1); }
             return o;
@@ -371,8 +375,28 @@
     /* Art der Etappe: places[k].kind = 'arrive' (Anreise) | 'depart' (Abreise), z. B. lange Flüge mit Nächten; sonst Aufenthalt */
     const KINDS = [['', 'Aufenthalt'], ['arrive', 'Anreise'], ['depart', 'Abreise']];
     const kindLabel = k => (KINDS.find(x => x[0] === k) || ['', ''])[1];
-    const parallelBox = p => `<label class="pl-check pl-parallel"><input type="checkbox" name="parallel"${p.parallel ? ' checked' : ''}><span>Parallel zu den anderen Etappen (z. B. eine Person reist später nach oder früher ab) – nur bei Anreise / Abreise</span></label>`;
-    const readKind = (f, o) => { setOpt(o, 'kind', val(f, 'kind')); if (o.kind && f.elements.parallel && f.elements.parallel.checked) o.parallel = true; else delete o.parallel; };
+    /* parallel: eigener Beginn statt automatisch nach der vorigen Etappe (Datum, gespeichert als Tage ab Reisebeginn in places[k].day0) */
+    function parallelBox(p, k) {
+        const start = (H.meta() || {}).start, g = k ? legs().list.find(x => x.k === k) : null;
+        const d0 = parDay(p) ?? (g ? g.d0 : 0), on = !!p.parallel;
+        const inpD = ISO.test(start || '') ? `<input type="date" name="par_from" value="${esc(isoOf(dn(start) + d0))}">` : `<input type="number" name="par_day" min="-60" max="999" step="1" value="${d0 + 1}" class="pl-short">`;
+        return `<fieldset class="pl-who pl-par"><legend>Zeitraum</legend>
+            <label class="pl-check"><input type="checkbox" name="parallel"${on ? ' checked' : ''}><span>Parallel – eigener Beginn</span></label>
+            <p class="note pl-par-hint">Z. B. jemand reist über zwei Tage an, während die anderen schon unterwegs sind.</p>
+            <div class="pl-par-day"${on ? '' : ' hidden'}>${field(ISO.test(start || '') ? 'Beginnt am' : 'Beginnt an Tag', inpD)}
+            <p class="note">Die Etappe verbraucht keine Reisezeit der anderen; die Nächte zählen ab diesem Tag.</p></div></fieldset>`;
+    }
+    const wirePar = f => { const c = f.elements.parallel, box = f.querySelector('.pl-par-day'); if (c && box) c.onchange = () => { box.hidden = !c.checked; }; };
+    const readKind = (f, o) => {
+        if (f.elements.kind) setOpt(o, 'kind', val(f, 'kind'));
+        const c = f.elements.parallel;
+        if (!c) return;
+        if (!c.checked) { delete o.parallel; delete o.day0; return; }
+        o.parallel = true;
+        const start = (H.meta() || {}).start, d = val(f, 'par_from'), t = val(f, 'par_day');
+        if (ISO.test(d) && ISO.test(start || '')) o.day0 = dn(d) - dn(start);
+        else if (t !== '' && isFinite(+t)) o.day0 = Math.round(+t) - 1;
+    };
     const legShort = g => g.from ? `${fmt(g.from)} – ${fmt(g.to)}` : `Tag ${g.d0 + 1} – ${g.d1 + 1}`;
     /* − / +: sofort anzeigen, gesammelt speichern (kurz nach dem letzten Klick) */
     let nTimer = 0;
@@ -454,7 +478,7 @@
             const when = [fmt(f.from.date), f.from.time, toD || f.to.time ? `– ${[toD, f.to.time].filter(Boolean).join(' ')}` : ''].filter(Boolean).join(' ');
             const who = Array.isArray(f.who) && f.who.length ? f.who.join(', ') : '';
             return `<li class="pl-stop pl-tr"><span class="pl-dot" aria-hidden="true">${ic(icon)}</span>
-                <button type="button" class="pl-stop-main" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}><b>${esc(lab)} · ${esc(route)}${ic('chevronRight')}</b><small>${esc([when, who, f.planned ? 'geplant' : 'gebucht'].filter(Boolean).join(' · '))}</small></button></li>`;
+                <button type="button" class="pl-stop-main" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}><b>${esc(lab)} · ${esc(route)}${ic('chevronRight')}</b><small>${esc([when, who, f.planned ? 'geplant' : ''].filter(Boolean).join(' · '))}</small></button></li>`;
         };
         const trs = pos => (trAfter.get(pos) || []).map(trLi).join('');
         const gap = (at, k, nk) => {
@@ -462,10 +486,7 @@
             /* ohne eingetragenen Transport: Verkehrsmittel aus den gespeicherten Strecken (alte Reisen, z. B. Wanderetappen) */
             const lm = x && !tr ? legacyMode(k, x.k, P) : null;
             const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : lm ? `${MODE_TXT[lm]} · Luftlinie, Zeit grob geschätzt` : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : lm ? MODE_IC[lm] : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr ? tr.mode : lm))}</span>` : '';
-            /* eingetragener Transport: Status dezent daneben (gebucht / geplant) und ggf. Link zur Flugstatus-Seite */
-            const f = tr && tr.f, st = f ? (f.planned ? ['warn', 'geplant'] : ['ok', 'gebucht']) : null, su = f && url(f.status);
-            const badge = f ? `<span class="pl-tr-st ${st[0]}" title="${esc([f.airline, (f.flightNos || []).join(', '), f.booking && 'Buchung ' + f.booking].filter(Boolean).join(' · '))}">${ic(st[0] === 'ok' ? 'check' : 'clock')}${st[1]}</span>${su ? `<a class="pl-tr-link" href="${esc(su)}" target="_blank" rel="noopener" title="Flugstatus prüfen">Status ↗</a>` : ''}` : '';
-            return `<li class="pl-tl-gap">${ins(at, k, nk)}${trAfter.has(l.findIndex(y => y.k === k)) && k ? '' : chip}${badge}</li>`;
+            return `<li class="pl-tl-gap">${ins(at, k, nk)}${trAfter.has(l.findIndex(y => y.k === k)) && k ? '' : chip}</li>`;
         };
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
@@ -476,7 +497,7 @@
                 ${trs(-1)}${gap(0, null, l[0] && l[0].k)}
                 ${l.map(({ k, p }, i) => {
                     const g = lg.get(k), when = g ? (g.from && g.n ? legShort(g) : legText(g)) : p.date || '';
-                    const whenX = [p.kind ? kindLabel(p.kind) + (p.kind && p.parallel ? ' (parallel)' : '') : '', p.noStay && !p.kind && g && g.n ? `${when} · ohne Unterkunft` : when].filter(Boolean).join(' · ');
+                    const whenX = [p.kind ? kindLabel(p.kind) + (p.parallel ? ' (parallel)' : '') : p.parallel ? 'parallel' : '', p.noStay && !p.kind && g && g.n ? `${when} · ohne Unterkunft` : when].filter(Boolean).join(' · ');
                     return `<li class="pl-stop" data-k="${esc(k)}" data-sort="stops">
                     <button type="button" class="pl-dot" data-pl="stop-focus" data-k="${esc(k)}" style="--c:${esc(H.placeColor ? H.placeColor(k) : color(p.color, 'var(--p1)'))}" aria-label="Auf der Karte zeigen: ${esc(p.name)}">${p.num != null ? esc(lab.get(k) ?? p.num) : ic('pin')}</button>
                     <button type="button" class="pl-stop-main" data-pl="stop-open" data-k="${esc(k)}">
@@ -571,10 +592,12 @@
     }
     /* ---------- Etappe öffnen: Zeitraum, Nächte, Notizen, Unterkünfte, Transporte ---------- */
     let detailK = null;
+    /* aufgeklappte Bereiche bleiben beim Neuzeichnen (z. B. nach − / +) offen */
+    const detailOpen = new Set();
     function openStop(k) {
         const p = places()[k];
         if (!p) return;
-        detailK = k;
+        detailK = k; detailOpen.clear();
         sheet({ title: p.name || k, body: '<div class="pl-detail"></div>', submit: 'Fertig', done: () => true });
         onSheetClose(() => { detailK = null; });
         renderDetail();
@@ -588,26 +611,34 @@
         const bn = g ? Math.min(g.n, stays.filter(o => S.status(o.s) === 'booked').reduce((m, o) => m + (S.nights(o.s) || g.n), 0)) : 0;
         const g0 = groups()[0] || { id: '' };
         const trs = (raw().flights || []).map((f, i) => ({ f, i })).filter(({ f }) => f && f.from && f.to && (endHits(f.to, p) || endHits(f.from, p)));
+        /* Bereiche (Notizen, Unterkünfte, Transporte) standardmäßig eingeklappt; Kopfzeile zeigt das Wichtigste */
+        const sec = (id, icon, title, meta, body, add) => `<details class="pl-d-sec" data-sec="${id}"${detailOpen.has(id) ? ' open' : ''}>
+                <summary>${ic(icon)}<b>${title}</b>${meta ? `<span class="pl-d-meta">${meta}</span>` : ''}${ic('chevronRight')}</summary>
+                <div class="pl-d-body">${body}${add || ''}</div></details>`;
+        const stayMeta = p.noStay ? '<span class="pl-st mute">keine nötig</span>'
+            : g && g.n ? `<span class="pl-st ${bn >= g.n ? 'ok' : stays.length ? 'warn' : 'bad'}">${bn}/${g.n} N. gebucht</span>`
+            : stays.length ? String(stays.length) : '';
+        const stayBody = (p.noStay ? `<p class="note">Für diese Etappe ist keine Unterkunft nötig – ändern über „Etappe bearbeiten“.</p>` : '')
+            + (p.noStay && !stays.length ? '' : stays.map(({ s, gr, i }) => `<button type="button" class="pl-d-item" data-pl="acc-edit" data-g="${esc(gr.id)}" data-i="${i}"${edit ? '' : ' disabled'}>${ic('bed')}<span><b>${s.hotel ? esc(stripTags(s.hotel)) : esc(S.name(s))}</b><small>${esc([fmt(S.cin(s)) && `${fmt(S.cin(s))} – ${fmt(S.cout(s))}`, s.code].filter(Boolean).join(' · '))}</small></span><span class="pl-st ${STATUS[S.status(s)][1]}">${STATUS[S.status(s)][0]}</span></button>`).join('') || '<p class="note">Noch keine Unterkunft.</p>');
+        const trBody = trs.map(({ f, i }) => `<button type="button" class="pl-d-tr" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}>${ic(MODE_IC[f.mode || 'flight'] || 'plane')}<b>${esc([f.from.code || f.from.city || f.from.name, f.to.code || f.to.city || f.to.name].filter(Boolean).join(' → '))}</b><small>${esc([f.from.date && fmt(f.from.date), f.from.time, Array.isArray(f.who) && f.who.length ? f.who.join(', ') : '', f.planned ? 'geplant' : ''].filter(Boolean).join(' · '))}</small></button>`).join('');
         box.innerHTML = `
-            <div class="pl-d-when">${ic('calendar')}<span>${g ? esc(legShort(g)) : esc(p.date || 'Kein Zeitraum')}</span>
+            <div class="pl-d-when">${ic('calendar')}<span>${g ? esc(legShort(g)) : esc(p.date || 'Kein Zeitraum')}${g && g.parallel ? '<small>parallel</small>' : ''}</span>
                 ${p.num != null && edit ? `<div class="pl-nights" role="group" aria-label="Nächte">
                     <button type="button" data-pl="n-dec" data-k="${esc(k)}" aria-label="Eine Nacht weniger"${n === 0 ? ' disabled' : ''}>${ic('minus')}</button>
                     <span><b>${n == null ? '–' : n}</b><small>${n == null ? 'Nächte' : nightsWord(n)}</small></span>
                     <button type="button" data-pl="n-inc" data-k="${esc(k)}" aria-label="Eine Nacht mehr">${ic('plus')}</button></div>` : n != null ? `<span class="pl-n-ro">${n} ${nightsWord(n)}</span>` : ''}</div>
-            ${edit ? `<button type="button" class="pl-d-edit" data-pl="stop-edit" data-k="${esc(k)}">${ic('pencil')}<span><b>Etappe bearbeiten</b><small>Ort, Reisende, Notizen</small></span>${ic('chevronRight')}</button>` : ''}
             ${persons().length ? `<div class="pl-d-who">${persons().filter(x => !Array.isArray(p.who) || p.who.includes(pkey(x))).map(x => `<span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span>`).join('') || '<span class="note">Niemand ausgewählt</span>'}</div>` : ''}
-            ${p.desc ? `<h3 class="pl-d-h">Notizen</h3><div class="pl-d-note">${rich(p.desc)}</div>` : ''}
-            <h3 class="pl-d-h">Unterkünfte${edit && !p.noStay ? `<button type="button" class="link-inline" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(k)}">${ic('plus')}Unterkunft</button>` : ''}</h3>
-            ${edit && p.num != null ? `<label class="pl-check pl-nostay"><input type="checkbox" data-pl-nostay="${esc(k)}"${p.noStay ? ' checked' : ''}><span>Keine Unterkunft nötig (z. B. Flug, Nachtzug)</span></label>` : ''}
-            ${p.noStay ? `<p class="note">Für diese Etappe ist keine Unterkunft nötig – sie erscheint nicht bei den Unterkünften.</p>` : ''}
-            ${g && g.n && !p.noStay ? `<div class="bk-prog${bn >= g.n ? ' done' : ''}"><span>${bn} / ${g.n} Nächte gebucht</span><i style="--pct:${Math.round(bn / g.n * 100)}"></i></div>` : ''}
-            ${p.noStay && !stays.length ? '' : (stays.map(({ s, gr, i }) => `<button type="button" class="pl-d-item" data-pl="acc-edit" data-g="${esc(gr.id)}" data-i="${i}"${edit ? '' : ' disabled'}>${ic('bed')}<span><b>${s.hotel ? esc(stripTags(s.hotel)) : esc(S.name(s))}</b><small>${esc([fmt(S.cin(s)) && `${fmt(S.cin(s))} – ${fmt(S.cout(s))}`, s.code].filter(Boolean).join(' · '))}</small></span><span class="pl-st ${STATUS[S.status(s)][1]}">${STATUS[S.status(s)][0]}</span></button>`).join('') || '<p class="note">Noch keine Unterkunft.</p>')}
-            ${trs.length ? `<h3 class="pl-d-h">Transporte</h3>${trs.map(({ f, i }) => `<button type="button" class="pl-d-item" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}>${ic(MODE_IC[f.mode || 'flight'] || 'plane')}<span><b>${esc([f.from.code || f.from.city || f.from.name, f.to.code || f.to.city || f.to.name].filter(Boolean).join(' → '))}</b><small>${esc([f.from.date && fmt(f.from.date), f.from.time].filter(Boolean).join(' '))}</small></span></button>`).join('')}` : ''}
+            <div class="pl-d-secs">
+                ${sec('note', 'doc', 'Notizen', '', p.desc ? `<div class="pl-d-note">${rich(p.desc)}</div>` : `<p class="note">Keine Notizen${edit ? ' – über „Etappe bearbeiten“ ergänzen' : ''}.</p>`)}
+                ${sec('acc', 'bed', 'Unterkünfte', stayMeta, stayBody, edit && !p.noStay ? `<button type="button" class="link-inline pl-d-add" data-pl="acc-leg" data-g="${esc(g0.id)}" data-k="${esc(k)}">${ic('plus')}Unterkunft hinzufügen</button>` : '')}
+                ${sec('tr', 'plane', 'Transporte', trs.length ? String(trs.length) : '', trBody || '<p class="note">Kein Transport von oder nach hier eingetragen.</p>')}
+            </div>
             <div class="pl-d-acts">
+                ${edit ? `<button type="button" class="btn-action" data-pl="stop-edit" data-k="${esc(k)}">${ic('pencil')}Etappe bearbeiten</button>` : ''}
                 <button type="button" class="btn-action" data-pl="stop-focus" data-k="${esc(k)}">${ic('map')}Auf der Karte</button>
-                ${edit ? `<button type="button" class="btn-action" data-pl="stop-again" data-k="${esc(p.same || k)}">${ic('refresh')}Erneut besuchen</button>` : ''}
                 ${window.TBActivities && TBActivities.ready ? `<button type="button" class="btn-action" data-pl="stop-acts" data-k="${esc(k)}">${ic('sparkles')}Aktivitäten</button>` : ''}
             </div>`;
+        box.querySelectorAll('.pl-d-sec').forEach(d => d.addEventListener('toggle', () => { if (d.open) detailOpen.add(d.dataset.sec); else detailOpen.delete(d.dataset.sec); }));
     }
     /* Desktop (ab 1100 px): Karte rechts neben dem Etappen-Zeitstrahl, damit man beim Planen die Route sieht.
        Punkt antippen → Stopp in der Liste; „Auf der Karte“ in der Liste → Karte daneben, ohne den Bereich zu wechseln. */
@@ -866,10 +897,10 @@
                     ${field('Länge (lng)', inp('lng', cur.lng, 'inputmode="decimal" required'))}
                 </div>
                 ${field('Zeitraum / Datum (Text)', inp('date', cur.date, 'maxlength="80" placeholder="z. B. 12.–15.04. oder Tag 3–5"'))}
-                ${field('Beschreibung', area('desc', cur.desc, 'maxlength="2000"'))}
+                ${field('Notizen', area('desc', cur.desc, 'maxlength="2000"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(cur.who) || cur.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
-                ${cur.kind ? `${field('Art der Etappe (älter – neue Flüge, Züge usw. als Transport eintragen)', sel('kind', cur.kind || '', KINDS))}
-                ${parallelBox(cur)}` : ''}
+                ${cur.kind ? field('Art der Etappe (älter – neue Flüge, Züge usw. als Transport eintragen)', sel('kind', cur.kind || '', KINDS)) : ''}
+                ${parallelBox(cur, k)}
                 <div class="pl-row">
                     <label class="pl-check"><input type="checkbox" name="numbered"${cur.num != null ? ' checked' : ''}><span>Nummerierter Stopp der Route</span></label>
                 </div>
@@ -900,6 +931,7 @@
                 const pick = pickMap(f, cur, k);
                 /* Anreise/Abreise: Unterkunft und Aktivitäten standardmäßig aus */
                 if (f.elements.kind) f.elements.kind.onchange = () => { if (f.elements.kind.value) ['noStay', 'noActs'].forEach(n => { if (f.elements[n]) f.elements[n].checked = false; }); };
+                wirePar(f);
                 find.onclick = run;
                 f.querySelectorAll('[data-again]').forEach(b => b.onclick = () => { dlg.close(); addAgain(b.dataset.again, at); });
                 f.elements.name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
@@ -958,10 +990,11 @@
             body: `<p class="note">Name und Lage kommen vom ersten Besuch (Nr. ${esc(labels().get(p.same) ?? '')}). Hier gelten eigene Nächte, Unterkunft und Notizen.</p>
                 ${field('Notizen', area('desc', p.desc, 'maxlength="2000"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(p.who) || p.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
-                ${p.kind ? `${field('Art der Etappe', sel('kind', p.kind || '', KINDS))}${parallelBox(p)}` : ''}
+                ${p.kind ? field('Art der Etappe', sel('kind', p.kind || '', KINDS)) : ''}
+                ${parallelBox(p, k)}
                 ${showIn(p, false)}`,
             extra: `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
-            onOpen: f => { f.querySelector('.pl-del').onclick = () => { if (confirm('Diesen erneuten Besuch löschen?')) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } }; },
+            onOpen: f => { wirePar(f); f.querySelector('.pl-del').onclick = () => { if (confirm('Diesen erneuten Besuch löschen?')) { dlg.close(); commitPlaces(() => { delete raw().places[k]; renumber(); }); } }; },
             done: f => {
                 commitPlaces(() => {
                     const o = raw().places[k];
@@ -1220,7 +1253,7 @@
         if (!L.on || !L.start || !ps.length) return [];
         const whoOf = g => H.placeWho ? H.placeWho(g.k) : Array.isArray(g.p.who) ? g.p.who : ps.map(pkey);
         return ps.map(x => {
-            const key = pkey(x), on = L.list.filter(g => g.from && whoOf(g).includes(key));
+            const key = pkey(x), on = L.list.filter(g => g.from && whoOf(g).includes(key)).sort((a, b) => a.from.localeCompare(b.from));
             /* Transporte (flights mit Datum) dieser Person: Reisetage, dürfen Aufenthalte anderer überlappen */
             const trs = (raw().flights || []).filter(f => f && f.from && ISO.test(f.from.date || '') && (!Array.isArray(f.who) || !f.who.length || f.who.some(w => w === x.name || w === key)));
             if (!on.length && !trs.length) return null;
@@ -1546,13 +1579,15 @@
         const lg = legFor(s);
         const pl = stopList();
         const curStop = isNew ? (legKey && places()[legKey] ? legKey : '') : stayKey(s) || '';
+        const numbered = pl.filter(x => x.p.num != null), hasStops = numbered.length > 0;
         const last = g.list[g.list.length - 1];
         const defIn = isNew ? (last && S.cout(last)) || (H.meta() || {}).start || '' : S.cin(s);
         sheet({
             title: isNew ? 'Neue Unterkunft' : 'Unterkunft bearbeiten',
-            body: `${field('Station / Ort', inp('name', S.name(s), 'required maxlength="120" list="plPlaces" placeholder="z. B. Kyoto"'))}
+            /* Etappe = Zuordnung (Daten, Name); ein eigener Ortsname nur ohne Etappe (alte Reisen, Unterkünfte außerhalb der Etappen) */
+            body: `${hasStops ? field('Etappe', `<select name="stop"><option value="">– keine Etappe –</option>${numbered.map(({ k, p }) => { const g = legs().list.find(x => x.k === k); return `<option value="${esc(k)}"${k === curStop ? ' selected' : ''}>${esc(labels().get(k) ?? p.num)} · ${esc(p.name || k)}${g && g.from ? ` · ${esc(legShort(g))}` : ''}</option>`; }).join('')}</select>`) : ''}
+                <div class="pl-acc-name"${hasStops && curStop ? ' hidden' : ''}>${field('Ort', inp('name', S.name(s), `maxlength="120" list="plPlaces" placeholder="z. B. Kyoto"${hasStops && curStop ? '' : ' required'}`))}</div>
                 <datalist id="plPlaces">${pl.map(({ p }) => `<option value="${esc(p.name)}">`).join('')}</datalist>
-                ${pl.some(x => x.p.num != null) ? field('Etappe', `<select name="stop"><option value="">– keine Etappe –</option>${pl.filter(x => x.p.num != null).map(({ k, p }) => { const g = legs().list.find(x => x.k === k); return `<option value="${esc(k)}"${k === curStop ? ' selected' : ''}>${esc(labels().get(k) ?? p.num)} · ${esc(p.name || k)}${g && g.from ? ` · ${esc(legShort(g))}` : ''}</option>`; }).join('')}</select>`) : ''}
                 <div class="pl-row">
                     ${field('Check-in', `<input type="date" name="cin" value="${esc(lg ? lg.from : defIn)}"${lg ? ' readonly' : ''}>`)}
                     ${field('Check-out', `<input type="date" name="cout" value="${esc(S.cout(s))}"${lg ? ' readonly' : ''}>`)}
@@ -1582,10 +1617,20 @@
             onOpen: f => {
                 const del = f.querySelector('.pl-del');
                 if (del) del.onclick = () => { if (confirm(`„${S.name(s)}“ löschen?`)) { dlg.close(); commit(['stations'], () => g.list.splice(idx, 1)); } };
+                /* Ortsfeld nur bei „keine Etappe“ */
+                const st = f.elements.stop, box = f.querySelector('.pl-acc-name');
+                if (st && box) st.onchange = () => {
+                    const on = !st.value; box.hidden = !on; f.elements.name.required = on;
+                    /* Daten der gewählten Etappe übernehmen */
+                    const lg2 = st.value && legs().list.find(x => x.k === st.value);
+                    ['cin', 'cout'].forEach((n, j) => { const e = f.elements[n]; if (lg2 && lg2.from) e.value = j ? lg2.to : lg2.from; e.readOnly = !!(lg2 && lg2.from); });
+                    if (on && !val(f, 'name')) f.elements.name.focus();
+                };
             },
             done: f => {
-                const name = val(f, 'name'), cin = val(f, 'cin'), cout = val(f, 'cout'), price = val(f, 'price').replace(',', '.');
-                if (!name) { alert('Bitte eine Station angeben.'); return false; }
+                const sk0 = f.elements.stop ? val(f, 'stop') : '';
+                const name = sk0 && places()[sk0] ? places()[sk0].name || sk0 : val(f, 'name'), cin = val(f, 'cin'), cout = val(f, 'cout'), price = val(f, 'price').replace(',', '.');
+                if (!name) { alert('Bitte eine Etappe wählen oder einen Ort angeben.'); return false; }
                 if (cin && cout && cout <= cin) { alert('Check-out muss nach dem Check-in liegen.'); return false; }
                 if (price && !isFinite(+price)) { alert('Bitte den Preis als Zahl eingeben.'); return false; }
                 commit(['stations'], () => {
@@ -1771,14 +1816,6 @@
     }
 
     /* ---------- Klicks (Delegation) ---------- */
-    /* Etappe ohne Unterkunft (Detail-Sheet) */
-    document.addEventListener('change', e => {
-        const c = e.target.closest && e.target.closest('[data-pl-nostay]');
-        if (!c) return;
-        const k = c.dataset.plNostay;
-        if (!editable()) { c.checked = !c.checked; return; }
-        commitPlaces(() => { const o = raw().places[k]; if (!o) return; if (c.checked) o.noStay = true; else delete o.noStay; }).then(() => renderDetail());
-    });
     document.addEventListener('click', async e => {
         const cp = e.target.closest('.pl-copy');
         if (cp) { e.preventDefault(); e.stopPropagation(); if (await TB.copyText(cp.dataset.copy)) status('copied'); return; }
@@ -1789,7 +1826,6 @@
         switch (a) {
             case 'stop-add': closeFab(); return editStop(null, b.dataset.at != null ? +b.dataset.at : null);
             case 'stop-open': return openStop(b.dataset.k);
-            case 'stop-again': if (dlg && dlg.open) dlg.close(); return addAgain(b.dataset.k, null);
             case 'stop-acts': { const p = places()[b.dataset.k]; if (dlg) dlg.close(); return p && window.TBActivities && TBActivities.open(p.name, labels().get(b.dataset.k) ?? p.num ?? '', b); }
             case 'fab': { const m = b.parentElement.querySelector('.pl-fab-menu'); m.hidden = !m.hidden; b.setAttribute('aria-expanded', String(!m.hidden)); b.classList.toggle('on', !m.hidden); return; }
             case 'fab-tr': closeFab(); return editTransport(null);
