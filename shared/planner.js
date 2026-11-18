@@ -478,7 +478,7 @@
             const when = [fmt(f.from.date), f.from.time, toD || f.to.time ? `– ${[toD, f.to.time].filter(Boolean).join(' ')}` : ''].filter(Boolean).join(' ');
             const who = Array.isArray(f.who) && f.who.length ? f.who.join(', ') : '';
             return `<li class="pl-stop pl-tr"><span class="pl-dot" aria-hidden="true">${ic(icon)}</span>
-                <button type="button" class="pl-stop-main" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}><b>${esc(lab)} · ${esc(route)}${ic('chevronRight')}</b><small>${esc([when, who, f.planned ? 'geplant' : ''].filter(Boolean).join(' · '))}</small></button></li>`;
+                <button type="button" class="pl-stop-main" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}><b>${esc(lab)} · ${esc(route)}${ic('chevronRight')}</b><small>${esc([when, who].filter(Boolean).join(' · '))}${trSt(f)}</small></button></li>`;
         };
         const trs = pos => (trAfter.get(pos) || []).map(trLi).join('');
         const gap = (at, k, nk) => {
@@ -486,7 +486,8 @@
             /* ohne eingetragenen Transport: Verkehrsmittel aus den gespeicherten Strecken (alte Reisen, z. B. Wanderetappen) */
             const lm = x && !tr ? legacyMode(k, x.k, P) : null;
             const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : lm ? `${MODE_TXT[lm]} · Luftlinie, Zeit grob geschätzt` : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : lm ? MODE_IC[lm] : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr ? tr.mode : lm))}</span>` : '';
-            return `<li class="pl-tl-gap">${ins(at, k, nk)}${trAfter.has(l.findIndex(y => y.k === k)) && k ? '' : chip}</li>`;
+            /* eingetragener Transport: Status farbig daneben (gebucht / offen) */
+            return `<li class="pl-tl-gap">${ins(at, k, nk)}${trAfter.has(l.findIndex(y => y.k === k)) && k ? '' : chip + (tr && tr.f ? trSt(tr.f) : '')}</li>`;
         };
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
@@ -520,6 +521,8 @@
                 </div><button type="button" class="pl-fab" data-pl="fab" aria-label="Hinzufügen" aria-expanded="false">${ic('plus')}</button></div>` : ''}`;
         if (detailK && dlg && dlg.open) renderDetail();
     }
+    /* Status eines eingetragenen Transports: gebucht (grün) / offen (orange, f.planned) */
+    const trSt = f => f ? `<span class="pl-tr-st ${f.planned ? 'warn' : 'ok'}">${ic(f.planned ? 'clock' : 'check')}${f.planned ? 'offen' : 'gebucht'}</span>` : '';
     /* Verkehrsmittel zwischen zwei Stopps: eingetragener Transport mit passenden Orten, sonst Schätzung */
     const MODE_IC = { flight: 'plane', train: 'train', ferry: 'ship', bus: 'bus', car: 'car', walk: 'walk' };
     const MODE_TXT = { flight: 'Flug', train: 'Zug', ferry: 'Fähre', bus: 'Bus', car: 'Auto', walk: 'Zu Fuß' };
@@ -620,7 +623,7 @@
             : stays.length ? String(stays.length) : '';
         const stayBody = (p.noStay ? `<p class="note">Für diese Etappe ist keine Unterkunft nötig – ändern über „Etappe bearbeiten“.</p>` : '')
             + (p.noStay && !stays.length ? '' : stays.map(({ s, gr, i }) => `<button type="button" class="pl-d-item" data-pl="acc-edit" data-g="${esc(gr.id)}" data-i="${i}"${edit ? '' : ' disabled'}>${ic('bed')}<span><b>${s.hotel ? esc(stripTags(s.hotel)) : esc(S.name(s))}</b><small>${esc([fmt(S.cin(s)) && `${fmt(S.cin(s))} – ${fmt(S.cout(s))}`, s.code].filter(Boolean).join(' · '))}</small></span><span class="pl-st ${STATUS[S.status(s)][1]}">${STATUS[S.status(s)][0]}</span></button>`).join('') || '<p class="note">Noch keine Unterkunft.</p>');
-        const trBody = trs.map(({ f, i }) => `<button type="button" class="pl-d-tr" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}>${ic(MODE_IC[f.mode || 'flight'] || 'plane')}<b>${esc([f.from.code || f.from.city || f.from.name, f.to.code || f.to.city || f.to.name].filter(Boolean).join(' → '))}</b><small>${esc([f.from.date && fmt(f.from.date), f.from.time, Array.isArray(f.who) && f.who.length ? f.who.join(', ') : '', f.planned ? 'geplant' : ''].filter(Boolean).join(' · '))}</small></button>`).join('');
+        const trBody = trs.map(({ f, i }) => `<button type="button" class="pl-d-tr" data-pl="tr-edit" data-i="${i}"${edit ? '' : ' disabled'}>${ic(MODE_IC[f.mode || 'flight'] || 'plane')}<b>${esc([f.from.code || f.from.city || f.from.name, f.to.code || f.to.city || f.to.name].filter(Boolean).join(' → '))}</b><small>${esc([f.from.date && fmt(f.from.date), f.from.time, Array.isArray(f.who) && f.who.length ? f.who.join(', ') : '', ].filter(Boolean).join(' · '))}</small>${trSt(f)}</button>`).join('');
         box.innerHTML = `
             <div class="pl-d-when">${ic('calendar')}<span>${g ? esc(legShort(g)) : esc(p.date || 'Kein Zeitraum')}${g && g.parallel ? '<small>parallel</small>' : ''}</span>
                 ${p.num != null && edit ? `<div class="pl-nights" role="group" aria-label="Nächte">
@@ -900,7 +903,7 @@
                 ${field('Notizen', area('desc', cur.desc, 'maxlength="2000"'))}
                 ${persons().length ? `<fieldset class="pl-who"><legend>Wer ist dort?</legend>${persons().map(x => `<label class="pl-check"><input type="checkbox" name="who" value="${esc(pkey(x))}"${!Array.isArray(cur.who) || cur.who.includes(pkey(x)) ? ' checked' : ''}><span><i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>${esc(x.name)}</span></label>`).join('')}</fieldset>` : ''}
                 ${cur.kind ? field('Art der Etappe (älter – neue Flüge, Züge usw. als Transport eintragen)', sel('kind', cur.kind || '', KINDS)) : ''}
-                ${parallelBox(cur, k)}
+                ${p ? parallelBox(cur, k) : ''}
                 <div class="pl-row">
                     <label class="pl-check"><input type="checkbox" name="numbered"${cur.num != null ? ' checked' : ''}><span>Nummerierter Stopp der Route</span></label>
                 </div>
