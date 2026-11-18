@@ -434,8 +434,18 @@
         document.querySelectorAll('.pl-ins-tg').forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
         document.body.classList.toggle('pl-noins', !on);
     }
+    /* Verkehrsmittel-Pillen zwischen den Etappen ein-/ausblenden (je Gerät gemerkt) */
+    const LEGS_KEY = 'tb_stops_legs';
+    const legsOn = () => { try { return localStorage.getItem(LEGS_KEY) !== '0'; } catch (e) { return true; } };
+    function toggleLegs() {
+        const on = !legsOn();
+        try { localStorage.setItem(LEGS_KEY, on ? '1' : '0'); } catch (e) {}
+        document.querySelectorAll('.pl-legs-tg').forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+        document.body.classList.toggle('pl-nolegs', !on);
+    }
     function renderStops(el, P) {
         document.body.classList.toggle('pl-noins', !insOn());
+        document.body.classList.toggle('pl-nolegs', !legsOn());
         if (!el) return;
         P = P || places();
         const l = stopList(P), rs = routeStops(P), edit = canEdit(), L = legs(P), m = H.meta() || {};
@@ -499,7 +509,7 @@
         };
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
-                <span class="pl-head-acts">${edit ? `<button type="button" class="pl-ins-tg${insOn() ? ' on' : ''}" data-pl="ins-toggle" aria-pressed="${insOn()}" title="„+“ zwischen den Etappen ein- oder ausblenden">${ic('plus')}</button>` : ''}${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}</span></div>
+                <span class="pl-head-acts"><button type="button" class="pl-legs-tg${legsOn() ? ' on' : ''}" data-pl="legs-toggle" aria-pressed="${legsOn()}" title="Wege (Verkehrsmittel, km, Zeit) zwischen den Etappen ein- oder ausblenden">${ic('car')}</button>${edit ? `<button type="button" class="pl-ins-tg${insOn() ? ' on' : ''}" data-pl="ins-toggle" aria-pressed="${insOn()}" title="„+“ zwischen den Etappen ein- oder ausblenden">${ic('plus')}</button>` : ''}${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}</span></div>
             ${!L.on && edit && nums.length && !(m.end && H.today && m.end < H.today) ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : ''}
             ${l.length ? `<ol class="pl-tl">
                 <li class="pl-tl-row">${H.role === 'admin' && edit ? `<button type="button" class="pl-tl-start" data-pl="trip-dates" title="Reisebeginn ändern"><span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen – antippen')}${ic('pencil')}</small></div></button>` : `<span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen')}</small></div>`}${pill}</li>
@@ -1872,6 +1882,7 @@
             case 'fab-acc': closeFab(); return editStation((groups()[0] || {}).id, null);
             case 'people': return editPeople();
             case 'ins-toggle': return toggleIns();
+            case 'legs-toggle': return toggleLegs();
             case 'trip-dates': return editTripDates();
             case 'stop-edit': return editStop(b.dataset.k);
             case 'stop-focus': { if (dlg && dlg.open) dlg.close(); const p = places()[b.dataset.k], fk = p && p.same && places()[p.same] ? p.same : b.dataset.k; if (sideFocus(fk)) return; return H.focusPlace && H.focusPlace(fk); }

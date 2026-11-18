@@ -916,11 +916,15 @@ ul.fl-list li.pl-empty::before { content: none; }
 .pl-ins:hover { color: var(--p1); border-color: var(--p1-line); }
 .pl-ins .ic { width: 16px; height: 16px; }
 .pl-ins-sp { flex: 0 0 34px; }
-.mh button.pl-ins-tg { color: var(--mute); padding: 6px 9px; }
-.mh button.pl-ins-tg.on { color: var(--p1); background: var(--p1-soft); }
+.mh button.pl-ins-tg, .mh button.pl-legs-tg { color: var(--mute); padding: 6px 9px; }
+.mh button.pl-ins-tg.on, .mh button.pl-legs-tg.on { color: var(--p1); background: var(--p1-soft); }
 /* „+“ ausgeblendet: Platz bleibt, damit Pillen und Linie nicht springen; reine „+“-Zeilen fallen weg */
 .pl-noins .pl-tl .pl-ins { visibility: hidden; pointer-events: none; }
 .pl-noins .pl-tl .pl-tl-gap:not(:has(> :not(.pl-ins, .pl-ins-sp))) { display: none; }
+/* Wege-Pillen ausgeblendet (Schalter .pl-legs-tg); Zeilen ohne sichtbaren Inhalt fallen weg */
+.pl-nolegs .pl-tl .pl-tl-gap .pl-leg { display: none; }
+.pl-nolegs .pl-tl .pl-tl-gap:not(:has(> :not(.pl-ins-sp, .pl-leg))),
+.pl-nolegs.pl-noins .pl-tl .pl-tl-gap:not(:has(> :not(.pl-ins, .pl-ins-sp, .pl-leg))) { display: none; }
 .pl-tl-gap .pl-leg { border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; background: var(--card); font-size: 12px; }
 .pl-tl-gap .pl-leg .ic { width: 15px; height: 15px; color: var(--mute); }
 .pl-tl .pl-stop { z-index: 1; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 1px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, .05); margin-left: 0; }
