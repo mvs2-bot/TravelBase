@@ -946,8 +946,6 @@ button.pl-stop-main:hover b { color: var(--p1); }
 .pl-d-when > .ic { color: var(--p1); }
 .pl-d-when .pl-nights { margin-left: auto; background: var(--card); }
 .pl-d-when .pl-n-ro { margin-left: auto; }
-.pl-d-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 8px; font-size: 16px; font-weight: 700; color: var(--ink); }
-.pl-d-h .link-inline { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--p1); text-decoration: none; }
 .pl-d-note { padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); font-size: 14px; color: var(--ink); }
 .pl-d-note .note { margin: 0; }
 .pl-d-item { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font: inherit; text-align: left; color: var(--ink); cursor: pointer; }
@@ -956,6 +954,41 @@ button.pl-stop-main:hover b { color: var(--p1); }
 .pl-d-item > span:not(.pl-st) { flex: 1; min-width: 0; }
 .pl-d-item b { display: block; font-size: 14px; }
 .pl-d-item small { display: block; font-size: 12px; color: var(--mute); }
+/* Etappe geöffnet: Bereiche als einklappbare Gruppen (standardmäßig zu), Transporte kompakt */
+.pl-d-when > span small { margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: var(--p1-soft); color: var(--p1); font-size: 11px; font-weight: 600; }
+.pl-d-secs { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.pl-d-sec { border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.pl-d-sec > summary { display: flex; align-items: center; gap: 10px; padding: 11px 12px; list-style: none; cursor: pointer; font-size: 15px; color: var(--ink); -webkit-user-select: none; user-select: none; }
+.pl-d-sec > summary::-webkit-details-marker { display: none; }
+.pl-d-sec > summary:hover { background: var(--hover); }
+.pl-d-sec > summary > .ic:first-child { width: 18px; height: 18px; flex: 0 0 auto; color: var(--p1); }
+.pl-d-sec > summary b { flex: 1; min-width: 0; font-weight: 600; }
+.pl-d-sec > summary > .ic:last-child { width: 16px; height: 16px; flex: 0 0 auto; color: var(--mute); transition: transform .15s; }
+.pl-d-sec[open] > summary > .ic:last-child { transform: rotate(90deg); }
+.pl-d-sec[open] > summary { border-bottom: 1px solid var(--sep); }
+.pl-d-meta { font-size: 12.5px; color: var(--mute); white-space: nowrap; }
+.pl-d-body { padding: 10px 12px 12px; }
+.pl-d-body > .note { margin: 0; }
+.pl-d-body .pl-d-item:last-of-type { margin-bottom: 0; }
+.pl-d-add { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 13px; color: var(--p1); text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+.pl-d-add .ic { width: 15px; height: 15px; }
+.pl-d-tr { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 5px 2px; border: 0; border-bottom: 1px solid var(--sep); background: none; font: inherit; font-size: 13px; text-align: left; color: var(--ink); cursor: pointer; }
+.pl-d-tr:last-child { border-bottom: 0; }
+.pl-d-tr:disabled { cursor: default; }
+.pl-d-tr .ic { width: 13px; height: 13px; flex: 0 0 auto; color: var(--mute); align-self: center; }
+.pl-d-tr b { font-weight: 600; white-space: nowrap; }
+.pl-d-tr small { min-width: 0; font-size: 12px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-d-tr:not(:disabled):hover b { color: var(--p1); }
+.pl-d-body .pl-d-note { padding: 0; border-radius: 0; background: none; }
+.pl-tr-st { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: 10.5px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+.pl-tr-st .ic { width: 11px; height: 11px; }
+.pl-tr-st.ok { color: var(--ok); background: var(--ok-soft); }
+.pl-tr-st.warn { color: var(--warn); background: var(--warn-soft); }
+.pl-tl-gap > .pl-tr-st { margin-left: -4px; }
+.pl-d-tr .pl-tr-st { margin-left: auto; align-self: center; }
+.pl-par-hint { margin: 2px 0 0 28px; font-size: 12px; }
+.pl-par-day { margin-top: 8px; }
+.pl-par-day .note { margin: 4px 0 0; font-size: 12px; }
 .pl-d-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 
 /* ==========================================================================
@@ -1095,15 +1128,7 @@ button.pl-stop-main:hover b { color: var(--p1); }
 /* ---------- Kompakt II (17.11.2026): Unterkünfte, Aktivitäten, Packliste ---------- */
 /* Etappen: Transport-Status dezent neben der Verkehrsmittel-Pille */
 .pl-tl-gap { flex-wrap: wrap; }
-.pl-tr-st { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 999px; white-space: nowrap; }
-.pl-tr-st .ic { width: 11px; height: 11px; }
-.pl-tr-st.ok { color: var(--ok); background: var(--ok-soft); }
-.pl-tr-st.warn { color: var(--warn); background: var(--warn-soft); }
-.pl-tr-link { font-size: 11px; font-weight: 500; color: var(--mute); text-decoration: none; white-space: nowrap; }
-.pl-tr-link:hover { color: var(--p1); text-decoration: underline; }
 /* Stopp-Sheet: „Keine Unterkunft nötig“ */
-.pl-nostay { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 13px; color: var(--text); cursor: pointer; }
-.pl-nostay input { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--p1); }
 
 /* Unterkünfte */
 .bk-box { padding: 12px 14px; margin-bottom: 10px; }
@@ -1259,12 +1284,6 @@ tr.ab-virt { background: color-mix(in srgb, var(--well) 45%, transparent); }
 .bk-missing > .ic { color: var(--danger); }
 
 /* Stopp-Sheet: „Etappe bearbeiten“ als eigener Knopf, Reisende sichtbar */
-.pl-d-edit { display: flex; align-items: center; gap: 10px; width: 100%; margin: 10px 0 2px; padding: 9px 12px; border: 0; border-radius: 12px; background: var(--p1-soft); color: var(--p1); font: inherit; text-align: left; cursor: pointer; }
-.pl-d-edit > .ic { width: 18px; height: 18px; flex: 0 0 auto; }
-.pl-d-edit > span { flex: 1; min-width: 0; }
-.pl-d-edit b { display: block; font-size: 14px; font-weight: 600; }
-.pl-d-edit small { display: block; font-size: 11.5px; color: var(--text); opacity: .8; }
-.pl-d-edit:hover { filter: brightness(.97); }
 .pl-d-who { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 8px 0 0; font-size: 12.5px; color: var(--text); }
 .pl-d-who span { display: inline-flex; align-items: center; gap: 5px; }
 .pl-d-who i { width: 10px; height: 10px; border-radius: 50%; }
