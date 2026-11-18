@@ -574,6 +574,9 @@ td:has(> .qty-btn) span { display: inline-block; min-width: 22px; text-align: ce
     .m-tabbar button[aria-current="page"]::before { content: ""; position: absolute; inset: 7px 6px; z-index: -1; border-radius: 16px; background: var(--p1-soft); }
     .m-tabbar button[aria-current="page"] { color: var(--p1); font-weight: 600; }
     body:not(.tb-loading) { padding-bottom: calc(62px + 36px + env(safe-area-inset-bottom, 0px)); }
+    /* Zurück/Neu laden der installierten iOS-App (shared/ios-nav.js) über der Tabbar statt darauf, wie auf „Alle Reisen“ (data-bottom="84") */
+    body:not(.tb-loading) .iosnav { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+    body:not(.tb-loading):has(.iosnav) { padding-bottom: calc(62px + 36px + 50px + env(safe-area-inset-bottom, 0px)); }
 }
 
 
