@@ -485,9 +485,10 @@
             const x = k && next.get(k), tr = x && !trAfter.has(l.findIndex(y => y.k === k)) && transportBetween(P[k], x.to);
             /* ohne eingetragenen Transport: Verkehrsmittel aus den gespeicherten Strecken (alte Reisen, z. B. Wanderetappen) */
             const lm = x && !tr ? legacyMode(k, x.k, P) : null;
-            const chip = x ? `<span class="pl-leg" title="${tr ? esc(tr.label) : lm ? `${MODE_TXT[lm]} · Luftlinie, Zeit grob geschätzt` : 'Luftlinie · Zeit grob geschätzt'}">${ic(tr ? tr.icon : lm ? MODE_IC[lm] : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr ? tr.mode : lm))}</span>` : '';
-            /* eingetragener Transport: Status farbig daneben (gebucht / offen) */
-            return `<li class="pl-tl-gap">${ins(at, k, nk)}${trAfter.has(l.findIndex(y => y.k === k)) && k ? '' : chip + (tr && tr.f ? trSt(tr.f) : '')}</li>`;
+            /* antippen: eingetragenen Transport bearbeiten, sonst einen zwischen den beiden Orten eintragen */
+            const legTag = edit ? `button type="button" data-pl="leg-edit" data-k="${esc(k || '')}" data-n="${esc(x ? x.k : '')}"${tr ? ` data-i="${flights().indexOf(tr.f)}"` : ''}` : 'span';
+            const chip = x ? `<${legTag} class="pl-leg" title="${tr ? esc(tr.label) : lm ? `${MODE_TXT[lm]} · Luftlinie, Zeit grob geschätzt` : 'Luftlinie · Zeit grob geschätzt'}${edit ? ' – antippen zum Bearbeiten' : ''}">${ic(tr ? tr.icon : lm ? MODE_IC[lm] : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr ? tr.mode : lm))}</${edit ? 'button' : 'span'}>` : '';
+            return `<li class="pl-tl-gap">${ins(at, k, nk)}${trAfter.has(l.findIndex(y => y.k === k)) && k ? '' : chip}</li>`;
         };
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
@@ -637,7 +638,7 @@
                 ${sec('tr', 'plane', 'Transporte', trs.length ? String(trs.length) : '', trBody || '<p class="note">Kein Transport von oder nach hier eingetragen.</p>')}
             </div>
             <div class="pl-d-acts">
-                ${edit ? `<button type="button" class="btn-action" data-pl="stop-edit" data-k="${esc(k)}">${ic('pencil')}Etappe bearbeiten</button>` : ''}
+                ${edit ? `<button type="button" class="btn-action pl-d-editbtn" data-pl="stop-edit" data-k="${esc(k)}">${ic('pencil')}Etappe bearbeiten</button>` : ''}
                 <button type="button" class="btn-action" data-pl="stop-focus" data-k="${esc(k)}">${ic('map')}Auf der Karte</button>
                 ${window.TBActivities && TBActivities.ready ? `<button type="button" class="btn-action" data-pl="stop-acts" data-k="${esc(k)}">${ic('sparkles')}Aktivitäten</button>` : ''}
             </div>`;
@@ -1807,10 +1808,15 @@
             onOpen: f => {
                 f.querySelector('.pl-save').hidden = true;
                 f.querySelector('[data-c=stay]').onclick = () => { dlg.close(); editStop(null, at); };
-                f.querySelector('[data-c=tr]').onclick = () => { dlg.close(); editTransport(null, { from: { city: a ? a.name : '', date: g && g.to ? g.to : '' }, to: { city: z ? z.name : '' } }); };
+                f.querySelector('[data-c=tr]').onclick = () => { dlg.close(); trBetween(k, nk); };
             },
             done: () => true
         });
+    }
+    /* neuer Transport zwischen zwei Etappen: Von/Nach/Datum vorbelegt */
+    function trBetween(k, nk) {
+        const P = places(), a = k && P[k], z = nk && P[nk], g = k && legs().list.find(x => x.k === k);
+        editTransport(null, { from: { city: a ? a.name : '', date: g && g.to ? g.to : '' }, to: { city: z ? z.name : '' } });
     }
     function sortTransports() {
         if (!editable()) return;
@@ -1858,6 +1864,7 @@
             case 'acc-det': { const o = b.closest('.bk-card').classList.toggle('det-open'); b.setAttribute('aria-expanded', o); return; }
             case 'tr-add': return editTransport(null);
             case 'tr-edit': return editTransport(i);
+            case 'leg-edit': return b.dataset.i != null && +b.dataset.i >= 0 ? editTransport(+b.dataset.i) : trBetween(b.dataset.k, b.dataset.n);
             case 'tr-del': { const f = flights()[i]; if (f && editable() && confirm('Diesen Eintrag löschen?')) commit(['flights'], () => raw().flights.splice(i, 1)); return; }
             case 'tr-sort': return sortTransports();
             case 'tr-filter': { trFilter.mode = b.dataset.mode; const l = b.closest('.pl-trbar').nextElementSibling; return renderTransports(l); }
