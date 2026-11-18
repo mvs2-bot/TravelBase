@@ -246,11 +246,11 @@
             if (km(a.p, b.p) >= 800 && (onlyArr(a) || onlyDep(b))) continue;
             /* ein eingetragener Transport zwischen a und b hat seine eigene Linie (transportSegments, ggf. zwischen den Flughäfen):
                keine zweite Linie zwischen den Orten selbst (z. B. Bangkok → Colombo neben BKK → CMB, wenn die Flughäfen nicht auf der Route sind) */
-            const tb = transportBetween(a.p, b.p);
-            if (tb && !tb.f.noMap) continue;
-            /* selbst gewähltes Verkehrsmittel (places[k].next) bestimmt den Linienstil */
+            /* selbst gewähltes Verkehrsmittel (places[k].next) bestimmt den Linienstil, auch wenn ein Transport automatisch zugeordnet wäre */
             const nx = P[a.k] && P[a.k].next;
             if (nx && SEG_STYLE[nx]) { out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: nx }); continue; }
+            const tb = transportBetween(a.p, b.p);
+            if (tb && !tb.f.noMap) continue;
             const lm = legacyMode(a.k, b.k, P);
             out.push({ from: [+a.p.lat, +a.p.lng], to: [+b.p.lat, +b.p.lng], k: b.k, mode: lm === 'walk' || lm === 'ferry' || lm === 'flight' ? lm : km(a.p, b.p) >= 800 ? 'flight' : 'road' });
         }
@@ -485,13 +485,13 @@
         };
         const trs = pos => (trAfter.get(pos) || []).map(trLi).join('');
         const gap = (at, k, nk) => {
-            const x = k && next.get(k), tr = x && !trAfter.has(l.findIndex(y => y.k === k)) && transportBetween(P[k], x.to);
-            /* ohne eingetragenen Transport: Verkehrsmittel aus den gespeicherten Strecken (alte Reisen, z. B. Wanderetappen) */
-            /* selbst gewähltes Verkehrsmittel (places[k].next, „none“ = Platzhalter), sonst aus gespeicherten Strecken (alte Reisen) */
-            const cm = x && !tr ? P[k].next : null, ph = cm === 'none';
+            /* selbst gewähltes Verkehrsmittel (places[k].next, „none“ = Platzhalter) hat Vorrang vor einem automatisch zugeordneten Transport,
+               sonst eingetragener Transport bzw. gespeicherte Strecken (alte Reisen, z. B. Wanderetappen) */
+            const x = k && next.get(k), cm = x ? P[k].next || null : null, ph = cm === 'none';
+            const tr = x && !cm && !trAfter.has(l.findIndex(y => y.k === k)) && transportBetween(P[k], x.to);
             const lm = x && !tr && !ph ? (MODE_IC[cm] ? cm : legacyMode(k, x.k, P)) : null;
-            /* antippen: eingetragenen Transport bearbeiten, sonst Verkehrsmittel wählen */
-            const legTag = edit ? `button type="button" data-pl="leg-edit" data-k="${esc(k || '')}" data-n="${esc(x ? x.k : '')}"${tr ? ` data-i="${flights().indexOf(tr.f)}"` : ''}` : 'span';
+            /* antippen: immer Verkehrsmittel wählen (eingetragene Transporte bearbeitet man über ihre eigene Zeile) */
+            const legTag = edit ? `button type="button" data-pl="leg-edit" data-k="${esc(k || '')}" data-n="${esc(x ? x.k : '')}"` : 'span';
             const legTitle = tr ? esc(tr.label) : ph ? 'Weg noch offen' : lm ? `${MODE_TXT[lm]} · Luftlinie, Zeit grob geschätzt` : 'Luftlinie · Zeit grob geschätzt';
             const chip = x ? `<${legTag} class="pl-leg${ph ? ' pl-leg-ph' : ''}" title="${legTitle}${edit ? ' – antippen zum Ändern' : ''}">${ph ? `${ic('more')}Weg offen`
                 : `${ic(tr ? tr.icon : lm ? MODE_IC[lm] : x.km >= 800 ? 'plane' : 'car')}${kmText(x.km)}<i>·</i>${esc(travelText(x.km, tr ? tr.mode : lm))}`}</${edit ? 'button' : 'span'}>` : '';
@@ -1890,7 +1890,7 @@
             case 'acc-det': { const o = b.closest('.bk-card').classList.toggle('det-open'); b.setAttribute('aria-expanded', o); return; }
             case 'tr-add': return editTransport(null);
             case 'tr-edit': return editTransport(i);
-            case 'leg-edit': return b.dataset.i != null && +b.dataset.i >= 0 ? editTransport(+b.dataset.i) : pickLeg(b.dataset.k, b.dataset.n);
+            case 'leg-edit': return pickLeg(b.dataset.k, b.dataset.n);
             case 'tr-del': { const f = flights()[i]; if (f && editable() && confirm('Diesen Eintrag löschen?')) commit(['flights'], () => raw().flights.splice(i, 1)); return; }
             case 'tr-sort': return sortTransports();
             case 'tr-filter': { trFilter.mode = b.dataset.mode; const l = b.closest('.pl-trbar').nextElementSibling; return renderTransports(l); }
