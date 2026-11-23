@@ -154,7 +154,7 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   `hotel`, `status` (`booked`/`open`), `code`, `price`+`currency`, `address`, `maps`, `cancel_until`, `cancel_checked`, `transfer`, `note`.
   Alte Import-Angaben `stations[].bookings` (`name`, `room`, `by`, `cancel`, `maps`) sind nicht editierbar: Beim Bearbeiten stehen sie in der Notiz
   und werden beim Speichern entfernt (`maps` → `s.maps`, falls leer); Admins sehen sonst ein Banner „In Notizen übernehmen“ für alle. Bereits in der Notiz enthaltene Angaben werden nicht doppelt angezeigt.
-  `TB.tripSummaries()` (RPC `travelbase_trip_summaries`) liefert Stopps/Unterkünfte/Storno-Warnungen für die Übersicht.
+  `TB.tripSummaries()` (RPC `travelbase_trip_summaries`) liefert Stopps/Unterkünfte/Storno-Warnungen für die Übersicht; „x/y Unterkünfte gebucht“ zählt wie die Unterkünfte-Seite (`stays_booked` / `stays_booked + stays_open + stays_missing`, ohne „Keine nötig“ und Etappen ohne Unterkunftsbedarf).
 - `exportBackup()` (nur Admins): JSON aller `BACKUP_TABLES` der Reisen, auf denen man Admin ist – läuft mit dem Login des Admins, RLS gilt.
   Neue `travelbase_`-Tabellen dort ergänzen.
 - **Alte Reisen (Import, ohne Nummern/Nächte, Daten bleiben unverändert):** `stopList` ordnet die Etappen nach dem ersten Datum des Orts
