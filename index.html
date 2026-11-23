@@ -837,7 +837,8 @@
         document.querySelectorAll('[data-sum]').forEach(el => {
             const r = by[el.dataset.sum], t = list.find(x => x.id === el.dataset.sum);
             if (!r || !t || t.st.past) return;
-            const stays = r.stays_booked + r.stays_open;
+            /* wie die Seite „Unterkünfte“: gebucht / (gebucht + offen + fehlende Etappen) */
+            const stays = r.stays_booked + r.stays_open + (r.stays_missing || 0);
             const facts = [r.stops ? `${r.stops} Stopps` : '', stays ? `${r.stays_booked}/${stays} Unterkünfte gebucht` : ''].filter(Boolean);
             el.innerHTML = (facts.length ? `<span>${facts.join('&nbsp;· ')}</span>` : '')
                 + (r.cancel_warn ? `<span class="chip warn">${tbIcon('alert')}Storno-Frist ${fmtDM(r.next_cancel)}</span>` : '');
@@ -854,11 +855,11 @@
         if (!cmp.length) return;
         const table = g => {
             return `<div class="cmp-wrap"><table class="cmp"><thead><tr><th>Variante</th><th>Dauer</th><th>Stopps</th><th>Unterkünfte</th><th>Storno</th></tr></thead><tbody>${g.map(t => {
-                const r = by[t.id] || {}, n = nights(t), stays = (r.stays_booked || 0) + (r.stays_open || 0);
+                const r = by[t.id] || {}, n = nights(t), stays = (r.stays_booked || 0) + (r.stays_open || 0) + (r.stays_missing || 0);
                 return `<tr><td><a href="${encodeURIComponent(t.slug)}/">${esc(t.title)}</a>${t.tentative ? ' <span class="chip maybe">Vielleicht</span>' : ''}</td>
                     <td data-l="Dauer"><b>${n ? n + ' Tage' : '–'}</b>${t.start_date ? `<br><small>${fmtDM(t.start_date)}–${fmtDM(t.end_date || t.start_date)}</small>` : ''}</td>
                     <td data-l="Stopps"><b>${r.stops ?? '–'}</b></td>
-                    <td data-l="Unterkünfte"><b>${stays ? `${r.stays_booked} gebucht · ${r.stays_open} offen` : '–'}</b></td>
+                    <td data-l="Unterkünfte"><b>${stays ? `${r.stays_booked} gebucht · ${r.stays_open} offen${r.stays_missing ? ` · ${r.stays_missing} fehlt` : ''}` : '–'}</b></td>
                     <td data-l="Storno">${r.next_cancel ? `${r.cancel_warn ? '<b style="color:var(--danger)">' : '<b>'}bis ${fmtDM(r.next_cancel)}</b>` : '–'}</td></tr>`;
             }).join('')}</tbody></table></div>`;
         };
