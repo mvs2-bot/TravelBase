@@ -18,7 +18,8 @@ Fehlermeldungen sind **deutsch**.
 ## Struktur
 
 ```
-index.html            Login + Übersicht „Alle Reisen“ (ohne Login nur Flaggen); eigenes <style> mit denselben Tokens
+index.html            Login + Übersicht „Alle Reisen“ (ohne Login nur Flaggen); eigenes <style> mit denselben Tokens;
+                      ab 1100 px Seitenleiste `.li-side` (Kennzahlen `#deskStats`, „Neue Reise“, Konto), nächste Reise als große Kachel
 verwaltung.html       nur Weiterleitung auf /admin.html (Dashboard-Root-Repo)
 <slug>/index.html     eine Reise pro Ordner; Ordnername = travelbase_trips.slug (TRIP_SLUG wird aus dem Pfad gelesen)
 shared/trip-template.html  Vorlage für alle Reisen außer Thailand
