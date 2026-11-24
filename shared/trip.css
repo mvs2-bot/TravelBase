@@ -916,8 +916,11 @@ ul.fl-list li.pl-empty::before { content: none; }
 .pl-ins:hover { color: var(--p1); border-color: var(--p1-line); }
 .pl-ins .ic { width: 16px; height: 16px; }
 .pl-ins-sp { flex: 0 0 34px; }
-.mh button.pl-ins-tg, .mh button.pl-legs-tg { color: var(--mute); padding: 6px 9px; }
-.mh button.pl-ins-tg.on, .mh button.pl-legs-tg.on { color: var(--p1); background: var(--p1-soft); }
+.mh button.pl-ins-tg, .mh button.pl-legs-tg, .mh button.pl-drag-tg { color: var(--mute); padding: 6px 9px; }
+.mh button.pl-ins-tg.on, .mh button.pl-legs-tg.on, .mh button.pl-drag-tg.on { color: var(--p1); background: var(--p1-soft); }
+/* Ziehgriffe ausgeblendet (Schalter .pl-drag-tg): Ziehen in den Etappen gesperrt */
+.pl-nodrag .pl-tl .pl-handle[data-drag="stops"] { display: none; }
+.pl-nodrag .pl-tl .pl-acts:not(:has(> :not(.pl-handle))) { display: none; }
 /* „+“ ausgeblendet: Platz bleibt, damit Pillen und Linie nicht springen; reine „+“-Zeilen fallen weg */
 .pl-noins .pl-tl .pl-ins { visibility: hidden; pointer-events: none; }
 .pl-noins .pl-tl .pl-tl-gap:not(:has(> :not(.pl-ins, .pl-ins-sp))) { display: none; }

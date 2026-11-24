@@ -443,8 +443,22 @@
         document.querySelectorAll('.pl-legs-tg').forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
         document.body.classList.toggle('pl-nolegs', !on);
     }
+    /* Ziehgriffe der Etappen ein-/ausblenden (je Gerät gemerkt); aus = Ziehen gesperrt, damit Scrollen am Handy nichts verschiebt.
+       Vorgabe: am Touch-Gerät aus, mit Maus an */
+    const DRAG_KEY = 'tb_stops_drag';
+    const dragOn = () => {
+        try { const v = localStorage.getItem(DRAG_KEY); if (v != null) return v === '1'; } catch (e) {}
+        return !(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+    };
+    function toggleDrag() {
+        const on = !dragOn();
+        try { localStorage.setItem(DRAG_KEY, on ? '1' : '0'); } catch (e) {}
+        document.querySelectorAll('.pl-drag-tg').forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+        document.body.classList.toggle('pl-nodrag', !on);
+    }
     function renderStops(el, P) {
         document.body.classList.toggle('pl-noins', !insOn());
+        document.body.classList.toggle('pl-nodrag', !dragOn());
         document.body.classList.toggle('pl-nolegs', !legsOn());
         if (!el) return;
         P = P || places();
@@ -509,7 +523,7 @@
         };
         const nums = l.filter(x => x.p.num != null), lab = labels(P);
         el.innerHTML = `<div class="mh"><h2>${ic('route')}Etappen<small class="pl-count">${l.length || ''}</small></h2>
-                <span class="pl-head-acts"><button type="button" class="pl-legs-tg${legsOn() ? ' on' : ''}" data-pl="legs-toggle" aria-pressed="${legsOn()}" title="Wege (Verkehrsmittel, km, Zeit) zwischen den Etappen ein- oder ausblenden">${ic('car')}</button>${edit ? `<button type="button" class="pl-ins-tg${insOn() ? ' on' : ''}" data-pl="ins-toggle" aria-pressed="${insOn()}" title="„+“ zwischen den Etappen ein- oder ausblenden">${ic('plus')}</button>` : ''}${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}</span></div>
+                <span class="pl-head-acts">${drag ? `<button type="button" class="pl-drag-tg${dragOn() ? ' on' : ''}" data-pl="drag-toggle" aria-pressed="${dragOn()}" title="Griffe zum Verschieben der Etappen ein- oder ausblenden">${ic('grip')}</button>` : ''}<button type="button" class="pl-legs-tg${legsOn() ? ' on' : ''}" data-pl="legs-toggle" aria-pressed="${legsOn()}" title="Wege (Verkehrsmittel, km, Zeit) zwischen den Etappen ein- oder ausblenden">${ic('car')}</button>${edit ? `<button type="button" class="pl-ins-tg${insOn() ? ' on' : ''}" data-pl="ins-toggle" aria-pressed="${insOn()}" title="„+“ zwischen den Etappen ein- oder ausblenden">${ic('plus')}</button>` : ''}${H.role === 'admin' ? `<button type="button" data-pl="people" title="Reisende und ihre Farben">${ic('users')}${persons().length ? `<span class="pl-people">${persons().map(x => `<i style="background:${esc(color(x.color, 'var(--p1)'))}"></i>`).join('')}</span>` : 'Reisende'}</button>` : ''}</span></div>
             ${!L.on && edit && nums.length && !(m.end && H.today && m.end < H.today) ? `<p class="note pl-hint">${ic('calendar')}Tipp: Mit − / + bei jedem Stopp die Nächte planen – Daten, Unterkünfte und Tagesplan richten sich danach.</p>` : ''}
             ${l.length ? `<ol class="pl-tl">
                 <li class="pl-tl-row">${H.role === 'admin' && edit ? `<button type="button" class="pl-tl-start" data-pl="trip-dates" title="Reisebeginn ändern"><span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen – antippen')}${ic('pencil')}</small></div></button>` : `<span class="pl-tl-ic home">${ic('home')}</span><div><b>Reise beginnt</b><small>${esc(dayLong(m.start) || 'Datum offen')}</small></div>`}${pill}</li>
@@ -1883,6 +1897,7 @@
             case 'people': return editPeople();
             case 'ins-toggle': return toggleIns();
             case 'legs-toggle': return toggleLegs();
+            case 'drag-toggle': return toggleDrag();
             case 'trip-dates': return editTripDates();
             case 'stop-edit': return editStop(b.dataset.k);
             case 'stop-focus': { if (dlg && dlg.open) dlg.close(); const p = places()[b.dataset.k], fk = p && p.same && places()[p.same] ? p.same : b.dataset.k; if (sideFocus(fk)) return; return H.focusPlace && H.focusPlace(fk); }
@@ -1921,6 +1936,7 @@
     document.addEventListener('keydown', e => {
         const g = e.target.closest && e.target.closest('.pl-handle');
         if (!g || !H || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+        if (g.dataset.drag === 'stops' && !dragOn()) return;
         e.preventDefault();
         const item = g.closest('[data-sort]'), items = sortItems(item), from = items.indexOf(item);
         const to = Math.max(0, Math.min(items.length - 1, from + (e.key === 'ArrowUp' ? -1 : 1)));
@@ -1929,6 +1945,7 @@
     document.addEventListener('pointerdown', e => {
         const g = e.target.closest('.pl-handle');
         if (!g || !H || e.button > 0 || !editable()) return;
+        if (g.dataset.drag === 'stops' && !dragOn()) return;
         const item = g.closest('[data-sort]');
         if (!item) return;
         e.preventDefault();
