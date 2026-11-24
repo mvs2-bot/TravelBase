@@ -289,11 +289,42 @@
         .seg button .ic { width: 16px; height: 16px; }
         .seg button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
         :root[data-theme="dark"] .seg button.on { background: #48484a; }
-        .stat-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
-        .stat-tile { background: var(--card); border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow); }
-        .stat-tile b { display: block; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; line-height: 1.2; }
-        .stat-tile span { font-size: 12px; font-weight: 500; color: var(--mute); }
         .tab-empty { text-align: center; padding: 28px 16px; }
+    }
+    /* Kennzahl-Kacheln: Profil am Handy und Seitenleiste am Desktop */
+    .stat-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+    .stat-tile { background: var(--card); border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow); }
+    .stat-tile b { display: block; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; line-height: 1.2; }
+    .stat-tile span { font-size: 12px; font-weight: 500; color: var(--mute); }
+
+    /* Desktop (ab 1100 px): breiter, Reisen links, Seitenleiste rechts (Kennzahlen, Neue Reise, Konto) */
+    .side-stats { display: none; }
+    @media (min-width: 1100px) {
+        body { padding: 0 32px 56px; }
+        .sticky-header { margin: 0 -32px 24px; padding-left: 32px; padding-right: 32px; }
+        .wrap, .sticky-header > .in { max-width: 1280px; }
+        #viewLoggedIn:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+        .li-side { position: sticky; top: calc(84px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 16px; }
+        .li-side > .box { margin: 0; }
+        .side-stats { display: block; }
+        #adminActions { display: none; }
+        .side-stats h2 { margin-bottom: 12px; }
+        .side-stats .stat-tile { background: var(--well); box-shadow: none; }
+        .side-stats .list-actions { margin: 14px 0 0; justify-content: stretch; }
+        .side-stats .list-actions .btn { flex: 1; justify-content: center; }
+        .account { flex-direction: column; align-items: stretch; }
+        .account-who { flex-wrap: wrap; }
+        .account-actions .btn-ghost { width: 100%; justify-content: center; }
+        .trips { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-bottom: 28px; }
+        .trip-section-title { font-size: 17px; margin-bottom: 12px; }
+        /* Nächste feste Reise als große Kachel über zwei Spalten */
+        #tripList .trip-section.upcoming .trip-card:first-child { grid-column: span 2; padding: 22px 24px; }
+        #tripList .trip-section.upcoming .trip-card:first-child .trip-flags { font-size: 34px; }
+        #tripList .trip-section.upcoming .trip-card:first-child .trip-title { font-size: 22px; }
+        #tripList .trip-section.upcoming .trip-card:first-child .trip-sub { font-size: 14.5px; }
+        /* Anmeldung: mittig und etwas abgesetzt statt über die ganze Breite */
+        .login-grid { max-width: 920px; margin: 32px auto 0; }
+        #viewRecovery .box { max-width: 520px; margin: 32px auto 0; }
     }
     @media (prefers-reduced-motion: reduce) { .load-view .spin { animation-duration: 1.6s; } }
     @media (prefers-reduced-transparency: reduce) { .sticky-header { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; } }
@@ -369,11 +400,13 @@
 
     <!-- Angemeldet -->
     <section id="viewLoggedIn" hidden>
-        <div id="cancelHint" class="banner danger" hidden></div>
-        <div class="list-actions" id="adminActions" hidden>
-            <button class="btn" type="button" id="newTripBtn"><svg class="ic"><use href="#i-plus"></use></svg>Neue Reise</button>
+        <div class="li-main">
+            <div id="cancelHint" class="banner danger" hidden></div>
+            <div class="list-actions" id="adminActions" hidden>
+                <button class="btn" type="button" id="newTripBtn"><svg class="ic"><use href="#i-plus"></use></svg>Neue Reise</button>
+            </div>
+            <div id="tripList"></div>
         </div>
-        <div id="tripList"></div>
         <!-- Neue Reise anlegen (nur TravelBase-Admins) -->
         <dialog id="newDlg" class="date-dlg wide">
             <form id="newForm" novalidate>
@@ -494,6 +527,15 @@
                 </div>
             </form>
         </dialog>
+        <!-- Seitenleiste: nur am Desktop neben der Liste, darunter sonst wie bisher das Konto -->
+        <aside class="li-side">
+        <div class="box side-stats">
+            <h2><svg class="ic"><use href="#i-globe"></use></svg>Unsere Reisen</h2>
+            <div class="stat-grid" id="deskStats"></div>
+            <div class="list-actions" id="deskNew" hidden>
+                <button class="btn" type="button" id="deskNewBtn"><svg class="ic"><use href="#i-plus"></use></svg>Neue Reise</button>
+            </div>
+        </div>
         <div class="box account-box">
             <div class="account">
                 <div class="account-who"><svg class="ic"><use href="#i-person"></use></svg><span>Angemeldet als <b id="userEmail"></b></span></div>
@@ -503,6 +545,7 @@
             </div>
             <div id="backupMsg" class="msg" hidden></div>
         </div>
+        </aside>
     </section>
 
     <!-- Profil (nur Handy, über „Profil“ in der Leiste) -->
@@ -619,7 +662,7 @@
         if (next && /^[a-z0-9-]+\/?$/i.test(next)) { location.replace(next.replace(/\/?$/, '/')); return; }
         let res;
         if (TB.appRole) APP_ADMIN = (await TB.appRole()) === 'admin';
-        $('#adminActions').hidden = !APP_ADMIN;
+        $('#adminActions').hidden = !APP_ADMIN; $('#deskNew').hidden = !APP_ADMIN;
         $('#tabNew').hidden = !APP_ADMIN; document.body.classList.toggle('can-new', APP_ADMIN);
         try { res = await TB.myTrips(); } catch (e) { $('#tripList').innerHTML = `<div class="box">${esc(TB.errorText(e))}</div>`; return; }
         show($('#offlineHint'), res.offline);
@@ -688,7 +731,7 @@
         d.querySelector('button').onclick = () => d.remove();
         $('#nMembers').appendChild(d);
     }
-    $('#tabNew').onclick = () => $('#newTripBtn').click();
+    $('#tabNew').onclick = $('#deskNewBtn').onclick = () => $('#newTripBtn').click();
     $('#newTripBtn').onclick = () => {
         $('#newForm').reset(); slugTouched = false;
         $('#nMembers').innerHTML = ''; $('#nFlagPrev').textContent = ''; $('#nErr').hidden = true; $('#nDates').hidden = false;
@@ -920,7 +963,7 @@
         const days = done.reduce((n, t) => n + (t.start_date ? dayNum(t.end_date || t.start_date) - dayNum(t.start_date) + 1 : 0), 0);
         const next = real.filter(t => t.start_date && dayNum(t.start_date) > dayNum(todayISO)).sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
         const tile = (v, l) => `<div class="stat-tile"><b>${v}</b><span>${l}</span></div>`;
-        $('#profStats').innerHTML = tile(done.length, 'Reisen gemacht') + tile(lands.size, 'Länder bereist') + tile(days, 'Tage unterwegs')
+        $('#profStats').innerHTML = $('#deskStats').innerHTML = tile(done.length, 'Reisen gemacht') + tile(lands.size, 'Länder bereist') + tile(days, 'Tage unterwegs')
             + tile(next ? dayNum(next.start_date) - dayNum(todayISO) : '–', next ? 'Tage bis ' + esc(next.title) : 'Nächste Reise offen');
     }
 
