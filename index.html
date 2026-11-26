@@ -365,6 +365,18 @@
         #tripList.as-list .trip-card, #tripList.as-list .trip-section.upcoming .trip-card:first-child { grid-template-columns: 64px minmax(0, 1fr) 280px; grid-template-areas: "flags title sub"; }
         #tripList.as-list .trip-facts { display: none; }
     }
+    /* Handy: vergangene und archivierte Reisen als kompakte Liste (Flaggen links, Titel + Zeitraum rechts), kein Umschalter nötig */
+    @media (max-width: 767.98px) {
+        #tripList .trip-section:is(.past, .archive) .trips { gap: 6px; }
+        #tripList .trip-section:is(.past, .archive) .trip-card { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "flags title" "flags sub";
+            align-items: center; column-gap: 10px; padding: 10px 44px 10px 12px; border-radius: var(--radius-s); }
+        #tripList .trip-section:is(.past, .archive) .trip-flags { grid-area: flags; font-size: 20px; margin: 0; padding: 0; gap: 2px; max-width: 70px; overflow: hidden; white-space: nowrap; }
+        #tripList .trip-section:is(.past, .archive) .trip-title { grid-area: title; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #tripList .trip-section:is(.past, .archive) .trip-sub { grid-area: sub; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #tripList .trip-section:is(.past, .archive) .trip-facts { display: none; }
+        #tripList .trip-section:is(.past, .archive) .trip-more { top: 50%; right: 6px; transform: translateY(-50%); }
+        #tripList .trip-section:is(.past, .archive) .trip-card::after { top: 50%; margin-top: -4px; }
+    }
     /* Wechsel-Animation: View Transitions (Kacheln gleiten an ihren neuen Platz), sonst kurzes Einblenden */
     ::view-transition-group(*) { animation-duration: .32s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
     #tripList.view-fade { animation: viewFade .22s ease-out; }
