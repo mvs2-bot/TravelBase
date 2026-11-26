@@ -349,13 +349,14 @@
         /* Liste: schmale Zeilen, Spalten Flaggen · Titel · Zeitraum/Status · Kennzahlen; Zustände (vergangen, vielleicht, archiviert) bleiben */
         #tripList.as-list .trips { display: flex; flex-direction: column; gap: 6px; }
         #tripList.as-list .trip-card, #tripList.as-list .trip-section.upcoming .trip-card:first-child {
-            display: grid; grid-template-columns: 72px minmax(0, 1fr) 270px minmax(0, 1fr); grid-template-areas: "flags title sub facts";
+            display: grid; grid-template-columns: 72px minmax(0, 1fr) 268px 214px; grid-template-areas: "flags title sub facts";
             align-items: center; column-gap: 14px; grid-column: auto; padding: 10px 52px 10px 16px; border-radius: var(--radius-s); min-height: 54px; }
         #tripList.as-list .trip-card:hover { transform: none; }
         #tripList.as-list .trip-flags, #tripList.as-list .trip-section.upcoming .trip-card:first-child .trip-flags { grid-area: flags; font-size: 20px; margin: 0; padding: 0; gap: 3px; overflow: hidden; white-space: nowrap; }
-        #tripList.as-list .trip-title, #tripList.as-list .trip-section.upcoming .trip-card:first-child .trip-title { grid-area: title; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #tripList.as-list .trip-title, #tripList.as-list .trip-section.upcoming .trip-card:first-child .trip-title { grid-area: title; font-size: 15px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
         #tripList.as-list .trip-sub, #tripList.as-list .trip-section.upcoming .trip-card:first-child .trip-sub { grid-area: sub; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        #tripList.as-list .trip-facts { grid-area: facts; margin: 0; padding: 0; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+        #tripList.as-list .trip-facts { grid-area: facts; margin: 0; padding: 0; line-height: 1.35; }
+        #tripList.as-list .trip-facts > span { white-space: nowrap; }
         #tripList.as-list .trip-more { top: 50%; transform: translateY(-50%); width: 32px; height: 32px; }
         #tripList.as-list .trip-card::after { top: 50%; margin-top: -4px; }
     }
