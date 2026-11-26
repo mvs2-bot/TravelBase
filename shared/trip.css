@@ -709,7 +709,11 @@ body:has(.pl-dragging) { user-select: none; -webkit-user-select: none; }
 .pl-ring small { display: inline; font-size: 11px; font-weight: 500; color: var(--mute); }
 .pl-hint { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 10px; }
 .pl-hint .ic, .pl-legs-on .ic { color: var(--p1); flex: 0 0 auto; }
-.pl-legs-on { display: inline-flex; align-items: center; gap: 6px; }
+.pl-legs-on { display: inline-flex; align-items: flex-start; gap: 6px; }
+/* Unterkunft-Formular: alles außer „Etappe“ ausgegraut, bis eine Etappe gewählt ist */
+.pl-acc-rest { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: inherit; transition: opacity .15s; }
+.pl-acc-rest > * { flex-shrink: 0; }
+.pl-acc-rest:disabled { opacity: .4; }
 .pl-ph td, .pl-card.pl-ph { background: color-mix(in srgb, var(--warn-soft) 45%, transparent); }
 .pl-ph-add { min-height: 32px; margin-left: 8px; }
 .pl-card .pl-ph-add { margin: 8px 0 0; }

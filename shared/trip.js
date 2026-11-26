@@ -188,7 +188,7 @@
         // To-Dos als eigener Bereich; eine ältere Seite aus dem Cache ohne #todos zeigt sie weiter unter „Infos & mehr“
         const todoPane = DATA.todos && !!$('#todos');
         if (todoPane) s.push({ id: 'todos', icon: ic('checkCircle'), label: 'To-Dos' });
-        if ((DATA.persons || []).some(p => p.start) || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links || (ROLE === 'admin' && DATA.plans)) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
+        if ((DATA.persons || []).some(p => p.start) || (legsOn && (DATA.persons || []).length) || DATA.workdays || (DATA.todos && !todoPane) || DATA.infos || DATA.links || (ROLE === 'admin' && DATA.plans)) s.push({ id: 'misc', icon: ic('info'), label: 'Infos & mehr' });
         if ((DATA.flights || []).length || (canEdit() && !past && DATA.plans)) s.push({ id: 'flights', icon: ic('plane'), label: (DATA.flights || []).some(f => f.mode && f.mode !== 'flight') || canEdit() ? 'Flüge & Transporte' : 'Flüge' });
         if (DATA.climate) s.push({ id: 'climate', icon: ic('cloudSun'), label: 'Klima & Wetter' });
         return s;
@@ -552,11 +552,13 @@
 
     /* ---------- Infos & mehr ---------- */
     function renderMisc() {
-        /* Reisezeiträume nur für Personen mit eigenem Zeitraum (Reisende aus der Live-Planung haben keinen) */
-        const ps = (DATA.persons || []).filter(p => p.start && homeOf(p));
+        /* Reisezeiträume: aus den Etappen wie der Anwesenheitskalender (TBPlanner.personRanges), sobald diese Nächte haben;
+           sonst (alte Reisen) aus persons.start/home */
+        const PLr = window.TBPlanner && TBPlanner.ready && TBPlanner.personRanges && TBPlanner.legs(RAW.places || {}).on ? TBPlanner.personRanges() : null;
+        const ps = (DATA.persons || []).map(p => { const r = PLr ? PLr.get(p.key) : p.start && homeOf(p) ? { start: p.start, end: homeOf(p) } : null; return r && r.start && r.end ? { p, r } : null; }).filter(Boolean);
         $('#statsBox').hidden = !ps.length;
         if (ps.length) {
-            $('#stats').innerHTML = ps.map(p => `<div class="stat"><span style="color:${p.color}">●</span> ${esc(p.name)}<b>${dayNum(homeOf(p)) - dayNum(p.start) + 1} Tage</b>${fmtDM(p.start)} – ${fmtDM(homeOf(p))}</div>`).join('');
+            $('#stats').innerHTML = ps.map(({ p, r }) => `<div class="stat"><span style="color:${p.color}">●</span> ${esc(p.name)}<b>${dayNum(r.end) - dayNum(r.start) + 1} Tage</b>${fmtDM(r.start)} – ${fmtDM(r.end)}</div>`).join('');
         }
         const w = DATA.workdays;
         if (w && TODAY < w.until) {
