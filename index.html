@@ -334,6 +334,41 @@
         .login-grid { max-width: 920px; margin: 32px auto 0; }
         #viewRecovery .box { max-width: 520px; margin: 32px auto 0; }
     }
+    /* Ansicht Kacheln ↔ Liste (nur ab 768 px; Umschalter rechts in der Zeile der ersten Überschrift) */
+    .li-tools { display: none; }
+    @media (min-width: 768px) {
+        .li-tools { display: flex; justify-content: flex-end; align-items: center; gap: 8px; height: 0; position: relative; z-index: 2; transform: translateY(12px); }
+        .li-tools .list-actions { margin: 0; }
+        .view-seg { display: inline-flex; gap: 2px; background: var(--well); border-radius: 10px; padding: 2px; }
+        :root[data-theme="dark"] .view-seg { background: var(--card); }
+        .view-seg button { border: 0; background: none; border-radius: 8px; width: 34px; height: 28px; display: grid; place-items: center; padding: 0; color: var(--mute); transition: background .15s, color .15s; }
+        .view-seg button .ic { width: 16px; height: 16px; }
+        .view-seg button:hover { color: var(--ink); }
+        .view-seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+        :root[data-theme="dark"] .view-seg button[aria-pressed="true"] { background: #48484a; }
+        /* Liste: schmale Zeilen, Spalten Flaggen · Titel · Zeitraum/Status · Kennzahlen; Zustände (vergangen, vielleicht, archiviert) bleiben */
+        #tripList.as-list .trips { display: flex; flex-direction: column; gap: 6px; }
+        #tripList.as-list .trip-card, #tripList.as-list .trip-section.upcoming .trip-card:first-child {
+            display: grid; grid-template-columns: 72px minmax(0, 1fr) 270px minmax(0, 1fr); grid-template-areas: "flags title sub facts";
+            align-items: center; column-gap: 14px; grid-column: auto; padding: 10px 52px 10px 16px; border-radius: var(--radius-s); min-height: 54px; }
+        #tripList.as-list .trip-card:hover { transform: none; }
+        #tripList.as-list .trip-flags, #tripList.as-list .trip-section.upcoming .trip-card:first-child .trip-flags { grid-area: flags; font-size: 20px; margin: 0; padding: 0; gap: 3px; overflow: hidden; white-space: nowrap; }
+        #tripList.as-list .trip-title, #tripList.as-list .trip-section.upcoming .trip-card:first-child .trip-title { grid-area: title; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #tripList.as-list .trip-sub, #tripList.as-list .trip-section.upcoming .trip-card:first-child .trip-sub { grid-area: sub; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #tripList.as-list .trip-facts { grid-area: facts; margin: 0; padding: 0; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+        #tripList.as-list .trip-more { top: 50%; transform: translateY(-50%); width: 32px; height: 32px; }
+        #tripList.as-list .trip-card::after { top: 50%; margin-top: -4px; }
+    }
+    @media (min-width: 768px) and (max-width: 1099.98px) {
+        /* hier steht „Neue Reise“ mit in der Zeile: eigene Zeile über den Reisen statt neben der Überschrift */
+        .li-tools { height: auto; transform: none; margin: -4px 0 14px; }
+        #tripList.as-list .trip-card, #tripList.as-list .trip-section.upcoming .trip-card:first-child { grid-template-columns: 64px minmax(0, 1fr) 280px; grid-template-areas: "flags title sub"; }
+        #tripList.as-list .trip-facts { display: none; }
+    }
+    /* Wechsel-Animation: View Transitions (Kacheln gleiten an ihren neuen Platz), sonst kurzes Einblenden */
+    ::view-transition-group(*) { animation-duration: .32s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+    #tripList.view-fade { animation: viewFade .22s ease-out; }
+    @keyframes viewFade { from { opacity: 0; transform: translateY(4px); } }
     @media (prefers-reduced-motion: reduce) { .load-view .spin { animation-duration: 1.6s; } }
     @media (prefers-reduced-transparency: reduce) { .sticky-header { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 </style>
@@ -411,8 +446,15 @@
         <div class="li-main">
             <div id="cancelHint" class="banner danger" hidden></div>
             <div id="statusNote" class="msg" role="status" hidden></div>
-            <div class="list-actions" id="adminActions" hidden>
-                <button class="btn" type="button" id="newTripBtn"><svg class="ic"><use href="#i-plus"></use></svg>Neue Reise</button>
+            <div class="li-tools">
+                <!-- Ansicht Kacheln/Liste (ab 768 px), gemerkt in localStorage['tb_home_view'] -->
+                <div class="view-seg" id="viewSeg" role="group" aria-label="Ansicht">
+                    <button type="button" data-view="grid" aria-label="Kacheln" title="Kacheln"><svg class="ic"><use href="#i-grid"></use></svg></button>
+                    <button type="button" data-view="list" aria-label="Liste" title="Liste"><svg class="ic"><use href="#i-list"></use></svg></button>
+                </div>
+                <div class="list-actions" id="adminActions" hidden>
+                    <button class="btn" type="button" id="newTripBtn"><svg class="ic"><use href="#i-plus"></use></svg>Neue Reise</button>
+                </div>
             </div>
             <div id="tripList"></div>
         </div>
@@ -702,6 +744,34 @@
         const arch = $('#tripList .trip-section.archive');
         if (arch) arch.ontoggle = () => { ARCH_OPEN = arch.open; };
         if (list.length && TB.tripSummaries) renderSummaries(active);
+    }
+
+    /* ---------- Ansicht Kacheln ↔ Liste (Desktop), je Gerät gemerkt ---------- */
+    function setView(v, animate) {
+        const list = $('#tripList'), go = () => {
+            list.classList.toggle('as-list', v === 'list');
+            document.querySelectorAll('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+        };
+        if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return go();
+        if (document.startViewTransition) {
+            /* jede sichtbare Kachel bekommt kurz einen eigenen Namen, damit sie an ihre neue Stelle gleitet */
+            const cards = [...list.querySelectorAll('.trip-card')];
+            cards.forEach((c, i) => { c.style.viewTransitionName = 'tc' + i; });
+            document.startViewTransition(go).finished.finally(() => cards.forEach(c => { c.style.viewTransitionName = ''; }));
+        } else {
+            go(); list.classList.remove('view-fade'); void list.offsetWidth; list.classList.add('view-fade');
+        }
+    }
+    {
+        let v = 'grid';
+        try { v = localStorage.getItem('tb_home_view') === 'list' ? 'list' : 'grid'; } catch (e) {}
+        setView(v, false);
+        $('#viewSeg').onclick = e => {
+            const b = e.target.closest('[data-view]');
+            if (!b || b.getAttribute('aria-pressed') === 'true') return;
+            try { localStorage.setItem('tb_home_view', b.dataset.view); } catch (e) {}
+            setView(b.dataset.view, true);
+        };
     }
 
     /* ---------- Neue Reise, Varianten, Kennzahlen (Live-Planung) ---------- */
