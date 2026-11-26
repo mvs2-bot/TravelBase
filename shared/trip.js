@@ -22,7 +22,13 @@
     const col = (c, f = '#15803d') => window.TB && TB.safeColor ? TB.safeColor(c, f) : f;
     /* "Heute" – zum Testen per URL überschreibbar: ?heute=2027-04-10 */
     const TODAY = (() => { const q = new URLSearchParams(location.search).get('heute'); return /^\d{4}-\d{2}-\d{2}$/.test(q || '') ? q : localISO(new Date()); })();
-    const TRIP_SLUG = (() => { const p = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean); return p[p.length - 1]; })();
+    /* Kennung: generische Seite reise/?r=<slug>, sonst (alte Ordner) der letzte Pfadteil */
+    const TRIP_SLUG = (() => {
+        const q = new URLSearchParams(location.search).get('r');
+        if (q) return q.trim().toLowerCase();
+        const p = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean); return p[p.length - 1];
+    })();
+    if (TRIP_SLUG === 'reise') location.replace('../');   /* reise/ ohne ?r= → Übersicht */
 
     let DATA = null, RAW = null, RES = null, ROLE = null, TRIP_ID = null, TRIP_FLAGS = [], TRIP_MAYBE = false, map = null;
     let markers = {};

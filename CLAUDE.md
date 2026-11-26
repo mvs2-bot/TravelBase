@@ -21,20 +21,20 @@ Fehlermeldungen sind **deutsch**.
 index.html            Login + Übersicht „Alle Reisen“ (ohne Login nur Flaggen); eigenes <style> mit denselben Tokens;
                       ab 1100 px Seitenleiste `.li-side` (Kennzahlen `#deskStats`, „Neue Reise“, Konto), nächste Reise als große Kachel
 verwaltung.html       nur Weiterleitung auf /admin.html (Dashboard-Root-Repo)
-<slug>/index.html     eine Reise pro Ordner; Ordnername = travelbase_trips.slug (TRIP_SLUG wird aus dem Pfad gelesen)
-shared/trip-template.html  Vorlage für alle Reisen außer Thailand
+reise/index.html      **die** Reiseseite (Vorlage) für alle Reisen außer Thailand: `reise/?r=<slug>` (TRIP_SLUG aus `?r=`, sonst letzter Pfadteil)
+<slug>/index.html     alte Ordner: identische Weiterleitung auf `../reise/?r=<Ordnername>` (Hash/Query bleiben); keine neuen anlegen
+404.html              GitHub Pages: `/TravelBase/<slug>/` ohne Ordner → `reise/?r=<slug>` (Dashboard-Links `/TravelBase/<slug>/` gehen so immer)
 thailand-2027/        Sonderfall: eigene, große Seite mit Inline-JS (eigene To-Do-, Packlisten- und Aktivitäten-Logik), nutzt aber trip.css und die shared-Module
 sw.js, manifest.json  ein Service Worker / eine PWA für Übersicht und alle Reisen (Scope ./)
 icons/                PWA-Icons
 ```
 
-Neue Reise: in der Übersicht (`index.html`, nur TravelBase-App-Admins) über **„Neue Reise“** bzw. **„Variante klonen“**
-(RPCs `travelbase_create_trip` / `travelbase_duplicate_trip`, Mitreisende per `travelbase_invite_member`). Danach Ordner `<slug>/` mit einer
-**unveränderten Kopie** von `shared/trip-template.html` als `index.html` anlegen (der Dialog zeigt den Befehl zum Kopieren).
-Reise löschen (z. B. Testreisen): „Mehr“ auf der Kachel → **„Reise löschen“** (nur TravelBase-App-Admins, Kennung zur Bestätigung eintippen,
-RPC `travelbase_delete_trip`; Mitglieder, Abschnitte, To-Dos, Packliste, Aktivitäten löscht die DB mit, Varianten bleiben erhalten, nur ohne Verweis).
-Danach den Ordner `<slug>/` aus dem Repo entfernen (der Dialog zeigt den Befehl).
-Änderungen an der Vorlage in **alle** Vorlagen-Ordner kopieren (alle Ordner außer `thailand-2027/` sind identische Kopien).
+Neue Reise: in der Übersicht (nur TravelBase-App-Admins) **„Neue Reise“** bzw. **„Variante klonen“** (RPCs `travelbase_create_trip` /
+`travelbase_duplicate_trip`, Mitreisende per `travelbase_invite_member`) – sofort erreichbar, **kein Repo-Schritt**. Links immer über `TB.tripUrl(slug, hash)`
+(Reisen mit eigener Seite in `OWN_PAGE` in `travelbase.js`). Kennungen `reise`/`404` sind reserviert (auch in `travelbase_slug_ok`).
+**Status** („Mehr“ auf der Kachel, nur TravelBase-App-Admins; gleich unter Admin-Einstellungen → TravelBase): Vielleicht ↔ Fest, Archivieren ↔ Zurückholen
+(`TB.setTripStatus` → RPC `travelbase_admin_set_trip_status`, Spalte `archived`). Archivierte Reisen: eingeklappter Bereich „Archiv“ unten (Handy: Tab „Vergangene“),
+zählen nicht in Statistik, Flaggen, Varianten-Vergleich und Dashboard-Kennzahl. Löschen: „Reise löschen“ (Kennung eintippen, RPC `travelbase_delete_trip`).
 Import-Skripte mit Reisedaten gehören **nicht** ins Repo.
 
 ## Module unter `shared/`
