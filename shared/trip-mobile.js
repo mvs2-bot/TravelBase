@@ -14,7 +14,7 @@
     const mq = matchMedia('(max-width: 767.98px)');
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const ic = n => window.tbIcon ? tbIcon(n) : '';
-    const KEY = 'travelbase-trip-view:' + location.pathname;
+    const KEY = 'travelbase-trip-view:' + location.pathname + ((r => r ? '?r=' + r : '')(new URLSearchParams(location.search).get('r')));
     let data = {}, home = null, routeView = null, bar = null, sideBuild = null;
     const ALL_TABS = [['home', 'Start', 'home'], ['stops', 'Etappen', 'route'], ['mapview', 'Karte', 'map'], ['route', 'Route', 'pin'], ['misc', 'Infos', 'info']];
     const MAIN_HINT = 'Hier planst du die Reise';

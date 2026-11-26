@@ -96,6 +96,16 @@
     .trip-section-title .ic { color: var(--p1); width: 18px; height: 18px; }
     .trip-section-title .count { font-size: 12px; font-weight: 500; color: var(--mute); background: var(--card); border-radius: 999px; padding: 1px 8px; box-shadow: var(--shadow); }
     :root[data-theme="dark"] .trip-section-title .count { background: var(--well); }
+    /* Archiv: eingeklappt ganz unten, Karten gedämpft */
+    #tripList .trip-section.archive { margin-top: 18px; }
+    #tripList .trip-section.archive > summary { cursor: pointer; list-style: none; }
+    #tripList .trip-section.archive > summary::-webkit-details-marker { display: none; }
+    #tripList .trip-section.archive > summary::after { content: ''; width: 7px; height: 7px; border-right: 2px solid var(--mute); border-bottom: 2px solid var(--mute); transform: rotate(-45deg); transition: transform .15s; margin-left: 2px; order: 4; }
+    #tripList .trip-section.archive[open] > summary::after { transform: rotate(45deg); }
+    #tripList .trip-section.archive > summary .ic { color: var(--mute); }
+    #tripList .trip-section.archive .sec-note { display: inline; }
+    .trip-card.archived { opacity: .62; }
+    .trip-card.archived:hover { opacity: 1; }
     .trip-section-title .sec-note { display: none; font-size: 12px; font-weight: 400; color: var(--mute); order: 3; }
     /* Desktop: „Vielleicht“-Reisen als eigener Abschnitt unter den festen Reisen (gestrichelte Kacheln) */
     @media (min-width: 768px) {
@@ -269,7 +279,7 @@
         /* Je Feld nur der passende Abschnitt; Überschrift und Zähler bleiben */
         /* „Vielleicht“-Reisen (Varianten, Ideen) haben am Handy ein eigenes Feld; am Desktop einen eigenen Abschnitt */
         #tripList .trip-section { display: none; }
-        body[data-tab="upcoming"] #tripList .trip-section.upcoming, body[data-tab="maybe"] #tripList .trip-section.maybe, body[data-tab="past"] #tripList .trip-section.past { display: block; }
+        body[data-tab="upcoming"] #tripList .trip-section.upcoming, body[data-tab="maybe"] #tripList .trip-section.maybe, body[data-tab="past"] #tripList .trip-section.past, body[data-tab="past"] #tripList .trip-section.archive { display: block; }
         body[data-tab="profile"] #viewLoggedIn { display: none; }
         body[data-tab="upcoming"] .tab-empty.upcoming, body[data-tab="maybe"] .tab-empty.maybe, body[data-tab="past"] .tab-empty.past { display: block; }
         #viewLoggedIn .box.account-box { display: none; }
@@ -400,6 +410,7 @@
     <section id="viewLoggedIn" hidden>
         <div class="li-main">
             <div id="cancelHint" class="banner danger" hidden></div>
+            <div id="statusNote" class="msg" role="status" hidden></div>
             <div class="list-actions" id="adminActions" hidden>
                 <button class="btn" type="button" id="newTripBtn"><svg class="ic"><use href="#i-plus"></use></svg>Neue Reise</button>
             </div>
@@ -451,24 +462,17 @@
                 </div>
             </form>
         </dialog>
-        <!-- Ergebnis: Ordner anlegen -->
+        <!-- Ergebnis: Reise angelegt -->
         <dialog id="doneDlg" class="date-dlg wide">
             <div style="display:flex;flex-direction:column;gap:12px">
                 <div>
                     <h2 id="dTitle"></h2>
-                    <p class="note" style="margin:0">Die Daten liegen in Supabase. Damit die Seite erreichbar ist, braucht das Repo einen Ordner mit einer unveränderten Kopie der Vorlage:</p>
+                    <p class="note" style="margin:0">Die Reise ist sofort erreichbar. Etappen, Mitreisende und alles Weitere planst du direkt in der Reise.</p>
                 </div>
-                <div class="cmd"><code id="dCmd"></code><button class="btn-ghost" type="button" id="dCopy"><svg class="ic"><use href="#i-copy"></use></svg>Kopieren</button></div>
-                <ol class="steps">
-                    <li>Im Repo <b>TravelBase</b> den Befehl ausführen (oder auf GitHub: <i>Add file → Create new file</i> mit dem Pfad <code id="dPath"></code> und dem Inhalt von <code>shared/trip-template.html</code>).</li>
-                    <li>Committen und pushen – GitHub Pages braucht danach etwa eine Minute.</li>
-                </ol>
                 <div class="done-list" id="dMembers"></div>
-                <p class="note" id="dState" style="margin:0"></p>
                 <div class="row">
-                    <button class="btn-ghost" type="button" id="dCheck"><svg class="ic"><use href="#i-refresh"></use></svg>Erneut prüfen</button>
                     <button class="btn-ghost" type="button" data-close>Schließen</button>
-                    <a class="btn" id="dOpen" href="#" hidden style="text-decoration:none;display:inline-flex;align-items:center">Reise öffnen</a>
+                    <a class="btn" id="dOpen" href="#" style="text-decoration:none;display:inline-flex;align-items:center">Reise öffnen</a>
                 </div>
             </div>
         </dialog>
@@ -486,17 +490,6 @@
                     <button class="btn btn-danger" type="submit" id="xSave" disabled>Endgültig löschen</button>
                 </div>
             </form>
-        </dialog>
-        <!-- Nach dem Löschen: Ordner aus dem Repo entfernen -->
-        <dialog id="delDoneDlg" class="date-dlg wide">
-            <div style="display:flex;flex-direction:column;gap:12px">
-                <div>
-                    <h2 id="yTitle"></h2>
-                    <p class="note" style="margin:0">Die Daten sind aus Supabase entfernt. Falls es im Repo <b>TravelBase</b> schon einen Ordner für die Reise gibt, ihn so löschen:</p>
-                </div>
-                <div class="cmd"><code id="yCmd"></code><button class="btn-ghost" type="button" id="yCopy"><svg class="ic"><use href="#i-copy"></use></svg>Kopieren</button></div>
-                <div class="row"><button class="btn" type="button" data-close>Fertig</button></div>
-            </div>
         </dialog>
         <!-- „Mehr“ zu einer Reise: Rolle, Kennzahlen, Mitreisende, Aktionen -->
         <dialog id="tripDlg" class="date-dlg wide">
@@ -639,6 +632,8 @@
         if (now <= e) return { text: `Unterwegs · Tag ${now - s + 1} von ${e - s + 1}`, cls: 'now', past: false };
         return { text: t.tentative ? 'Nicht gereist' : 'Abgeschlossen', cls: '', past: true };
     }
+    /* Adresse einer Reise (generische Seite reise/?r=<slug>); Fallback für ältere travelbase.js aus dem Cache */
+    const tripUrl = (slug, hash = '') => TB.tripUrl ? TB.tripUrl(slug, hash) : encodeURIComponent(slug) + '/' + hash;
     const ROLE_LABEL = { admin: tbIcon('crown') + 'Admin', member: tbIcon('suitcase') + 'Mitreisend', guest: tbIcon('eye') + 'Gast' };
 
     /* Ansicht: nicht angemeldet */
@@ -657,7 +652,7 @@
         /* Schutz: falls der Browser noch eine ältere travelbase.js ohne displayName hat */
         if (TB.displayName) TB.displayName(session).then(n => { $('#userEmail').textContent = n; }).catch(() => {});
         const next = new URLSearchParams(location.search).get('next');
-        if (next && /^[a-z0-9-]+\/?$/i.test(next)) { location.replace(next.replace(/\/?$/, '/')); return; }
+        if (next && /^[a-z0-9-]+\/?$/i.test(next)) { location.replace(tripUrl(next.replace(/\/$/, '').toLowerCase())); return; }
         let res;
         if (TB.appRole) APP_ADMIN = (await TB.appRole()) === 'admin';
         $('#adminActions').hidden = !APP_ADMIN; $('#deskNew').hidden = !APP_ADMIN;
@@ -669,12 +664,13 @@
         const list = res.list.map(t => ({ ...t, st: tripStatus(t) }))
             .sort((a, b) => (a.st.past - b.st.past) || (a.st.past ? (b.start_date || '').localeCompare(a.start_date || '') : (a.start_date || '9').localeCompare(b.start_date || '9')) || a.sort_order - b.sort_order);
         const card = t => {
-            const more = t.role === 'admin' || (APP_ADMIN && !t.st.past);
+            const more = t.role === 'admin' || APP_ADMIN;
             const dates = t.start_date ? fmtDate(t.start_date) + (t.end_date ? ' – ' + fmtDate(t.end_date) : '') : 'Zeitraum offen';
-            const st = t.tentative && !t.st.past ? '<span class="trip-st maybe">Vielleicht</span>'
+            const st = t.archived ? '<span class="trip-st past">Archiviert</span>'
+                : t.tentative && !t.st.past ? '<span class="trip-st maybe">Vielleicht</span>'
                 : t.start_date ? `<span class="trip-st ${t.st.past ? 'past' : t.st.cls}">${esc(t.st.text)}</span>` : '';
             return `
-            <a class="trip-card${t.st.past ? ' past' : ''}${t.tentative ? ' tentative' : ''}${more ? ' has-more' : ''}" href="${encodeURIComponent(t.slug)}/">
+            <a class="trip-card${t.st.past ? ' past' : ''}${t.tentative ? ' tentative' : ''}${t.archived ? ' archived' : ''}${more ? ' has-more' : ''}" href="${tripUrl(t.slug)}">
                 <div class="trip-flags">${(t.flags || []).map(esc).join('')}</div>
                 ${more ? `<button type="button" class="trip-more" data-more="${esc(t.id)}" aria-label="Mehr zu ${esc(t.title)}" title="Mehr">${tbIcon('more')}</button>` : ''}
                 <div class="trip-title">${esc(t.title)}</div>
@@ -687,29 +683,35 @@
                 <h2 class="trip-section-title">${title}<span class="count">${items.length}</span></h2>
                 <div class="trips">${items.map(card).join('')}</div>
             </section>` : '';
-        const upcoming = list.filter(t => !t.st.past), past = list.filter(t => t.st.past);
+        /* Archiv: eigener, eingeklappter Bereich ganz unten; zählt sonst nirgends mit */
+        const archived = list.filter(t => t.archived), active = list.filter(t => !t.archived);
+        const upcoming = active.filter(t => !t.st.past), past = active.filter(t => t.st.past);
         const sure = upcoming.filter(t => !t.tentative), maybe = upcoming.filter(t => t.tentative);
         const empty = (cls, text) => `<div class="box tab-empty ${cls}"><p class="note" style="margin:0">${text}</p></div>`;
         TRIPS = list;
-        renderStats(list);
+        renderStats(active);
         if (list.some(t => t.role === 'admin') && TB.tripMembers) renderPeople();
         $('#tripList').innerHTML = list.length ? section(tbIcon('compass') + 'Zukünftige Reisen', sure, 'upcoming')
             + section(tbIcon('bulb') + 'Vielleicht<small class="sec-note">Ideen und Varianten ohne feste Zusage</small>', maybe, 'maybe')
             + section(tbIcon('archive') + 'Vergangene Reisen', past, 'past')
+            + (archived.length ? `<details class="trip-section archive"${ARCH_OPEN ? ' open' : ''}><summary class="trip-section-title">${tbIcon('box')}Archiv<span class="count">${archived.length}</span><small class="sec-note">Testreisen und alte Varianten</small></summary>
+                <div class="trips">${archived.map(card).join('')}</div></details>` : '')
             + (sure.length ? '' : empty('upcoming', 'Gerade ist keine Reise fest geplant.')) + (maybe.length ? '' : empty('maybe', 'Keine Vielleicht-Reisen.'))
             + (past.length ? '' : empty('past', 'Noch keine abgeschlossenen Reisen.'))
             : '<div class="box"><h2>Noch keine Reisen</h2><p class="note" style="margin:0">Du bist noch keiner Reise zugeordnet. Bitte den Admin, dich freizuschalten.</p></div>';
-        if (list.length && TB.tripSummaries) renderSummaries(list);
+        const arch = $('#tripList .trip-section.archive');
+        if (arch) arch.ontoggle = () => { ARCH_OPEN = arch.open; };
+        if (list.length && TB.tripSummaries) renderSummaries(active);
     }
 
     /* ---------- Neue Reise, Varianten, Kennzahlen (Live-Planung) ---------- */
-    let APP_ADMIN = false, TRIPS = [];
+    let APP_ADMIN = false, TRIPS = [], ARCH_OPEN = false;
     const fmtDM = iso => iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : '';
     document.querySelectorAll('dialog [data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
     /* Kennung aus dem Titel: „Japan Rundreise 2028“ → japan-rundreise-2028 */
     const slugify = t => String(t || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
         .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
-    const slugOk = s => /^[a-z0-9]([a-z0-9-]{0,58}[a-z0-9])?$/.test(s) && !['shared', 'icons', 'admin', 'konto', 'verwaltung', 'index', 'sw', 'manifest'].includes(s);
+    const slugOk = s => /^[a-z0-9]([a-z0-9-]{0,58}[a-z0-9])?$/.test(s) && !['shared', 'icons', 'admin', 'konto', 'verwaltung', 'index', 'sw', 'manifest', 'reise', '404'].includes(s);
     /* Länder: „JP, KR“ oder eingefügte Flaggen → Flaggen-Emojis */
     function parseFlags(v) {
         const out = [];
@@ -802,18 +804,38 @@
             + (r && r.cancel_warn ? `<span class="chip warn">${tbIcon('alert')}Storno-Frist ${fmtDM(r.next_cancel)}</span>` : '');
         $('#tPeopleBox').hidden = !people.length;
         $('#tPeople').innerHTML = people.map(p => `<li><span>${tbIcon(PEOPLE_ICON[p.role] || 'person')}${esc(p.name)}<small>${esc(PEOPLE_LABEL[p.role] || p.role)}</small></span></li>`).join('');
-        const acts = [`<li><a href="${encodeURIComponent(t.slug)}/">${tbIcon('chevronRight')}Reise öffnen</a></li>`];
+        const acts = [`<li><a href="${tripUrl(t.slug)}">${tbIcon('chevronRight')}Reise öffnen</a></li>`];
         if ((t.tentative || t.date_flexible) && t.role === 'admin' && !t.st.past) acts.push(`<li><button type="button" data-a="date">${tbIcon('calendar')}${t.start_date ? 'Startdatum ändern' : 'Startdatum wählen'}</button></li>`);
-        if (APP_ADMIN && !t.st.past) acts.push(`<li><button type="button" data-a="clone">${tbIcon('copy')}Variante klonen</button></li>`);
+        if (APP_ADMIN && !t.st.past && !t.archived) acts.push(`<li><button type="button" data-a="clone">${tbIcon('copy')}Variante klonen</button></li>`);
+        /* Status (nur TravelBase-Admins, wie unter Admin-Einstellungen → TravelBase) */
+        if (APP_ADMIN && TB.setTripStatus) {
+            if (!t.archived) acts.push(`<li><button type="button" data-a="maybe">${tbIcon(t.tentative ? 'check' : 'bulb')}${t.tentative ? 'Als feste Reise markieren' : 'Als „Vielleicht“ markieren'}</button></li>`);
+            acts.push(`<li><button type="button" data-a="archive">${tbIcon('box')}${t.archived ? 'Aus dem Archiv holen' : 'Archivieren'}</button></li>`);
+        }
         if (APP_ADMIN && TB.deleteTrip) acts.push(`<li><button type="button" class="danger" data-a="delete">${tbIcon('trash')}Reise löschen</button></li>`);
         $('#tActs').innerHTML = acts.join('');
         $('#tActs').onclick = e => {
             const a = e.target.closest('[data-a]');
             if (!a) return;
             $('#tripDlg').close();
-            if (a.dataset.a === 'date') openDate(t); else if (a.dataset.a === 'delete') openDelete(t); else openClone(t);
+            if (a.dataset.a === 'date') openDate(t); else if (a.dataset.a === 'delete') openDelete(t);
+            else if (a.dataset.a === 'maybe') setStatus(t, { tentative: !t.tentative }, t.tentative ? 'ist jetzt fest' : 'ist jetzt „Vielleicht“');
+            else if (a.dataset.a === 'archive') setStatus(t, { archived: !t.archived }, t.archived ? 'ist wieder aktiv' : 'ist im Archiv');
+            else openClone(t);
         };
         $('#tripDlg').showModal();
+    }
+    /* Status ändern: Ergebnis kurz oben einblenden, Liste neu laden */
+    async function setStatus(t, o, done) {
+        if (!navigator.onLine) return note('Offline – bitte mit Internet erneut versuchen.', false);
+        try { await TB.setTripStatus(t.id, o); note(`„${t.title}“ ${done}.`, true); await route(); }
+        catch (e) { note(TB.errorText(e), false); }
+    }
+    let noteTimer = 0;
+    function note(text, ok) {
+        const el = $('#statusNote');
+        msg(el, text, ok);
+        clearTimeout(noteTimer); noteTimer = setTimeout(() => { el.hidden = true; }, 4000);
     }
     $('#cloneForm').onsubmit = async e => {
         e.preventDefault();
@@ -849,34 +871,17 @@
         try {
             const r = await TB.deleteTrip(delTrip.id, $('#xConfirm').value.trim());
             $('#delDlg').close();
-            $('#yTitle').textContent = `„${r.title || delTrip.title}“ ist gelöscht`;
-            $('#yCmd').textContent = `git rm -r ${r.slug} && git commit -m "Reise ${r.slug} gelöscht" && git push`;
-            $('#delDoneDlg').showModal();
+            note(`„${r.title || delTrip.title}“ ist gelöscht.`, true);
             route();
         } catch (err) { dlgErr('#xErr', TB.errorText(err)); $('#xSave').disabled = false; }
     };
-    $('#yCopy').onclick = async () => { if (await TB.copyText($('#yCmd').textContent)) { $('#yCopy').innerHTML = tbIcon('check') + 'Kopiert'; setTimeout(() => { $('#yCopy').innerHTML = tbIcon('copy') + 'Kopieren'; }, 1600); } };
-    /* Ergebnis: Befehl zum Anlegen des Ordners + Öffnen, sobald er erreichbar ist */
-    let doneSlug = '';
+    /* Ergebnis: Reise ist sofort über reise/?r=<slug> erreichbar, im Repo ist nichts zu tun */
     function showDone(slug, title, results) {
-        doneSlug = slug;
         $('#dTitle').textContent = `„${title}“ ist angelegt`;
-        $('#dCmd').textContent = `mkdir -p ${slug} && cp shared/trip-template.html ${slug}/index.html && git add ${slug} && git commit -m "Neue Reise ${slug}" && git push`;
-        $('#dPath').textContent = `${slug}/index.html`;
         $('#dMembers').innerHTML = results.map(r => `<span class="${r.ok ? '' : 'bad'}">${tbIcon(r.ok ? 'check' : 'alert')} ${esc(r.text)}</span>`).join('');
-        $('#dOpen').href = encodeURIComponent(slug) + '/';
+        $('#dOpen').href = tripUrl(slug);
         $('#doneDlg').showModal();
-        checkFolder();
     }
-    async function checkFolder() {
-        $('#dState').textContent = 'Prüfe, ob der Ordner schon online ist …';
-        let ok = false;
-        try { const r = await TB.withTimeout(fetch(encodeURIComponent(doneSlug) + '/', { method: 'HEAD', cache: 'no-store' }), 6000); ok = r.ok; } catch (e) {}
-        $('#dOpen').hidden = !ok;
-        $('#dState').textContent = ok ? 'Der Ordner ist erreichbar – die Reise kann geöffnet werden.' : 'Der Ordner ist noch nicht online.';
-    }
-    $('#dCheck').onclick = checkFolder;
-    $('#dCopy').onclick = async () => { if (await TB.copyText($('#dCmd').textContent)) { $('#dCopy').innerHTML = tbIcon('check') + 'Kopiert'; setTimeout(() => { $('#dCopy').innerHTML = tbIcon('copy') + 'Kopieren'; }, 1600); } };
 
     /* Kennzahlen je Reise (Stopps, Unterkünfte, Storno-Fristen) + Vergleich der Varianten */
     async function renderSummaries(list) {
@@ -897,7 +902,7 @@
         /* Hinweis oben: Storno-Fristen in den nächsten 7 Tagen (oder abgelaufen) */
         const warn = list.filter(t => !t.st.past && (by[t.id] || {}).cancel_warn);
         $('#cancelHint').hidden = !warn.length;
-        $('#cancelHint').innerHTML = warn.length ? `${tbIcon('alert')}<span><b>Storno-Fristen prüfen:</b> ${warn.map(t => `<a href="${encodeURIComponent(t.slug)}/#acc">${esc(t.title)}</a> (bis ${fmtDM(by[t.id].next_cancel)})`).join(' · ')}</span>` : '';
+        $('#cancelHint').innerHTML = warn.length ? `${tbIcon('alert')}<span><b>Storno-Fristen prüfen:</b> ${warn.map(t => `<a href="${tripUrl(t.slug, '#acc')}">${esc(t.title)}</a> (bis ${fmtDM(by[t.id].next_cancel)})`).join(' · ')}</span>` : '';
         /* Varianten-Gruppen: Original + alle Kopien (variant_of), sobald eine davon „Vielleicht“ ist */
         const groups = {};
         list.filter(t => !t.st.past).forEach(t => { const k = t.variant_of || t.id; (groups[k] = groups[k] || []).push(t); });
@@ -907,7 +912,7 @@
         const table = g => {
             return `<div class="cmp-wrap"><table class="cmp"><thead><tr><th>Variante</th><th>Dauer</th><th>Stopps</th><th>Unterkünfte</th><th>Storno</th></tr></thead><tbody>${g.map(t => {
                 const r = by[t.id] || {}, n = nights(t), stays = (r.stays_booked || 0) + (r.stays_open || 0) + (r.stays_missing || 0);
-                return `<tr><td><a href="${encodeURIComponent(t.slug)}/">${esc(t.title)}</a>${t.tentative ? ' <span class="chip maybe">Vielleicht</span>' : ''}</td>
+                return `<tr><td><a href="${tripUrl(t.slug)}">${esc(t.title)}</a>${t.tentative ? ' <span class="chip maybe">Vielleicht</span>' : ''}</td>
                     <td data-l="Dauer"><b>${n ? n + ' Tage' : '–'}</b>${t.start_date ? `<br><small>${fmtDM(t.start_date)}–${fmtDM(t.end_date || t.start_date)}</small>` : ''}</td>
                     <td data-l="Stopps"><b>${r.stops ?? '–'}</b></td>
                     <td data-l="Unterkünfte"><b>${stays ? `${r.stays_booked} gebucht · ${r.stays_open} offen${r.stays_missing ? ` · ${r.stays_missing} fehlt` : ''}` : '–'}</b></td>

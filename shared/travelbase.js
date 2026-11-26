@@ -171,6 +171,16 @@
         clearCacheKey('summaries_');
         return r;
     }
+    /* Status (nur TravelBase-Admins): tentative = „Vielleicht“, archived = Archiv; null/undefined = unverändert */
+    async function setTripStatus(tripId, o) {
+        const r = await rpc('travelbase_admin_set_trip_status', { p_trip: tripId, p_tentative: o.tentative ?? null, p_archived: o.archived ?? null });
+        clearCacheKey('trips_');
+        return r;
+    }
+    /* Adresse einer Reise relativ zur Übersicht: alle Reisen laufen über die eine Seite reise/?r=<slug>,
+       nur Reisen mit eigener Seite (OWN_PAGE) über ihren Ordner. Alte Ordner-Links leiten weiter. */
+    const OWN_PAGE = ['thailand-2027'];
+    const tripUrl = (slug, hash = '') => (OWN_PAGE.includes(slug) ? encodeURIComponent(slug) + '/' : 'reise/?r=' + encodeURIComponent(slug)) + hash;
     const inviteMember = (tripId, email, role) => rpc('travelbase_invite_member', { p_trip: tripId, p_email: email, p_role: role });
     /* Kennzahlen je Reise (Stopps, Unterkünfte, Storno-Fristen); ohne die RPC (SQL noch nicht eingespielt) → leer */
     async function tripSummaries() {
@@ -297,6 +307,6 @@
     }
 
     window.TB = { sb, configured, withTimeout, cacheGet, cacheSet, isNetErr, getSession, displayName, publicFlags, myTrips, tripMembers, setTripStart, loadTrip, signIn, signOut, resetPassword, updatePassword, clearCache, errorText, exportBackup,
-        appRole, saveSection, updateTripCache, createTrip, duplicateTrip, deleteTrip, inviteMember, tripSummaries, safeHtml, safeColor, safeUrl, copyText,
+        appRole, saveSection, updateTripCache, createTrip, duplicateTrip, deleteTrip, setTripStatus, tripUrl, inviteMember, tripSummaries, safeHtml, safeColor, safeUrl, copyText,
         onAuth: cb => sb && sb.auth.onAuthStateChange((ev, session) => cb(ev, session)) };
 })();

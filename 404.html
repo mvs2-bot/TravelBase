@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>TravelBase</title>
+<!-- GitHub Pages zeigt diese Seite für jede unbekannte Adresse unter /TravelBase/.
+     /TravelBase/<kennung>/ (Reise ohne eigenen Ordner) → /TravelBase/reise/?r=<kennung>, sonst Hinweis + Link zur Übersicht. -->
+<script>
+(function () {
+    var p = location.pathname.split('/').filter(Boolean), base = '/' + (p[0] || '') + '/', slug = (p[1] || '').toLowerCase();
+    var reserved = ['shared', 'icons', 'admin', 'konto', 'verwaltung', 'index', 'sw', 'manifest', 'reise', '404'];
+    if (p.length >= 2 && /^[a-z0-9]([a-z0-9-]{0,58}[a-z0-9])?$/.test(slug) && reserved.indexOf(slug) < 0) {
+        var q = location.search ? '&' + location.search.slice(1) : '';
+        location.replace(base + 'reise/?r=' + encodeURIComponent(slug) + q + location.hash);
+    }
+    document.addEventListener('DOMContentLoaded', function () { document.getElementById('home').href = base; });
+})();
+</script>
+</head>
+<body style="font-family:-apple-system,system-ui,sans-serif;padding:24px;line-height:1.5">
+<h1 style="font-size:20px">Seite nicht gefunden</h1>
+<p><a id="home" href="/TravelBase/">Zur Übersicht „Alle Reisen“</a></p>
+</body>
+</html>

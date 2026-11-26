@@ -15,18 +15,17 @@ shared/overall-account.js  gemeinsames Konto-Modul aller Apps (Name, Bild, Gebur
 shared/profile.js     Profil-Button oben rechts mit Menü (nutzt overall-account.js)
 shared/flags.css      Flaggen-Schrift (Fix für Windows)
 shared/activities.js  Mögliche Aktivitäten pro Ort (Unterseite + Modal aus der Route), Tabelle travelbase_activities
-shared/trip.*         Reise-Vorlage (trip.js/trip.css/trip-template.html) für alle Reisen außer Thailand
+shared/trip.*         Reise-Vorlage (trip.js/trip.css) für alle Reisen außer Thailand
 sw.js, manifest.json  App/Offline für alle Reisen
-<reise-slug>/         eine Reise pro Ordner, Ordnername = slug in Supabase
+reise/index.html      eine Seite für alle Reisen: reise/?r=<slug> (Thailand hat die eigene Seite thailand-2027/)
+<reise-slug>/         alte Ordner, leiten nur auf reise/?r=<slug> weiter; 404.html macht dasselbe für /<slug>/ ohne Ordner
 ```
 
 ## Neue Reise hinzufügen
 
-1. In Supabase eine Zeile in `travelbase_trips` + Inhalte in `travelbase_trip_sections` anlegen (Import-Skript).
-   Abschnitt `guest` = Karte & Zeitraum; Abschnitt `details` mit `min_role` `member` oder `admin`.
-2. Hier einen Ordner mit genau dem `slug` als Namen anlegen und `shared/trip-template.html`
-   als `index.html` hineinkopieren – fertig, die Seite baut sich aus den Daten auf.
-3. Mitglieder per `select travelbase_add_trip_member('<slug>', '<email>', '<rolle>');` freischalten.
+In der Übersicht als TravelBase-Admin **„Neue Reise“** oder im Menü einer Reise **„Variante klonen“** – fertig.
+Die Reise ist sofort unter `reise/?r=<slug>` (bzw. `/<slug>/`) erreichbar, im Repo ist nichts zu tun.
+Im selben Menü: **Vielleicht / Fest**, **Archivieren** und **Löschen** (auch unter Admin-Einstellungen → TravelBase).
 
 ## Wichtig
 
