@@ -643,7 +643,7 @@
         const edit = canEdit(), g = legs().list.find(x => x.k === k), n = nightsOf(k, p);
         const stays = [];
         groups().forEach(gr => gr.list.forEach((s, i) => { if (stayKey(s) === k) stays.push({ s, gr, i }); }));
-        const bn = g ? Math.min(g.n, stays.filter(o => S.status(o.s) === 'booked').reduce((m, o) => m + (S.nights(o.s) || g.n), 0)) : 0;
+        const bn = g ? bookedNights(g) : 0;
         const g0 = groups()[0] || { id: '' };
         const trs = (raw().flights || []).map((f, i) => ({ f, i })).filter(({ f }) => f && f.from && f.to && (endHits(f.to, p) || endHits(f.from, p)));
         /* Bereiche (Notizen, Unterkünfte, Transporte) standardmäßig eingeklappt; Kopfzeile zeigt das Wichtigste */
@@ -1269,15 +1269,12 @@
         const hit = rng.find(x => x.a && x.a <= iso && iso <= x.b) || rng.filter(x => x.a && x.a <= iso).pop() || rng[0];
         return hit ? hit.id : (ps[0] || {}).id || '';
     }
-    /* Reisezeitraum je Person aus den Etappen: erster bis letzter Stopp, bei dem sie dabei ist */
+    /* Reisezeitraum je Person = derselbe Zeitraum wie im Anwesenheitskalender (presence(): erster bis letzter Tag inkl.
+       An-/Abreise und eingetragener Transporte). Gilt für „Reisezeiträume & Dauer“ in Vorlage und Thailand;
+       alte persons.start/end/home werden dann nicht mehr verwendet (stimmen nach Klonen/Verschieben oft nicht). */
     function personRanges() {
-        const out = new Map(), L = legs(), ps = persons();
-        if (!L.on || !L.start) return out;
-        ps.forEach(x => {
-            const key = pkey(x);
-            const on = L.list.filter(g => (H.placeWho ? H.placeWho(g.k) : Array.isArray(g.p.who) ? g.p.who : ps.map(pkey)).includes(key));
-            if (on.length) { const a = on[0], b = on[on.length - 1]; out.set(key, { start: a.from, end: b.n ? b.to : b.from }); }
-        });
+        const out = new Map();
+        presence().forEach(x => out.set(x.key, { start: x.start, end: x.end }));
         return out;
     }
     /* Anwesenheit je Person aus den Etappen: Tag → 'on' (vor Ort) | 'fl' (An-/Abreise).
@@ -1424,10 +1421,34 @@
         const g = legs().list.find(x => x.k === k && x.n > 0);
         return g && g.from ? g : null;
     }
+    /* Zeitraum einer Unterkunft: ohne Etappe die eigenen Daten; mit Etappe deren Zeitraum (folgt − / + bei den Stopps),
+       außer s.ownDates (nur ein Teil der Nächte): dann die eigenen Daten, begrenzt auf die Etappe; liegt nichts mehr
+       in der Etappe (z. B. nach Verschieben), wieder die ganze Etappe */
+    function stayRange(s) {
+        const own = [s.checkin || s.from || '', s.checkout || s.to || ''], g = legFor(s);
+        if (!g) return own;
+        if (s.ownDates && ISO.test(own[0]) && ISO.test(own[1])) {
+            const a = own[0] > g.from ? own[0] : g.from, b = own[1] < g.to ? own[1] : g.to;
+            if (a < b) return [a, b];
+        }
+        return [g.from, g.to];
+    }
+    /* gebuchte Nächte einer Etappe: Vereinigung der Zeiträume aller gebuchten Unterkünfte (Überlappungen zählen einmal) */
+    function bookedNights(g) {
+        if (!g || !g.n) return 0;
+        const st = allStations().filter(s => stayKey(s) === g.k && S.status(s) === 'booked');
+        if (!g.from) return Math.min(g.n, st.reduce((m, s) => m + (S.nights(s) || g.n), 0));
+        const set = new Set(), a0 = dn(g.from), b0 = dn(g.to);
+        st.forEach(s => {
+            const a = S.cin(s), b = S.cout(s), ok = ISO.test(a) && ISO.test(b);
+            for (let d = ok ? Math.max(dn(a), a0) : a0; d < (ok ? Math.min(dn(b), b0) : b0); d++) set.add(d);
+        });
+        return set.size;
+    }
     const S = {
         name: s => s.name ?? s.title ?? '',
-        cin: s => { const g = legFor(s); return g ? g.from : s.checkin || s.from || ''; },
-        cout: s => { const g = legFor(s); return g ? g.to : s.checkout || s.to || ''; },
+        cin: s => stayRange(s)[0],
+        cout: s => stayRange(s)[1],
         status: s => s.status === 'booked' ? 'booked' : s.status === 'none' ? 'none' : 'open',
         nights: s => { const a = S.cin(s), b = S.cout(s); return ISO.test(a) && ISO.test(b) ? Math.max(0, dn(b) - dn(a)) : (+s.nights || 0); },
         transfer: s => typeof s.transfer === 'object' && s.transfer ? s.transfer : { time: '', text: s.transfer || '' }
@@ -1520,7 +1541,7 @@
         const legSecs = L.list.filter(needsStay).map(x => {
             const stays = [];
             gs.forEach(g => g.list.forEach((s, i) => { if (stayKey(s) === x.k) { used.add(s); if (match(s)) stays.push({ s, g, i }); } }));
-            const bn = Math.min(x.n, stays.filter(o => S.status(o.s) === 'booked').reduce((n, o) => n + (S.nights(o.s) || x.n), 0));
+            const bn = bookedNights(x);
             const allStays = all.filter(s => stayKey(s) === x.k);
             if (accFilter.st === 'missing') return allStays.length ? '' : `<section class="bk-sec">
                 <div class="bk-head"><span class="pl-dot" style="--c:${esc(H.placeColor ? H.placeColor(x.k) : color(x.p.color, 'var(--p1)'))}">${esc(labels().get(x.k) ?? x.p.num ?? '')}</span>
@@ -1561,7 +1582,7 @@
         /* Kopf: gebuchte Nächte über alle Etappen (sonst über alle Unterkünfte) */
         const LS = L.list.filter(needsStay);
         const legN = LS.reduce((n, x) => n + x.n, 0);
-        const bookedN = legN ? LS.reduce((n, x) => n + Math.min(x.n, all.filter(s => stayKey(s) === x.k && S.status(s) === 'booked').reduce((m, s) => m + (S.nights(s) || x.n), 0)), 0)
+        const bookedN = legN ? LS.reduce((n, x) => n + bookedNights(x), 0)
             : all.filter(s => S.status(s) === 'booked').reduce((n, s) => n + S.nights(s), 0);
         const totalN = legN || all.reduce((n, s) => n + S.nights(s), 0);
         const legN0 = all.filter(s => 'bookings' in s).length;
@@ -1617,17 +1638,23 @@
         const numbered = pl.filter(x => x.p.num != null), hasStops = numbered.length > 0;
         const last = g.list[g.list.length - 1];
         const defIn = isNew ? (last && S.cout(last)) || (H.meta() || {}).start || '' : S.cin(s);
+        /* neue Unterkunft mit Etappen: zuerst die Etappe wählen (Pflicht), bis dahin ist der Rest ausgegraut */
+        const pick = hasStops && isNew && !curStop;
+        /* Hinweis zum Zeitraum der Etappe; Datum darf innerhalb frei gewählt werden (Teil der Nächte, Überlappungen erlaubt) */
+        const legNote = g2 => g2 ? `${ic('route')}Etappe ${esc(g2.p.name || g2.k)}: ${esc(fmt(g2.from))} – ${esc(fmt(g2.to))} (${g2.n} ${nightsWord(g2.n)}). Vorgabe ist die ganze Etappe; für einen Teil der Nächte die Daten innerhalb ändern – mehrere Unterkünfte gleichzeitig sind möglich.` : '';
+        const lim = g2 => g2 ? ` min="${esc(g2.from)}" max="${esc(g2.to)}"` : '';
         sheet({
             title: isNew ? 'Neue Unterkunft' : 'Unterkunft bearbeiten',
             /* Etappe = Zuordnung (Daten, Name); ein eigener Ortsname nur ohne Etappe (alte Reisen, Unterkünfte außerhalb der Etappen) */
-            body: `${hasStops ? field('Etappe', `<select name="stop"><option value="">– keine Etappe –</option>${numbered.map(({ k, p }) => { const g = legs().list.find(x => x.k === k); return `<option value="${esc(k)}"${k === curStop ? ' selected' : ''}>${esc(labels().get(k) ?? p.num)} · ${esc(p.name || k)}${g && g.from ? ` · ${esc(legShort(g))}` : ''}</option>`; }).join('')}</select>`) : ''}
-                <div class="pl-acc-name"${hasStops && curStop ? ' hidden' : ''}>${field('Ort', inp('name', S.name(s), `maxlength="120" list="plPlaces" placeholder="z. B. Kyoto"${hasStops && curStop ? '' : ' required'}`))}</div>
+            body: `${hasStops ? field('Etappe', `<select name="stop" required>${pick ? '<option value="" selected disabled>Etappe wählen …</option>' : ''}${numbered.map(({ k, p }) => { const g = legs().list.find(x => x.k === k); return `<option value="${esc(k)}"${k === curStop ? ' selected' : ''}>${esc(labels().get(k) ?? p.num)} · ${esc(p.name || k)}${g && g.from ? ` · ${esc(legShort(g))}` : ''}</option>`; }).join('')}<option value="-"${!pick && !curStop ? ' selected' : ''}>– ohne Etappe (eigener Ort) –</option></select>`) : ''}
+                <fieldset class="pl-acc-rest"${pick ? ' disabled' : ''}>
+                <div class="pl-acc-name"${hasStops && (curStop || pick) ? ' hidden' : ''}>${field('Ort', inp('name', S.name(s), `maxlength="120" list="plPlaces" placeholder="z. B. Kyoto"${hasStops && (curStop || pick) ? '' : ' required'}`))}</div>
                 <datalist id="plPlaces">${pl.map(({ p }) => `<option value="${esc(p.name)}">`).join('')}</datalist>
                 <div class="pl-row">
-                    ${field('Check-in', `<input type="date" name="cin" value="${esc(lg ? lg.from : defIn)}"${lg ? ' readonly' : ''}>`)}
-                    ${field('Check-out', `<input type="date" name="cout" value="${esc(S.cout(s))}"${lg ? ' readonly' : ''}>`)}
+                    ${field('Check-in', `<input type="date" name="cin" value="${esc(pick ? '' : lg ? S.cin(s) : defIn)}"${lim(lg)}>`)}
+                    ${field('Check-out', `<input type="date" name="cout" value="${esc(pick ? '' : S.cout(s))}"${lim(lg)}>`)}
                 </div>
-                ${lg ? `<p class="note pl-legs-on">${ic('route')}Daten folgen der Etappe ${esc(lg.p.name || lg.k)} (${lg.n} ${nightsWord(lg.n)}) – ändern über − / + bei den Stopps.</p>` : ''}
+                <p class="note pl-legs-on"${lg ? '' : ' hidden'}>${legNote(lg)}</p>
                 ${field('Unterkunft', inp('hotel', s.hotel, 'maxlength="300" placeholder="Name des Hotels / der Unterkunft"'))}
                 <div class="pl-row">
                     ${field('Status', sel('status', S.status(s), [['open', 'Noch offen'], ['booked', 'Gebucht'], ['none', 'Keine nötig (z. B. Nachtfahrt)']]))}
@@ -1647,26 +1674,36 @@
                     ${field('Transfer-Notiz / Weiterreise', inp('ttext', stripTags(t.text), 'maxlength="300"'))}
                 </div>
                 ${field('Notiz', area('note', (n => s.address && !plainNorm(n).includes(plainNorm(s.address)) ? [n, s.address].filter(Boolean).join('\n') : n)(legacyNote(s, s.note || '')), 'rows="3" maxlength="2000"'))}
-                ${legacyOpen(s).length ? `<p class="note">Alte Buchungsangaben aus dem Import stehen jetzt in der Notiz und können dort bearbeitet werden.</p>` : ''}`,
+                ${legacyOpen(s).length ? `<p class="note">Alte Buchungsangaben aus dem Import stehen jetzt in der Notiz und können dort bearbeitet werden.</p>` : ''}
+                </fieldset>`,
             extra: isNew ? '' : `<button type="button" class="btn-action danger pl-del">${ic('trash')}Löschen</button>`,
             onOpen: f => {
                 const del = f.querySelector('.pl-del');
                 if (del) del.onclick = () => { if (confirm(`„${S.name(s)}“ löschen?`)) { dlg.close(); commit(['stations'], () => g.list.splice(idx, 1)); } };
-                /* Ortsfeld nur bei „keine Etappe“ */
-                const st = f.elements.stop, box = f.querySelector('.pl-acc-name');
+                /* Etappe gewählt: Rest freigeben, Daten der Etappe vorbelegen und auf ihren Zeitraum begrenzen; Ortsfeld nur „ohne Etappe“ */
+                const st = f.elements.stop, box = f.querySelector('.pl-acc-name'), rest = f.querySelector('.pl-acc-rest'), note = f.querySelector('.pl-legs-on');
                 if (st && box) st.onchange = () => {
-                    const on = !st.value; box.hidden = !on; f.elements.name.required = on;
-                    /* Daten der gewählten Etappe übernehmen */
-                    const lg2 = st.value && legs().list.find(x => x.k === st.value);
-                    ['cin', 'cout'].forEach((n, j) => { const e = f.elements[n]; if (lg2 && lg2.from) e.value = j ? lg2.to : lg2.from; e.readOnly = !!(lg2 && lg2.from); });
+                    const on = st.value === '-'; box.hidden = !on; f.elements.name.required = on;
+                    if (rest) rest.disabled = !st.value;
+                    const lg2 = st.value && st.value !== '-' ? legs().list.find(x => x.k === st.value && x.n > 0 && x.from) : null;
+                    ['cin', 'cout'].forEach((n, j) => { const e = f.elements[n]; if (lg2) { e.value = j ? lg2.to : lg2.from; e.min = lg2.from; e.max = lg2.to; } else { e.removeAttribute('min'); e.removeAttribute('max'); } });
+                    if (note) { note.hidden = !lg2; note.innerHTML = legNote(lg2); }
                     if (on && !val(f, 'name')) f.elements.name.focus();
                 };
+                /* Check-in geändert: Check-out mindestens eine Nacht danach */
+                const ci = f.elements.cin, co = f.elements.cout;
+                ci.addEventListener('change', () => { if (ISO.test(ci.value) && (!ISO.test(co.value) || co.value <= ci.value)) { const n = isoOf(dn(ci.value) + 1); co.value = co.max && n > co.max ? co.max : n; } });
             },
             done: f => {
-                const sk0 = f.elements.stop ? val(f, 'stop') : '';
+                if (f.elements.stop && !val(f, 'stop')) { alert('Bitte zuerst die Etappe wählen.'); return false; }
+                const sk0 = f.elements.stop && val(f, 'stop') !== '-' ? val(f, 'stop') : '';
                 const name = sk0 && places()[sk0] ? places()[sk0].name || sk0 : val(f, 'name'), cin = val(f, 'cin'), cout = val(f, 'cout'), price = val(f, 'price').replace(',', '.');
                 if (!name) { alert('Bitte eine Etappe wählen oder einen Ort angeben.'); return false; }
                 if (cin && cout && cout <= cin) { alert('Check-out muss nach dem Check-in liegen.'); return false; }
+                /* Daten innerhalb der Etappe; weichen sie von ihr ab, gilt der eigene Zeitraum (ownDates) */
+                const lgS = sk0 ? legs().list.find(x => x.k === sk0 && x.n > 0 && x.from) : null;
+                if (lgS && ((cin && (cin < lgS.from || cin >= lgS.to)) || (cout && (cout <= lgS.from || cout > lgS.to)))) { alert(`Die Daten müssen im Zeitraum der Etappe liegen (${fmt(lgS.from)} – ${fmt(lgS.to)}).`); return false; }
+                const own = !!lgS && ISO.test(cin) && ISO.test(cout) && (cin !== lgS.from || cout !== lgS.to);
                 if (price && !isFinite(+price)) { alert('Bitte den Preis als Zahl eingeben.'); return false; }
                 commit(['stations'], () => {
                     const o = isNew ? (TH() ? { title: '', from: '', to: '' } : {}) : s;
@@ -1690,7 +1727,8 @@
                     const tt = val(f, 'ttime'), tx = val(f, 'ttext');
                     if (tt || tx || typeof o.transfer === 'object') o.transfer = { time: tt, text: tx }; else delete o.transfer;
                     /* Etappe als Schlüssel speichern (bleibt beim Umbenennen des Orts erhalten) */
-                    const sk = f.elements.stop ? val(f, 'stop') : (placeKeyByName(name) || '');
+                    if (own) o.ownDates = true; else delete o.ownDates;
+                    const sk = f.elements.stop ? sk0 : (placeKeyByName(name) || '');
                     if (!TH()) { if (sk) o.place = sk; else delete o.place; }
                     else if (sk) o.focus = sk;
                     else if (isNew || !o.focus || places()[o.focus]) o.focus = name;

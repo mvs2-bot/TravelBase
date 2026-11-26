@@ -126,7 +126,7 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   Alte Reisen mit `mapColors: "persons"` + `who` in Tagesplan-Zeilen bleiben unverändert.
   Thailand: Reisebeginn ohne `meta.start` = frühestes Datum aus `persons`, Unterkünften oder Ablauf-Tagen (`firstDate()`).
   Thailand: `thPlaceColor()` – `who` am Ort gilt fest; sonst färben die alten `persons.start/end` nach Zeitraum der Etappe (Vorgabe).
-  Überall (Karte, Etappen, Route, Aktivitäten) dieselbe Funktion. Reisezeiträume der Personen kommen aus den Etappen (`TBPlanner.personRanges()`).
+  Überall (Karte, Etappen, Route, Aktivitäten) dieselbe Funktion. Reisezeiträume der Personen („Reisezeiträume & Dauer“) = Zeitraum aus dem Anwesenheitskalender (`TBPlanner.personRanges()` aus `presence()`); alte `persons.start/end/home` nur ohne Etappen-Nächte.
   Thailand-Arbeitstage: ab heute (zählt mit) bis zum Tag vor dem eigenen Reisebeginn, minus gesetzliche Feiertage und `workdays.vacation` (`{ bayern, wien }`, Admins tragen ein).
   Feiertage für `bayern`/`wien` berechnet die Seite selbst (`HOLIDAYS` + Ostern, `holidayMap`); `workdays.holidays` gilt nur noch für andere Regionen.
 - **Desktop:** ab 1200 px Seitenleiste `.d-side` mit allen Bereichen statt Reitern + Menü (`desktopNav()` in `trip-mobile.js`, spiegelt die `.pop-btn`,
@@ -147,8 +147,10 @@ Module greifen defensiv aufeinander zu (`window.tbIcon ? tbIcon(n) : ''`), weil 
   eigene `num`-Position, `nights`, `who`, `desc`, Unterkunft). Angezeigt wird die Nummer des ersten Besuchs (`TBPlanner.labels()`,
   in `DATA.places[k].label`); auf der Karte kein eigener Punkt (der erste Besuch zeigt alle Zeiträume). Anlegen über „Neuer Stopp“ →
   „erneut besuchen“ oder „Erneut besuchen“ im Stopp-Sheet. Löschen des ersten Besuchs entfernt die erneuten Besuche.
-- Unterkunft ↔ Etappe: `place` (Vorlage) bzw. `focus` (Thailand) enthält den **Schlüssel** des Stopps (Formularfeld „Etappe“; Name und Daten kommen aus der Etappe,
-  ein Feld „Ort“ erscheint nur bei „– keine Etappe –“ bzw. ohne nummerierte Etappen); ältere Einträge
+- Unterkunft ↔ Etappe: `place` (Vorlage) bzw. `focus` (Thailand) enthält den **Schlüssel** des Stopps. Formular: neue Unterkunft = erst „Etappe“ wählen (Pflicht,
+  Rest in `.pl-acc-rest` ausgegraut), Check-in/-out vorbelegt mit der Etappe und auf ihren Zeitraum begrenzt; abweichende Daten = `ownDates: true` (Teil der Nächte,
+  `stayRange()`, sonst folgen die Daten der Etappe). Mehrere/überlappende Unterkünfte erlaubt, „x/y Nächte gebucht“ zählt die Vereinigung (`bookedNights()`).
+  Feld „Ort“ nur bei „– ohne Etappe (eigener Ort) –“ (Wert `-`) bzw. ohne nummerierte Etappen; ältere Einträge
   mit Ortsnamen werden über den Namen (bei mehreren Besuchen nach Datum, sonst Präfix wie „Bangkok Stadtzentrum“ → „Bangkok“) zugeordnet.
   Umbenennen eines Stopps zieht Unterkünfte, Thailand-Tage (`locName`) und Aktivitäten (`location_name`) mit. Offene Unterkünfte sind rot markiert.
 - Unterkünfte `stations`: Array (Vorlage) oder Objekt aus Arrays (Thailand: `th`/`sl`). Felder u. a. `name|title`, `checkin|from`, `checkout|to`,
