@@ -20,7 +20,8 @@ Fehlermeldungen sind **deutsch**.
 ```
 index.html            Login + Übersicht „Alle Reisen“ (ohne Login nur Flaggen); eigenes <style> mit denselben Tokens;
                       ab 1100 px Seitenleiste `.li-side` (Kennzahlen `#deskStats`, „Neue Reise“, Konto), nächste Reise als große Kachel;
-                      ab 768 px Umschalter Kacheln/Liste `#viewSeg` (`#tripList.as-list`, je Gerät in `localStorage['tb_home_view']`, Wechsel per View Transitions)
+                      ab 768 px Umschalter Kacheln/Liste `#viewSeg` (`#tripList.as-list`, je Gerät in `localStorage['tb_home_view']`, Wechsel per View Transitions);
+                      Handy: Tab „Vergangene“ (vergangen + Archiv) als kompakte Liste
 verwaltung.html       nur Weiterleitung auf /admin.html (Dashboard-Root-Repo)
 reise/index.html      **die** Reiseseite (Vorlage) für alle Reisen außer Thailand: `reise/?r=<slug>` (TRIP_SLUG aus `?r=`, sonst letzter Pfadteil)
 <slug>/index.html     alte Ordner: identische Weiterleitung auf `../reise/?r=<Ordnername>` (Hash/Query bleiben); keine neuen anlegen
